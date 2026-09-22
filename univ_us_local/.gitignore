@@ -1,0 +1,8 @@
+# univ_us_local
+data/
+backend/.venv/
+__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/.next/
+# frontend/out/ 은 커밋한다 — 팀원이 Node 없이 실행하도록 (프론트 수정 후 npm run build 로 갱신)

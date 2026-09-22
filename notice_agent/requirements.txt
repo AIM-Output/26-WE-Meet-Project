@@ -1,0 +1,36 @@
+# notice_agent — F11 장학 공지 매칭·신청서 초안 (Univ-Us notice_ai-agent 모듈)
+#
+#   python -m venv .venv
+#   .venv\Scripts\python -m pip install -r requirements.txt
+#
+# 버전 표기는 Univ-Us_AI/requirements.txt 와 같은 세대(>=A,<B)로 맞춘다.
+
+# ── 스키마 검증 / 설정 ─────────────────────────────────────
+pydantic>=2.9,<3
+python-dotenv>=1.0,<2
+
+# ── 수집 (공개 게시판은 HTTP 만으로 충분) ──────────────────
+requests>=2.32,<3
+beautifulsoup4>=4.13,<5
+lxml>=6.0,<7
+# international.jnu.ac.kr 처럼 중간 인증서를 안 보내는 서버가 있다. verify=False 로 우회하지 않고
+# OS 인증서 저장소(Windows 는 AIA 로 중간 인증서를 받아옴)를 쓰게 한다 → http.py 에서 inject.
+truststore>=0.9,<1
+
+# ── 첨부 텍스트 (공고문 PDF) ───────────────────────────────
+pypdf>=6.0,<7
+
+# ── 날짜 ─────────────────────────────────────────────────
+python-dateutil>=2.9,<3
+
+# ── LLM 호출 (OpenAI 호환 인터페이스 — 계획서 4.3 나) ────────
+# 모델은 슬롯(LLM_MAIN_*) 환경변수로 갈아끼운다. 특정 프로바이더 SDK 없음.
+openai>=2.0,<3
+
+# ── SSO 소스(학사정보시스템 장학 카탈로그, 프로필 자동 채움) 전용 ──
+# 공개 게시판만 쓸 거면 설치하지 않아도 된다. 브라우저는 eclass_agent 의
+# .venv\pw-browsers 를 재사용하므로 별도 다운로드가 필요 없다 (run.cmd 참고).
+playwright>=1.45,<2
+
+# ── 테스트 ───────────────────────────────────────────────
+pytest>=8.4,<10

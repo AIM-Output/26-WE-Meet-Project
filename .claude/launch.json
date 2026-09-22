@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "univus-backend",
+      "runtimeExecutable": "univ_us_local/backend/.venv/Scripts/python.exe",
+      "runtimeArgs": ["-X", "utf8", "-m", "uvicorn", "app.main:app", "--app-dir", "univ_us_local/backend", "--host", "127.0.0.1", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "univus-frontend",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["--prefix", "univ_us_local/frontend", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+# 줄바꿈: 저장소엔 LF, Windows 배치/PowerShell 은 항상 CRLF 로 체크아웃
+* text=auto
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# 바이너리
+*.lnk binary
+*.docx binary
+*.pdf binary
+*.pptx binary
+*.db binary
+*.png binary
+*.ico binary
+*.jpg binary

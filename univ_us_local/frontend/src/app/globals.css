@@ -1,0 +1,366 @@
+@import "tailwindcss";
+
+/* FullCalendar v7 — 뼈대 + breezy 테마(인디고 팔레트) */
+@import "@fullcalendar/react/skeleton.css";
+@import "@fullcalendar/react/themes/breezy/theme.css";
+@import "@fullcalendar/react/themes/breezy/palettes/indigo.css";
+
+/* Notion "Routine Planner" 공개 페이지를 1920px 에서 실측한 값 기준:
+   본문 #37352f · 회색 글자 #787774 · 테두리 #e6e5e3 · 주말 칸 #f9f8f7 · 커버 #f4ebbf · 카드 테두리 #ecebeb
+   여백 96px · 컬럼 간격 46px · 컬럼 341 : 1023 : 273 · 달력 칸 146×140 */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --panel: #ffffff;
+  --panel-border: #e6e5e3;
+  --border: #e6e5e3;
+  --border-soft: #ecebeb;
+  --weekend: #f9f8f7;
+  --text: #37352f;
+  --muted: #787774;
+  --faint: #a8a7a3;
+  --cover: #f4ebbf;
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --warn: #d97706;
+  --warn-soft: #fffbeb;
+  --ok: #059669;
+  --ok-soft: #ecfdf5;
+  --todo: #ea580c;
+  --todo-soft: #fff1e6;
+  /* Notion 태그 색 */
+  --tag-blue: #d3e5ef;   --tag-blue-fg: #183347;
+  --tag-yellow: #fdecc8; --tag-yellow-fg: #402c1b;
+  --tag-red: #ffe2dd;    --tag-red-fg: #5d1715;
+  --tag-green: #dbeddb;  --tag-green-fg: #1c3829;
+  --tag-gray: #e3e2e0;   --tag-gray-fg: #32302c;
+  --tag-orange: #fadec9; --tag-orange-fg: #49290e;
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(15, 15, 15, 0.04), 0 3px 10px rgba(15, 15, 15, 0.05);
+
+  /* breezy 테마 변수 — Notion 선 색과 맞춤 */
+  --fc-breezy-background: var(--surface);
+  --fc-breezy-foreground: var(--text);
+  --fc-breezy-muted-foreground: var(--muted);
+  --fc-breezy-faint-foreground: var(--faint);
+  --fc-breezy-border: var(--border);
+  --fc-breezy-muted-border: var(--border);
+  --fc-breezy-strong-border: var(--border);
+  --fc-breezy-primary: #eb5757;   /* Notion 오늘 표시(빨강) */
+  --fc-breezy-now: #eb5757;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-weekend: var(--weekend);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-cover: var(--cover);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-todo: var(--todo);
+  --color-todo-soft: var(--todo-soft);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 공용 클래스는 components 레이어에 둔다 → Tailwind 유틸리티(utilities 레이어)가 덮어쓸 수 있다. */
+@layer components {
+  /* ---------- 페이지 뼈대 ---------- */
+  .cover {
+    height: 280px;
+    background: var(--cover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .divider { height: 1px; background: var(--border); }
+
+  /* 섹션 제목: 작은 아이콘 + 자간 넓은 대문자 (참고: 14px, #777776) */
+  .sec-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sec-title .ico { width: 18px; height: 18px; flex: none; color: var(--muted); letter-spacing: 0; }
+
+  /* 콜아웃: 흰 배경 + 테두리 (참고 페이지 실측) */
+  .callout {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 22px 20px 26px;
+  }
+  .callout-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .callout-head .ico { font-size: 20px; line-height: 1; width: 26px; text-align: center; }
+  .callout-body { margin-left: 36px; }             /* 제목 글자 시작선에 맞춰 들여쓰기 */
+  .callout-body .divider { margin: 12px 0 14px; }
+
+  /* Notion 버튼 블록 — 작은 알약 버튼 (참고: 28px 높이, 회색 글자, 얇은 테두리) */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .pill:hover { background: #f7f7f5; color: var(--text); }
+  .pill:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pill .ico { font-size: 13px; color: var(--faint); }
+  .pill-list { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* 갤러리형 카드 (To Do List, 참고: 256px 폭, 테두리 #ecebeb, 라운드 8px) */
+  .tcard {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 14px 12px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(15, 15, 15, 0.03);
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .tcard:hover { box-shadow: var(--shadow); border-color: #ddd; }
+
+  /* Notion 태그 */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag-blue { background: var(--tag-blue); color: var(--tag-blue-fg); }
+  .tag-yellow { background: var(--tag-yellow); color: var(--tag-yellow-fg); }
+  .tag-red { background: var(--tag-red); color: var(--tag-red-fg); }
+  .tag-green { background: var(--tag-green); color: var(--tag-green-fg); }
+  .tag-gray { background: var(--tag-gray); color: var(--tag-gray-fg); }
+  .tag-orange { background: var(--tag-orange); color: var(--tag-orange-fg); }
+
+  /* ---------- 공통 조각 ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: #f7f7f5; }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--text); border-color: var(--text); color: #fff; }
+  .btn-primary:hover { background: #000; border-color: #000; }
+  .btn-danger { color: var(--danger); }
+  .btn-danger:hover { background: var(--danger-soft); border-color: #fecaca; }
+  .btn-sm { height: 32px; padding: 0 10px; font-size: 13px; border-radius: 6px; }
+
+  /* 탭 — Notion 뷰 탭처럼 작고 옅게 */
+  .tab {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .tab:hover { background: #f7f7f5; }
+  .tab[aria-selected="true"] { background: #f1f1ef; color: var(--text); font-weight: 600; }
+
+  /* 달력 툴바 (참고: "2026년 9월" 굵은 14px 왼쪽, "‹ 오늘 ›" 오른쪽) */
+  .cal-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 8px 10px;
+  }
+  .cal-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .cal-nav { display: flex; align-items: center; gap: 2px; }
+  .cal-nav button {
+    height: 28px;
+    min-width: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .cal-nav button:hover { background: #f1f1ef; color: var(--text); }
+
+  .field {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+  textarea.field { height: auto; padding: 10px 12px; resize: vertical; min-height: 90px; }
+  .label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .chip-sm { height: 22px; padding: 0 8px; font-size: 12px; border-radius: 4px; }
+
+  .spin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    animation: spin 0.8s linear infinite;
+  }
+  .spin-dark { border-color: rgba(17, 24, 39, 0.15); border-top-color: var(--accent); }
+
+  /* ---------- 캘린더 ---------- */
+  .fc-weekend { background: var(--weekend); }
+  .fc-top-right { justify-content: flex-end; }
+  .fc-daynum { font-size: 14px; font-weight: 500; padding: 4px 6px 0 0; }
+  .fc-daynum-other { color: var(--faint); }
+  .fc-dayhead { font-size: 14px; font-weight: 500; color: var(--muted); padding: 6px 0; }
+
+  .fc-ev {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    width: 100%;
+    padding: 3px 6px;
+    font-size: 13.5px;
+    line-height: 1.35;
+  }
+  .fc-ev-time { flex: none; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .fc-ev-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .fc-ev-tag { flex: none; font-size: 11.5px; font-weight: 700; opacity: 0.9; }
+  .fc-ev-box { flex: none; font-size: 13px; line-height: 1; }
+  .ev-done { opacity: 0.55; }
+  .ev-done .fc-ev-title { text-decoration: line-through; }
+
+  /* ---------- 모달 ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(15, 15, 15, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fade 0.12s ease-out;
+  }
+  .dialog {
+    width: 100%;
+    max-width: 540px;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(15, 15, 15, 0.25);
+    animation: pop 0.14s ease-out;
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+  }
+
+  /* ---------- 스크롤바 ---------- */
+  .thin-scroll::-webkit-scrollbar { width: 8px; }
+  .thin-scroll::-webkit-scrollbar-thumb { background: #d6d6d3; border-radius: 8px; }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+}

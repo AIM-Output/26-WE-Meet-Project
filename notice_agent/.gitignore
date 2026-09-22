@@ -1,0 +1,12 @@
+# 절대 공유 금지: 세션(=로그인 상태), 수집한 공지·프로필·신청서 초안(개인정보)
+state/
+data/
+.env
+.env.*
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log

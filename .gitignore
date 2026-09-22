@@ -1,0 +1,17 @@
+# ── 프로젝트 루트 공통 (하위 폴더의 .gitignore 와 함께 적용) ──
+
+# 개인 PC 전용 (절대경로가 박힌 바로가기 등)
+*.lnk
+
+# Windows / Office 찌꺼기
+Thumbs.db
+desktop.ini
+~$*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Claude Code 개인 설정 (launch.json 은 공유)
+.claude/settings.local.json
