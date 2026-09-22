@@ -85,7 +85,7 @@ py -3.12 --version
 ### 2-3. clone
 
 ```powershell
-git clone https://github.com/Khrrr0131/26-WE-Meet-Project.git
+git clone https://github.com/AIM-Output/26-WE-Meet-Project.git
 ```
 
 끝나면 `C:\Projects\26-WE-Meet-Project` 폴더가 생깁니다. 그 안으로 들어갑니다.
