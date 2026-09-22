@@ -85,15 +85,13 @@ py -3.12 --version
 ### 2-3. clone
 
 ```powershell
-git clone https://github.com/Khrrr0131/<저장소이름>.git
+git clone https://github.com/Khrrr0131/26-WE-Meet-Project.git
 ```
 
-<!-- 저장소 주인: 위 <저장소이름> 을 실제 GitHub 저장소 이름으로 바꿔 주세요 (3곳). -->
-
-끝나면 `C:\Projects\<저장소이름>` 폴더가 생깁니다. 그 안으로 들어갑니다.
+끝나면 `C:\Projects\26-WE-Meet-Project` 폴더가 생깁니다. 그 안으로 들어갑니다.
 
 ```powershell
-cd <저장소이름>
+cd 26-WE-Meet-Project
 dir
 ```
 
@@ -184,7 +182,7 @@ cd eclass_agent
 
 ## 6. 로컬 서버 웹(대시보드) 실행
 
-파일 탐색기에서 **프로젝트 폴더**(예: `C:\Projects\<저장소이름>`) 로 가서
+파일 탐색기에서 **프로젝트 폴더**(예: `C:\Projects\26-WE-Meet-Project`) 로 가서
 
 ### **`유니버스 열기.cmd`** 를 더블클릭
 
