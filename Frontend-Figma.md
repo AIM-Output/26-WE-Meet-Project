@@ -5,6 +5,8 @@
 
 > **무엇을 몇 개 그려야 하는지**는 [Frontend-Screens.md](Frontend-Screens.md) 를 보세요 (우선순위·공용 부품·진행 체크).
 > 이 문서는 순서대로 따라 하면 되도록 썼습니다.
+> ⚠️ **2026-09-27 디자인 시스템 v2 로 바뀌었습니다.** 웹 화면을 새 디자인(Flat Design · 주색 틸 `#0F766E` · 할 일 주황 · Pretendard + Plus Jakarta Sans · lucide 선 아이콘)으로 다시 만들었습니다.
+> 아래 **4-2 색 · 4-3 글자 · 5절 치수 표는 옛 Notion 톤 값**입니다. 새 값은 [`univ_us_local/frontend/DESIGN.md`](univ_us_local/frontend/DESIGN.md) 를 기준으로 쓰세요. 4절 연습 과제(옛 메인화면 따라 그리기)는 피그마 조작 연습용으로만 보세요.
 > 모르는 단어가 나오면 [1. 용어 사전](#1-용어-사전--먼저-읽어-주세요)을 먼저 보세요. 막히면 [9. 자주 막히는 것](#9-자주-막히는-것-faq)을 보고, 그래도 안 되면 팀 채팅에 **화면을 캡처해서** 올려 주세요.
 
 ---
@@ -244,6 +246,8 @@ https://www.figma.com/downloads/ → Windows 앱 설치.
 
 ### 4-2. ⭐ 색부터 등록하기 (제일 중요)
 
+> ⚠️ v1(옛 Notion 톤) 값입니다. 현재 값은 [DESIGN.md](univ_us_local/frontend/DESIGN.md).
+
 그림을 그리기 전에 **쓸 색을 먼저 이름 붙여 저장**합니다. 이걸 안 하고 매번 색을 찍어 쓰면, 나중에 "회색이 7종류"가 되어 수습이 안 됩니다.
 
 **방법 (색 변수 만들기)**
@@ -294,6 +298,8 @@ https://www.figma.com/downloads/ → Windows 앱 설치.
 ---
 
 ### 4-3. 글자 스타일 등록하기
+
+> ⚠️ v1(옛 Notion 톤) 값입니다. 현재 값은 [DESIGN.md](univ_us_local/frontend/DESIGN.md).
 
 1. `T` 로 글자를 아무거나 하나 쓰고, 아래 값 중 하나를 지정
 2. 오른쪽 `Typography` 옆 **스타일 아이콘 → `＋`** → 이름 입력 → 저장
@@ -491,6 +497,8 @@ https://www.figma.com/downloads/ → Windows 앱 설치.
 ---
 
 ## 5. 치수 스펙 표 (그릴 때 옆에 두고 보기)
+
+> ⚠️ v1(옛 Notion 톤) 값입니다. 현재 값은 [DESIGN.md](univ_us_local/frontend/DESIGN.md).
 
 현재 구현된 화면에서 **실제로 쓰이는 값**입니다. 새 화면을 그릴 때도 이 값들을 재사용하세요.
 

@@ -36,6 +36,20 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=C.ALLOWED_HOSTS)
 
 
 @app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    """정적 프론트 캐시 규칙. 헤더가 없으면 브라우저가 옛 index.html 을 추정 캐시로 계속 써서
+    `npm run build` 뒤에도 옛 화면이 보인다 → HTML 은 매번 재검증(no-cache), 해시 붙은 _next/static 은 영구 캐시."""
+    response = await call_next(request)
+    path = request.url.path
+    if not path.startswith("/api"):
+        if path.startswith("/_next/static/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+        else:
+            response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
+@app.middleware("http")
 async def check_origin(request: Request, call_next):
     """브라우저가 보내는 변경 요청은 허용된 Origin 에서만. Origin 이 없는 요청(curl 등)은 로컬 도구로 본다."""
     if request.method in ("POST", "PATCH", "PUT", "DELETE"):

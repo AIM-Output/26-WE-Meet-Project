@@ -12,8 +12,11 @@ univ_us_local/
 │   ├── app/config.py   경로·포트·허용 Origin·색상표
 │   ├── requirements.txt · run.cmd
 │   └── .venv/          (run.cmd 가 처음 실행 때 만든다)
-├── frontend/           Next.js 16 + Tailwind 4 + FullCalendar 7
-│   └── src/components/ Dashboard(레이아웃) · CalendarView · ActionPanel · TodoList · FeatureSection · EventModal · EventDetail
+├── frontend/           Next.js 16 + Tailwind 4 + FullCalendar 7 + motion + lucide-react
+│   ├── DESIGN.md       디자인 시스템 v2 (토큰·글자·치수·공용 부품)
+│   ├── src/app/        라우트 17개 (Frontend-Route 2-1) — 각 page.tsx 는 Suspense 로 감싼 클라이언트 화면
+│   ├── src/components/ app(헤더·공용 데이터) · ui(공용 부품) · dashboard · events(상세·새 일정 모달) · pages(기능 화면)
+│   └── src/lib/        api · useQueryState(모달=push/탭=replace) · priority(F7) · demo/(예시 데이터)
 ├── data/               univus.db (gitignore)
 └── README.md
 ```
@@ -45,19 +48,22 @@ npm run dev      # http://localhost:3000  (/api 는 next.config.ts rewrites 로 
 
 Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-frontend` 로 같은 것을 띄운다.
 
-## 화면 (Notion "Routine Planner" 템플릿 구조를 참고)
+## 화면 (Frontend-Route · Frontend-Screens 기준, 2026-09-27 전면 재작성)
 
-참고 템플릿 공개 페이지를 1920px 에서 실측한 값을 그대로 따른다 (`globals.css` 머리 주석): 좌우 여백 96px, 커버 280px(#f4ebbf), 제목 36px, **3컬럼 341 : 1023 : 273 (= 20.8% : 62.5% : 16.7%), 컬럼 간격 46px**, 달력 칸 **146×140px**(`aspectRatio` 1.21, 주말 칸 회색, 날짜 오른쪽 위, 1일은 "9월 1일"), 콜아웃은 흰 배경 + 테두리 #e6e5e3 + 작은 알약 버튼, To Do 카드는 테두리 #ecebeb + Notion 태그 색. 페이지는 세로로 스크롤된다. 1280px 미만이면 캘린더가 위로 가고 두 패널이 아래에 나란히, 768px 미만이면 한 줄로 쌓인다.
+디자인은 `frontend/DESIGN.md` (Flat Design + Micro-interactions, 주색 틸 · 할 일 주황, Pretendard). 상단 메뉴(GNB)는 없고 **대시보드가 허브**다.
 
-| 영역 | 내용 |
-|---|---|
-| 왼쪽 (ActionPanel) | 회색 콜아웃 "일정, 할 일 등록"(일정 추가 / 할 일 추가), "빠른 실행"(e클래스 동기화 + 준비 중 기능 버튼), "월별 완료율" 막대 차트(과제 제출 + 할 일 완료, 이번 달과 지난 3개월) |
-| 가운데 (Calendar) | `‣ C A L E N D A R` 제목 + 필터 탭(전체 / e클래스 / 내 일정 / 할 일) + FullCalendar 월·주·목록. e클래스 마감은 과목 색, 내 일정은 분류 색, **할 일은 주황**(☐/☑), 제출 완료·완료는 흐리게+취소선, 미제출 지난 마감은 빨강. 날짜 클릭/드래그 → 새 일정(할 일 탭이면 새 할 일), 드래그로 이동·늘리기 |
-| 오른쪽 (TodoList) | `‣ T O   D O   L I S T` + 탭(할 일 / 완료) + 갤러리형 카드. 내 할 일(체크박스로 완료)과 e클래스 과제(미제출 = 할 일, 제출 완료 = 완료, e클래스에서만 바뀜)를 한 목록으로. D-day 칩 |
-| 아래 (FeatureSection) | 참고 템플릿의 HABIT TRACKER 자리 — 아침 브리핑(F10) 숫자 + 나중에 붙일 기능 타일(F7·F9·F4·F11·F2·F8·F5·F16, 준비 중) |
-| 상단바 | 고정. 마지막 동기화 시각, `+ 일정 추가` |
+| 라우트 | 화면 | 데이터 |
+|---|---|---|
+| `/` | 브리핑 카드 → 3단(등록·빠른 실행·확인 필요·대화 카드 / 캘린더 월·주·목록·학기 / 먼저 할 것·할 일) → 기능 타일 10개. `?event=` 상세 · `?new=event` 새 일정 · `?place=preview` 공강 배치 | 실제(일정·마감·동기화) + 학사일정 예시 |
+| `/assignments` | 진행 중/완료/지난 마감 · 급한 순 그룹(F7) · 소요시간 편집 · 내가 체크함 | **실제** (소요시간·체크는 브라우저 임시 저장) |
+| `/academic` | 전체/내 해당/확인 필요/숨김 · 월 묶음 · 확인 필요 카드 | 예시 |
+| `/onboarding` · `/settings/*` 5개 | 첫 설정 3단계 · 프로필·수집 원천·졸업요건 기준·가용 시간·알림 | 수집 원천의 e클래스 행은 실제, 나머지 예시(브라우저 저장) |
+| `/graduation` `/attendance` `/courses` `/exams` `/briefing` `/chat` `/opportunities` `/team` | F2~F16 기능 화면 뼈대 | 예시 |
 
-"할 일"은 일정과 같은 테이블(`user_events.is_todo`, `done`)에 있다 — 참고 템플릿의 Schedule DB(📆 일정 / 📋 할일 목록)와 같은 구조.
+- **예시 데이터**는 `src/lib/demo/` 에 모여 있고 화면마다 "예시 데이터" 띠로 표시한다. API 가 생기면 `lib/api.ts` 에 같은 모양의 함수를 만들고 바꿔 끼운다.
+- 모달·패널은 쿼리 파라미터 + `push`(뒤로가기로 닫힘), 탭·필터는 `replace` — `lib/useQueryState.ts` 한곳에서 처리.
+- 반응형: ≥1280 3단 · 768~1279 캘린더 위 2단 · <768 1단(캘린더 → 실행 → 할 일), 모달은 바텀 시트, 일정 추가는 오른쪽 아래 떠 있는 버튼.
+- `next.config.ts` 의 `trailingSlash: true` 로 `out/academic/index.html` 처럼 폴더마다 만들어져 주소창에 `/academic` 을 직접 쳐도 열린다.
 
 ## API (`/api/docs` 에 Swagger)
 
@@ -90,5 +96,6 @@ F7 우선순위 → F9 자연어 일정 → F10 브리핑(스케줄러 내장) �
 
 ## 알아둘 것
 
+- 백엔드는 HTML 에 `Cache-Control: no-cache`, `_next/static` 에 영구 캐시 헤더를 붙인다(빌드 뒤 옛 화면이 남지 않게). 이 헤더가 생기기 전에 열어 본 브라우저는 **한 번만 Ctrl+F5** 로 새로고침하면 된다.
 - FullCalendar 7 은 클래스명이 해시라 CSS 로 직접 스타일하지 않고, 테마 변수(`--fc-breezy-*`)와 `eventContent`/`className` 옵션으로 만진다.
 - 콘솔의 `inert` 경고는 FullCalendar 내부가 React 19 에 빈 문자열을 넘겨서 나는 것으로, 이 코드 문제는 아니다.

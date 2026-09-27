@@ -67,6 +67,46 @@ export function fmtLongDate(d: Date): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${WEEKDAY_KO[d.getDay()]}요일`;
 }
 
+/** '3분 전' · '2시간 전' · '어제' · '9/21' */
+export function fmtRelative(s: string | Date | null | undefined, now = new Date()): string {
+  if (!s) return "-";
+  const d = typeof s === "string" ? parseLocal(s.replace(" ", "T")) : s;
+  if (isNaN(d.getTime())) return String(s);
+  const min = Math.round((now.getTime() - d.getTime()) / 60_000);
+  if (min < 1) return "방금";
+  if (min < 60) return `${min}분 전`;
+  const h = Math.floor(min / 60);
+  if (h < 24 && isSameDay(d, now)) return `${h}시간 전`;
+  const days = daysUntil(now, d);
+  if (days === 1) return `어제 ${fmtTime(d)}`;
+  if (days < 7) return `${days}일 전`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** 마감 표시: '오늘 23:59' · '내일 18:00' · '9/28(월) 23:59' */
+export function fmtDue(d: Date, now = new Date()): string {
+  const n = daysUntil(d, now);
+  const t = fmtTime(d);
+  if (n === 0) return `오늘 ${t}`;
+  if (n === 1) return `내일 ${t}`;
+  if (n === -1) return `어제 ${t}`;
+  return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]}) ${t}`;
+}
+
+/** '9/28(월)' */
+export function fmtMD(d: Date): string {
+  return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]})`;
+}
+
+/** 시간 수 → '30분' · '3시간' · '1시간 30분' */
+export function fmtHours(h: number): string {
+  const m = Math.round(h * 60);
+  if (m < 60) return `${m}분`;
+  const hh = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm ? `${hh}시간 ${mm}분` : `${hh}시간`;
+}
+
 /** 'YYYY-MM-DD HH:MM' (동기화 시각 표시용) → '9/21 12:51' */
 export function fmtShortStamp(s: string | null | undefined): string {
   if (!s) return "-";
