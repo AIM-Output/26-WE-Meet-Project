@@ -86,7 +86,7 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 
 ## 다음 단계 (아래 Features 칸 순서)
 
-F7 우선순위 → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → F11 장학 → 알림 채널(Google Calendar·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
+F7 우선순위 → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → F11 장학 → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
 
 ## 알아둘 것
 
