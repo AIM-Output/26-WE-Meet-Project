@@ -1,0 +1,217 @@
+{
+ "code": "30001267",
+ "collegeCode": "30001229",
+ "year": 2025,
+ "fetchedAt": "2026-09-28T21:38:05",
+ "source": "https://www.jnu.ac.kr/WebApp/web/DBM/ENG/CurriCulumn/CurriCulumnSM.aspx?aYear=2025&aLanguage=1&aColl=30001229&aDept=30001267&aPageNum=1",
+ "courses": [
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능설계프로젝트",
+   "code": "AIC0012",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "데이타베이스시스템",
+   "code": "CIS3009",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "모바일응용소프트웨어",
+   "code": "CIS4022",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "기계학습",
+   "code": "CPE9020",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "데이터통신",
+   "code": "ECE3007",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능시스템",
+   "code": "SAI0028",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "IoT시스템",
+   "code": "SAI0052",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "딥러닝",
+   "code": "AIC0023",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "컴퓨터네트워크",
+   "code": "ECE3026",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이터마이닝",
+   "code": "IDE3035",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이터과학",
+   "code": "SAI0002",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "영상이해",
+   "code": "SAI0025",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "산학협력프로젝트(캡스톤디자인)",
+   "code": "SAI0029",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "인공지능실무프로젝트",
+   "code": "SAI0051",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "신호처리",
+   "code": "MAE2019",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "컴퓨터비전",
+   "code": "MPE0051",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전필",
+   "name": "인공지능캡스톤디자인",
+   "code": "SAI0008",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "로봇프로그래밍",
+   "code": "SAI0010",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "자연어처리",
+   "code": "SAI0026",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능소프트웨어개발및운영파이프라인",
+   "code": "SAI0049",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "생체신호계측기술",
+   "code": "AIC0022",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "확률그래프모델",
+   "code": "SAI0015",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "지능로봇응용",
+   "code": "SAI0017",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "강화학습",
+   "code": "SAI0018",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "음성인식",
+   "code": "SAI0027",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "생성형AI",
+   "code": "SAI0054",
+   "credits": 3.0
+  }
+ ]
+}

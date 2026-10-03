@@ -93,6 +93,30 @@ export function fmtDue(d: Date, now = new Date()): string {
   return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]}) ${t}`;
 }
 
+const isMidnight = (d: Date) => d.getHours() === 0 && d.getMinutes() === 0;
+
+/** 과제 마감이 속한 날 — 00:00 마감은 전날 밤으로 본다. '10월 4일 자정까지'가 e클래스에는 10/5 00:00 으로 적힌다
+ *  (F6 알림 D-3·D-1·당일과 같은 규칙). D-day 칩·캘린더 태그에 쓴다. */
+export function deadlineDay(d: Date): Date {
+  return isMidnight(d) ? addDays(startOfDay(d), -1) : d;
+}
+
+/** 과제 마감 표시 — fmtDue 와 같되 00:00 마감은 전날 '24:00' ('오늘 24:00' · '10/4(일) 24:00') */
+export function fmtDeadline(d: Date, now = new Date()): string {
+  if (!isMidnight(d)) return fmtDue(d, now);
+  const day = deadlineDay(d);
+  const n = daysUntil(day, now);
+  if (n === 0) return "오늘 24:00";
+  if (n === 1) return "내일 24:00";
+  if (n === -1) return "어제 24:00";
+  return `${day.getMonth() + 1}/${day.getDate()}(${WEEKDAY_KO[day.getDay()]}) 24:00`;
+}
+
+/** 과제 마감 긴 표시 — '10월 4일 (일) 24:00' */
+export function fmtDeadlineLong(d: Date): string {
+  return isMidnight(d) ? `${fmtDateTime(deadlineDay(d), false)} 24:00` : fmtDateTime(d);
+}
+
 /** '9/28(월)' */
 export function fmtMD(d: Date): string {
   return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_KO[d.getDay()]})`;

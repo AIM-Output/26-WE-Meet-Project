@@ -65,10 +65,10 @@
 
 ## 4. 학사정보시스템 내학사행정 hakstd.jnu.ac.kr (`hakstd`, SSO)
 
-### 인증 (eclass_agent 와 동일 체계)
+### 인증 (C3_Login_agent 와 동일 체계)
 - SP 시작 → `idpm.jnu.ac.kr/IDP/dispatch?SAMLRequest=…` → 로그인 필요하면 `sso.jnu.ac.kr/Idp/Login.aspx` (폼 `#userId` `#userPwd` `#btnLoginButton`, 키보드보안 없음)
 - `.jnu.ac.kr` 도메인 쿠키(`RathonSSO_SESSION`, `SSOValidate`, `WebSSOInfo` …)가 살아 있으면 e클래스·포털·학사시스템 어디든 비밀번호 없이 통과. 신뢰기기 쿠키 `RathonSSO_TrustDevice_*`(idpm, ~1년)가 2차 인증을 면제.
-- SSO 서버 세션은 수 시간. 죽으면 `eclass_agent/login.py: reauthenticate()` 가 (쿠키 복구 →) DPAPI 자격증명으로 무인 로그인. **비밀번호는 eclass_agent 코드만 다룬다.**
+- SSO 서버 세션은 수 시간. 죽으면 `C3_Login_agent/login: reauthenticate()` 가 (쿠키 복구 →) DPAPI 자격증명으로 무인 로그인. **비밀번호는 C3_Login_agent 코드만 다룬다.**
 - 도착 판정: 최종 URL 이 `hakstd.jnu.ac.kr/...` 이고 `sso.jnu.ac.kr`/`idpm.jnu.ac.kr` 가 아니면 로그인됨. 로그인 폼(`#userPwd`)이 보이면 실패.
 
 ### 장학 메뉴 지도 (`/web/Jang/…`)

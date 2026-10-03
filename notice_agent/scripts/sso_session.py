@@ -1,14 +1,14 @@
 """전남대 SSO 세션 — 학사정보시스템(hakstd.jnu.ac.kr) 조회용.
 
-eclass_agent(C.ECLASS_AGENT_DIR)가 이미 관리하는 것을 빌려 쓴다.
+C3_Login_agent(C.C3_AGENT_DIR)가 이미 관리하는 것을 빌려 쓴다.
   - state/storage_state.json  : SSO 쿠키 + 신뢰기기 쿠키(RathonSSO_TrustDevice, ~1년 → 2차 인증 면제)
   - login.reauthenticate(p)   : 세션이 죽었을 때 조용한 쿠키 복구 → (저장돼 있으면) DPAPI 자격증명으로 무인 로그인
-비밀번호는 eclass_agent 쪽 코드가 폼에 직접 채운다. 이 모듈은 자격증명 값을 다루지 않는다.
+비밀번호는 C3_Login_agent 쪽 코드가 폼에 직접 채운다. 이 모듈은 자격증명 값을 다루지 않는다.
 
-eclass_agent 가 없거나 실패하면 창을 띄워 본인이 직접 로그인하는 길(interactive)만 남긴다.
-세션은 이 폴더의 state/ 에 따로 저장한다 (eclass_agent 의 파일을 덮어쓰지 않는다).
+C3_Login_agent 가 없거나 실패하면 창을 띄워 본인이 직접 로그인하는 길(interactive)만 남긴다.
+세션은 이 폴더의 state/ 에 따로 저장한다 (C3_Login_agent 의 파일을 덮어쓰지 않는다).
 
-브라우저 바이너리: PLAYWRIGHT_BROWSERS_PATH 가 비어 있으면 eclass_agent/.venv/pw-browsers 를 가리킨다
+브라우저 바이너리: PLAYWRIGHT_BROWSERS_PATH 가 비어 있으면 C3_Login_agent/.venv/pw-browsers 를 가리킨다
 (이 PC 의 %LOCALAPPDATA% 는 샌드박스에서 가상화되어 쓸 수 없었기 때문 — 프로젝트 폴더에 두는 것이 원칙).
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ from . import config as C
 def _prepare_browser_path() -> None:
     if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
         return
-    for cand in (C.ROOT / ".venv" / "pw-browsers", C.ECLASS_AGENT_DIR / ".venv" / "pw-browsers"):
+    for cand in (C.ROOT / ".venv" / "pw-browsers", C.C3_AGENT_DIR / ".venv" / "pw-browsers"):
         if cand.exists():
             os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(cand)
             return
@@ -35,12 +35,12 @@ def _prepare_browser_path() -> None:
 _prepare_browser_path()
 
 
-def eclass_login_module():
-    """eclass_agent 의 login 모듈 (없으면 None). 그쪽 config 가 자기 폴더 기준 경로를 쓰므로 sys.path 에 얹기만 하면 된다."""
-    if not (C.ECLASS_AGENT_DIR / "login.py").exists():
+def c3_login_module():
+    """C3_Login_agent 의 login 패키지 (없으면 None). 그쪽 config 가 자기 폴더 기준 경로를 쓰므로 sys.path 에 얹기만 하면 된다."""
+    if not (C.C3_AGENT_DIR / "login" / "__init__.py").exists():
         return None
-    if str(C.ECLASS_AGENT_DIR) not in sys.path:
-        sys.path.insert(0, str(C.ECLASS_AGENT_DIR))
+    if str(C.C3_AGENT_DIR) not in sys.path:
+        sys.path.insert(0, str(C.C3_AGENT_DIR))
     try:
         return importlib.import_module("login")
     except Exception:
@@ -51,7 +51,7 @@ def state_candidates() -> list[str]:
     out = []
     if C.STATE_FILE.exists():
         out.append(str(C.STATE_FILE))
-    ec = C.ECLASS_AGENT_DIR / "state" / "storage_state.json"
+    ec = C.C3_AGENT_DIR / "state" / "storage_state.json"
     if ec.exists():
         out.append(str(ec))
     return out
@@ -89,7 +89,7 @@ class SsoError(RuntimeError):
 def hakstd_page(interactive: bool = False, headless: bool = True) -> Iterator["Page"]:  # type: ignore[name-defined]
     """학사정보시스템에 로그인된 Playwright page 를 준다.
 
-    순서: 저장된 세션으로 접속 → 안 되면 eclass_agent reauthenticate → 그래도 안 되면 (interactive 일 때만) 직접 로그인.
+    순서: 저장된 세션으로 접속 → 안 되면 C3_Login_agent reauthenticate → 그래도 안 되면 (interactive 일 때만) 직접 로그인.
     """
     from playwright.sync_api import sync_playwright
 
@@ -122,11 +122,11 @@ def hakstd_page(interactive: bool = False, headless: bool = True) -> Iterator["P
             close()
 
         if not ok:
-            lm = eclass_login_module()
+            lm = c3_login_module()
             if lm is not None:
-                print("  SSO 세션 만료 → eclass_agent 로 재인증 시도...")
+                print("  SSO 세션 만료 → C3_Login_agent 로 재인증 시도...")
                 if lm.reauthenticate(p):
-                    ec = str(C.ECLASS_AGENT_DIR / "state" / "storage_state.json")
+                    ec = str(C.C3_AGENT_DIR / "state" / "storage_state.json")
                     ok = try_state(ec)
                     if not ok:
                         close()
@@ -150,7 +150,7 @@ def hakstd_page(interactive: bool = False, headless: bool = True) -> Iterator["P
         if not ok:
             close()
             raise SsoError(
-                "학사정보시스템 로그인 실패. eclass_agent 의 `login.cmd`(수동) 또는 `setup-creds.cmd`(무인 저장)를 실행하거나, "
+                "학사정보시스템 로그인 실패. C3_Login_agent 의 `login.cmd`(수동) 또는 `setup-creds.cmd`(무인 저장)를 실행하거나, "
                 "`python -m scripts.collect --source hakstd_catalog --interactive` 로 직접 로그인하세요.")
 
         C.STATE_DIR.mkdir(parents=True, exist_ok=True)

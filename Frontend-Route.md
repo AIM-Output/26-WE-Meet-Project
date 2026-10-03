@@ -39,7 +39,8 @@
 | `/briefing` | `app/briefing/page.tsx` | **브리핑** — 지난 30일 목록 + 본문 (오늘 것은 대시보드 카드) | **신규 (F10)** | F10 |
 | `/opportunities` | `app/opportunities/page.tsx` | **기회** — 장학 / 대외활동 / 사업단 / 이력 탭 + 관심사 설정 | **신규 (F11·F12·F13)** | F11·F12·F13 |
 | `/team` | `app/team/page.tsx` | **팀플** — 일정 조율 / 할 일 / 팀원 탭 (**서버 필요**) | **신규 (F16)** | F16 |
-| `/assignments` | `app/assignments/page.tsx` | **과제·마감** — 진행 중/완료/지난 마감 탭 + **우선순위 그룹** | **신규 (F6·F7)** | F6·F7 |
+| `/assignments` | `app/assignments/page.tsx` | **E클래스 › 과제·동영상** — 진행 중/완료/지난 마감 탭 + **우선순위 그룹** | **신규 (F6·F7)** | F6·F7 |
+| `/eclass/posts` | `app/eclass/posts/page.tsx` | **E클래스 › 공지·자료** — 새로 올라온 공지·자료실 글·강의자료 (2026-10-03) | **신규 (F6)** | F6 |
 | `/onboarding` | `app/onboarding/page.tsx` | **첫 설정** — 학과·입학년도·이수유형·가져오기 3단계 | **신규 (C2)** | C2 |
 | `/settings/profile` | `app/settings/profile/page.tsx` | **내 프로필** — 소속·입학년도·성적·장학용 정보 | **신규 (C2)** | **C2**·F1·F2·F11 |
 | `/settings/sources` | `app/settings/sources/page.tsx` | **수집 원천** — 원천별 상태·주기·지금 수집 | **신규 (F1)** | F1·F2·F6·F11~F13 |
@@ -203,6 +204,8 @@ flowchart TD
 
 ### 4-8. 캘린더가 부르는 API
 
+구현 (2026-09-30, `C1_Calendar_agent/calendar_core/api.py` — 요구사항정의서 C1 1절):
+
 | 시점 | 호출 |
 |---|---|
 | 진입·기간 이동 | `GET /api/events?start&end` — 모든 소스가 한 번에 온다(`extendedProps.kind` 로 구분) |
@@ -311,9 +314,9 @@ flowchart TD
 
 | 시점 | 호출 |
 |---|---|
-| 프로필 읽기·저장 | `GET /api/profile` · `PUT /api/profile` |
-| 학과 마스터 | `GET /api/master/departments` (로컬 JSON) · `POST /api/master/departments/sync` (교육과정검색 재수집) |
-| 학사시스템 가져오기 | `POST /api/profile/import` (로컬 SSO). 세션 없으면 `409 + {needLogin:true}` |
+| 프로필 읽기·저장 | `GET /api/profile` · `PATCH /api/profile` (구현 2026-09-28: 항목마다 바로 저장하므로 PUT 대신 PATCH, `null` = 지움) · `DELETE /api/profile` · `DELETE /api/profile/sensitive` |
+| 학과 마스터 | `GET /api/master/departments` (로컬 JSON) · `POST /api/master/departments/sync` (교육과정검색 재수집) · `GET /api/master/status` |
+| 학사시스템 가져오기 | `POST /api/profile/import` `{interactive}` (로컬 SSO) → `GET /api/profile/import` 로 진행 확인. 로그인 기록 없으면 `409 + {needLogin:true}` → '로그인 창 열기'는 `interactive:true` |
 | 룰셋 매칭 확인 | `GET /api/graduation/ruleset?dept&year&track` — 매칭 결과와 `matchLevel`(정확/학부공통/인접연도/없음) |
 
 ### 5-7. 로딩·빈·에러
@@ -385,9 +388,10 @@ flowchart TD
 | 구역 | 변경 | 라우트 동작 |
 |---|---|---|
 | 캘린더 필터 탭 | `학사` 탭 추가 (`전체 / e클래스 / 내 일정 / 할 일 / 학사`) | 선택 상태를 `/?filter=academic` 로 URL 에 반영(`replace`). 새로고침·공유해도 같은 화면 |
-| 캘린더 이벤트 | 학사 일정은 유형별 색 + 아이콘, 기간형은 가로 막대, `appliesToMe=false` 는 표시하지 않음 | 클릭 → `/?event=<id>` (`push`) → 상세 모달 |
+| 캘린더 이벤트 | 학사 일정은 **`학사` 탭에서만** 그린다(2026-09-30 — 전체 탭에서 뺌). 유형별 색 + 아이콘, 기간형은 가로 막대, `appliesToMe=false` 는 표시하지 않음. **두 주가 넘는 신청 기간은 '시작'·'마감' 두 점**(구현 2026-09-28 — 막대가 모든 주를 덮지 않게, id `…#start`·`…#end`, `extendedProps.refId` 로 상세) | 클릭 → `/?event=<id>` (`push`) → 상세 모달 → `내 일정에 넣기` |
+| 내 일정에 넣기 (2026-09-30) | 학사 상세의 주 버튼. 누르면 같은 자리에서 **내 일정 폼**(제목 '내 일정에 넣기')이 제목·날짜·시각·분류 학업·메모(원래 기간·출처)를 채워 열린다. 두 주 넘는 기간은 `○○ 마감` 하루로. 저장하면 상세로 돌아와 `✓ 내 일정에 있음` + `내 일정 보기`. 만든 일정은 `origin='ac:…'` 로 이어져 전체 탭에 보이고, 그 상세에 `학사 일정에서 가져옴` 링크 | `/academic` 목록 행의 ＋ 버튼은 `?event=<id>&add=1` (`push`) — 폼부터 열리고 닫으면 상세 없이 닫힌다 |
 | 빠른 실행 콜아웃 | `학사일정 동기화` 필 버튼 + 마지막 수집 시각·건수 | 같은 화면에서 진행 표시. 실패하면 줄 아래 빨강 한 줄 + `/settings/sources` 링크 |
-| 새 콜아웃 | `⚠ 확인 필요 N건` (N=0 이면 콜아웃 자체를 숨김) | → `/academic?tab=review` (`push`) |
+| 새 콜아웃 | `⚠ 신규 일정 N건 · 확인 필요 M건` + 한 줄 설명(`26분 전 수집에서 새로 찾은 학사일정`). **상자 크기는 예전 그대로**(두 줄, 넘치면 말줄임 + 툴팁). 0 인 쪽은 빼고, 둘 다 0 이면 숨김. 확인 필요가 없으면 경고색 대신 기본색. 수집 중에는 신규를 세지 않는다 | `신규 일정` → `/academic`(목록에 '신규' 칩), `확인 필요` → `/academic?tab=review` (`push`) |
 
 ### 6-3. `/academic` 학사일정 페이지 (신규)
 
@@ -494,7 +498,8 @@ flowchart TD
 | 화면 | 구성 | 저장 |
 |---|---|---|
 | 내 프로필 | 학년(1~4·초과) · 학적(재학/휴학/졸업유예) · 단과대 · 학과 · 입학년도 | `저장` 누르면 PUT → 토스트 후 **직전 화면으로 돌아간다**(`router.back()`). F1 배너에서 왔으면 `/academic` 으로 |
-| 수집 원천 | 원천별 행: 이름 · 유형(학사일정표/공지/학과) · 마지막 수집 · 건수 · 상태 · `지금 수집` · 사용 토글, 하단에 `+ 학과 홈페이지 추가` | 토글·추가는 즉시 반영 |
+| 수집 원천 (F1, 2026-09-29 개정) | '학사일정 (F1)' 섹션에 **원천 4곳 카드** — 그룹 '학교 전체'(① 학사일정 표 · ② 학사안내), '내 소속'(④ 내 학부 · ③ 내 단과대학). 카드: 아이콘 · 이름 · (③·④) 소속 칩 · 상태 배지 · 한 줄 설명 · (③·④) `호스트 › 게시판 · 말머리 '학사'만` + `자동으로 찾음 · 9/29`/`직접 지정` 칩 · 마지막 수집 · **보이는 일정 N건** · 오른쪽 **켜기 토글**, 아래 `지금 수집` · `원문 보기` · (③·④) `게시판 직접 지정`. 꺼진 카드는 점선·흐리게, 건수에 취소선 + '(꺼서 숨김)'. 문제 배너: 소속 필요 → `프로필에서 고르기`, 홈페이지 못 찾음 → `게시판 직접 지정`, 소속 바뀜 → `지금 받기` | 토글은 즉시 반영 + 토스트 `껐습니다 — 여기서만 온 일정은 목록·캘린더에서 빠집니다 [되돌리기]`. 한 번도 안 받은 원천을 켜면 바로 수집. 게시판 지정은 모달 `?board=my_dept` (push) — 주소 검증(`…/bbs/<site>/<번호>/`), `저장하고 받기` · `자동으로 되돌리기` |
+| `/academic` 머리 | 목록 위 한 줄 `가져오는 곳 [학사일정 표 119] [학사안내 42] [인공지능학부 16] [AI융합대학 7] 관리` — 알약 스위치(`role=switch`), 꺼지면 점선·취소선, 문제가 있으면 ⚠ 아이콘 + 툴팁. 모두 끄면 목록 자리에 "가져오는 곳을 모두 껐습니다" | 누르면 바로 켜고 끔(설정 카드와 같은 훅 `useAcademicSources`) |
 
 ### 6-7. URL 파라미터 규약
 
@@ -507,6 +512,8 @@ flowchart TD
 | `new` | `/` | `event` `todo` — 새로 만들기 모달 | `push` |
 | `tab` | `/academic` | `all` `mine` `review` `hidden` | `replace` |
 | `semester` | `/academic` | `2026-2` | `replace` |
+| `board` | `/settings/sources` | `my_dept` `my_college` — 게시판 직접 지정 모달 | `push` (모달) |
+| `add` | `/academic` (`event` 와 함께) | `1` — 학사 일정을 '내 일정에 넣기' 폼부터 연다 | `push` (모달) |
 
 원칙 세 가지:
 1. **모달은 `push`, 필터·탭은 `replace`** — 뒤로가기는 "모달 닫기"로만 느껴지게 한다.
@@ -531,6 +538,7 @@ components/
   academic/AcademicList.tsx  (신규) 월 그룹 목록
   academic/ReviewCard.tsx    (신규) 확인 필요 카드(날짜 수정 + 승인/거절)
   academic/AcademicDetail.tsx(신규) 상세 모달 본문
+  academic/AcademicSources.tsx(신규) 수집 원천 4곳 카드(설정) · 알약 스위치(/academic) — F1-S12
   EventModal.tsx             (유지) 내 일정 추가·수정
   EventDetail.tsx            (수정) event 파라미터로 kind 를 보고 본문을 갈아끼움
   ui.tsx                     (수정) Chip · Badge · Banner · Toast · Popover 추가
@@ -538,6 +546,7 @@ lib/
   types.ts                   (수정) AcademicEvent · Notification · SourceStatus · Profile
   api.ts                     (수정) 아래 API 추가
   useQueryState.ts           (신규) 쿼리 파라미터 ↔ 상태 훅 (push/replace 규칙 캡슐화)
+  useAcademicSources.ts      (신규) 원천 4곳 불러오기 · 켜고 끄기(되돌리기) · 게시판 지정
 ```
 
 ### 6-9. 화면이 부르는 API
@@ -552,7 +561,7 @@ lib/
 | 숨김·복원·메모·알림 | `PATCH /api/academic/events/{id}` `{hidden, memo, reminders}` | 즉시(디바운스) |
 | 알림 | `GET /api/notifications?unread=1` / `POST /api/notifications/{id}/read` / `POST /api/notifications/read-all` | 팝오버 열 때 + 폴링 60초 |
 | 프로필 | `GET/PUT /api/profile` | 진입·저장 |
-| 원천 | `GET /api/sources` · `POST /api/sources/{key}/sync` · `PATCH /api/sources/{key}` | 진입·클릭 |
+| 원천 | `GET /api/sources` · `POST /api/sources/{key}/sync` · `PATCH /api/sources/{key}` `{enabled}` 켜고 끄기 · `{overrideUrl}` ③·④ 게시판 지정(`null` = 자동) | 진입·클릭. 켜고 끈 뒤 `/api/events`·`/api/academic/events` 를 다시 부른다 |
 
 > 데이터가 바뀌었는지는 `GET /api/status` 의 `updated_at` 으로 판단한다. 값이 달라졌을 때만 `/api/events`·`/api/academic/events` 를 다시 부른다(불필요한 재요청 금지).
 
@@ -629,6 +638,9 @@ flowchart TD
 | `filter` | `courses` 탭에서 `all` `unmapped` `manual` | `all` | `replace` |
 | `new` | `course` — 과목 추가 모달 | — | `push` |
 | `track` | `single` `double` `minor` — 이수유형 | `single` | `replace` |
+| `plan` | `whatif` 탭에서 저장한 '내 계획' id — 가정 복원 (구현 2026-09-28) | — | `replace` |
+
+`/settings/requirements` 는 `year`(입학년도, 기본 = 프로필) · `track` 을 `replace` 로, '비슷한 학과에서 복사' 모달을 `copy=1`(`push`)로 연다.
 
 ### 7-3. `/graduation` 요약 탭
 
@@ -726,14 +738,17 @@ components/graduation/
   RulesetEditor.tsx     룰셋 보기·수정
 ```
 
-| 화면 | 호출 |
+| 화면 | 호출 (구현 2026-09-28 — `F2_Graduation_agent/graduation/api.py`) |
 |---|---|
-| 요약 | `GET /api/graduation/status?track=single` |
-| 이수 과목 | `GET /api/graduation/courses` · `PATCH /api/graduation/courses/{id}` · `POST/DELETE /api/graduation/courses` |
-| 수집 | `POST /api/graduation/sync` (로컬 SSO). 세션 없으면 `409 + {needLogin:true}` |
-| 가정 계산 | `POST /api/graduation/simulate` |
-| 룰셋 | `GET /api/graduation/ruleset?dept&year&track` · `PUT` · `DELETE`(되돌리기) |
-| 메인 타일 | `GET /api/graduation/status` 의 요약 필드만 |
+| 요약·이수 과목 | `GET /api/graduation/status?track=single` 하나로 판정·영역·인증·**이수 과목(계산된 영역·제외 이유)**까지 받는다. 탭 전환에 재요청 없음 |
+| 과목 조작 | `POST /api/graduation/courses` · `PATCH /api/graduation/courses/{id}` `{area, applyToCategory, excluded, …}` · `DELETE`(직접 입력만) — **응답에 다시 계산한 status** 가 온다(낙관적 반영 후 교체) |
+| 수집 | `POST /api/graduation/sync` `{interactive}` (로컬 SSO) → `GET /api/graduation/sync` 2초 폴링. 세션 없으면 `409 + {needLogin:true}` |
+| 가정 계산 | `POST /api/graduation/simulate` `{track, assumptions:{areas, courses}}` → `{current, assumed}` · 내 계획 `GET/POST /api/graduation/plans` · `DELETE /plans/{id}` |
+| 인증 | `PATCH /api/graduation/certifications/{key}` `{state, memo}` |
+| 룰셋 | `GET /api/graduation/ruleset?year&track` (매칭 단계·경고·펼친 룰셋·편집용 원본, 없으면 빈 템플릿) · `PUT`(내 수정본) · `DELETE`(되돌리기) · `GET /api/graduation/rulesets[/{id}]`(복사 후보) |
+| 교과구분 매핑 | `GET/PUT /api/graduation/categories` |
+| 교육과정 | `GET /api/graduation/curriculum` · `POST /api/graduation/curriculum/sync` (내 학과·전공·입학년도, 공개 페이지) |
+| 메인 타일 | 따로 부르지 않는다 — `GET /api/status` 의 `graduation` 칸(남은 학점·판정·한 줄·updatedAt). `updatedAt` 이 바뀌면 `/graduation` 도 다시 부른다 |
 
 ### 7-8. 로딩·빈·에러
 
@@ -770,8 +785,9 @@ flowchart TD
     GEN --> T
     GEN -.->|"같은 데이터"| CAL["/ 캘린더의 수업 일정(C1 class)"]
     T -->|"과목 펼치기"| L["회차 목록<br/>?course=74245"]
-    L -->|"회차 클릭"| M["출결 선택<br/>출석·결석·지각·공결"]
-    L -->|"휴강 표시"| RC["총 시수 재계산 → 한도 갱신"]
+    L -->|"회차 칩"| M["출결 선택<br/>출석·결석·지각·공결·휴강"]
+    L -->|"휴강 칩"| RC["총 횟수 재계산 → 한도 갱신"]
+    AUTO["학사일정 휴업일 · e클래스 공지 '휴강'"] -.->|"자동으로 휴강 칩 켬"| L
     L -->|"보강 추가"| RC
     T -->|"누적 직접 수정"| ADJ["결석 n · 지각 m 입력"]
     T -->|"탭 '이번 주'"| W["/attendance?tab=week<br/>이번 주 몰아서 입력"]
@@ -807,17 +823,18 @@ flowchart TD
 ├───────────────────────────────────────────────────────────────────────────┤
 │ [과목별 현황] [이번 주] [시간표 설정]                                      │
 ├───────────────────────────────────────────────────────────────────────────┤
-│  운영체제[2]            ████████░░░░  8 / 10.75시수    남은 여유 1회  위험 │
-│    └ 총 43시수 = 예정 45 − 휴강 2 + 보강 0        결석 3 · 지각 3 ▾       │
-│  컴퓨터네트워크[1]      ███░░░░░░░░░  3 / 11시수      남은 여유 4회  안전 │
-│  소프트웨어공학론[1]    ██████░░░░░░  6 / 10시수      남은 여유 2회  주의 │
+│  운영체제[2]            ████████░░░░  결석 7 / 7.25회  남은 여유 0회  위험 │
+│    └ 총 29회 = 예정 30 − 휴강 1 + 보강 0     결석 6 · 지각 3 · 휴강 1 ▾   │
+│  컴퓨터네트워크[1]      ███░░░░░░░░░  결석 2 / 7.75회  남은 여유 5회  안전 │
+│  소프트웨어공학론[1]    ██████░░░░░░  결석 4 / 7.75회  남은 여유 3회  주의 │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
 | 요소 | 동작 |
 |---|---|
 | 상태 배지 | `안전`(초록) `주의`(노랑) `위험`(주황) `초과`(빨강) — **글자 병기**, 색만으로 구분하지 않는다 |
-| 근거 줄 | `총 43시수 = 예정 45 − 휴강 2 + 보강 0` 을 항상 보여 준다(F3-S02) |
+| 근거 줄 | `총 29회 = 예정 30 − 휴강 1 + 보강 0 (휴강 중 1회는 학사일정·공지에서 자동)` 을 항상 보여 준다(F3-S02). **단위는 회 = 수업한 날**(2026-09-29) |
+| 공지 확인 필요 | e클래스 공지에 휴강이 있는데 날짜를 못 찾았거나 그날 수업이 없으면 카드 안에 `⚠ e클래스 공지 '…'(링크) — 맞는 날에 휴강을 눌러 주세요` |
 | `▾` 펼치기 | `?course=<id>` → 회차 목록이 그 자리에서 열린다 |
 | 누적 수정 | `결석 3 · 지각 3` 을 눌러 숫자 직접 입력 → `직접 조정 +1` 칩 |
 | 위험·초과 | 카드 테두리를 강조하고 목록 맨 위로 올린다 |
@@ -825,16 +842,20 @@ flowchart TD
 **회차 목록(펼친 상태)**
 
 ```
-  9/02(화) 3·4교시   [출석] 결석  지각  공결        ← 누른 것이 채워진 칩
-  9/04(목) 5교시      출석 [결석] 지각  공결
-  9/09(화) 3·4교시   — 휴강 —                      [되돌리기]
-  9/11(목) 5교시      출석  결석  지각  공결        ← 미입력(회색)
+  9/02(화) 15:00~16:15  [출석] 결석  지각  공결  휴강        ← 누른 것이 채워진 칩
+  9/04(목) 15:00~16:15   출석 [결석] 지각  공결  휴강
+  9/09(화) 15:00~16:15   출석  결석  지각  공결 [휴강]        ← 휴강도 같은 줄의 칩
+  9/17(목) 15:00~16:15   출석  결석  지각  공결 [휴강]
+           자동 휴강 — e클래스 공지 · 9월 17일 목요일 휴강 ↗   ← 공지·학사일정에서 자동으로 켜진 휴강
+  9/11(목) 15:00~16:15   출석  결석  지각  공결  휴강        ← 미입력(회색)
   9/16(화) 3·4교시   (다가옴)
                                           [+ 보강 추가]
 ```
 
 - 상태 칩을 누르면 **즉시 저장**(낙관적) → 상단 숫자·막대가 같은 프레임에서 갱신된다.
-- 지난 회차인데 미입력이면 왼쪽에 점 표시. 다가올 회차는 흐리게 하고 입력을 막는다.
+- 칩은 **출석 · 결석 · 지각 · 공결 · 휴강** 다섯 개(2026-09-29 — 조퇴 없음). 같은 칩을 다시 누르면 미입력/휴강 해제, 휴강인 회차에서 출결 칩을 누르면 휴강을 풀고 그 출결로.
+- 자동 휴강(학사일정 휴업일 · e클래스 공지)은 휴강 칩이 켜진 채로 오고 근거 한 줄(공지 링크)이 붙는다. 틀렸으면 칩을 눌러 푼다.
+- 지난 회차인데 미입력이면 왼쪽에 점 표시. 다가올 회차는 흐리게 하고 **공결·휴강만** 누를 수 있다.
 
 ### 8-4. 이번 주 탭
 
@@ -842,7 +863,7 @@ flowchart TD
 
 | 요소 | 동작 |
 |---|---|
-| 목록 | `월 — 컴퓨터그래픽스 1·2교시 [출석][결석][지각][공결]` 형태로 요일별 |
+| 목록 | `월요일 9/28 — 컴퓨터그래픽스 1·2교시 [출석][결석][지각][공결][휴강]` 형태로 요일별. 위에는 지난 주들의 미입력 모음 |
 | 일괄 | `모두 출석으로` 버튼(누른 뒤 개별 수정) |
 | 범위 | `‹ 지난 주` / `다음 주 ›` 로 이동 (`?week=` 없이 컴포넌트 상태) |
 
@@ -864,7 +885,7 @@ flowchart TD
 | `시간표 자동으로 가져오기` | 학사정보시스템 시간표 조회(로그인 불필요)에서 **학수번호+분반**으로 찾아 요일·교시를 채운다. 채운 항목에 `자동` 칩, 사용자가 고치면 `수정함` |
 | 과목 목록 | e클래스 `courses.json` 에서 자동. 이름·분반·코드는 읽기 전용 |
 | 요일·교시 | 자동으로 못 찾은 과목만 직접 입력. 칩으로 추가·삭제, 주 2회 이상 가능 |
-| 저장 | 저장하는 순간 **회차 재생성** → 토스트 "운영체제 30회차(43시수)를 만들었습니다" |
+| 저장 | 저장하는 순간 **회차 재생성** → 토스트 "운영체제 회차 33개를 만들었습니다 — 휴강을 빼고 보강을 더해 총 32회" |
 | 개강·종강 | F1 학사일정에서 자동. 못 찾으면 직접 입력 필드가 열린다 |
 | 학기 복사 | `지난 학기에서 불러오기` (권장) |
 
@@ -875,8 +896,8 @@ flowchart TD
 | 위치 | 동작 |
 |---|---|
 | `/` 캘린더 | 수업이 과목 색 배경 블록으로. **주 뷰에서는 교시 대응표로 계산된 시각**(`13:00~14:50`)에 그려진다. 결석으로 찍힌 회차는 빨강 테두리 |
-| 수업 일정 클릭 | `/?event=cl:…` → 상세에 `출석 / 결석 / 지각 / 공결` 버튼 + `휴강 처리` |
-| 휴강 처리 | C1 반복 규칙의 **예외**로 저장(4-6 절). 총 시수가 즉시 줄어든다 |
+| 수업 일정 클릭 | `/?event=cl:<과목>:<날짜>` → 상세에 같은 칩 5개 `출석 / 결석 / 지각 / 공결 / 휴강` + 자동 휴강 근거 |
+| 휴강 | C1 반복 규칙의 **예외**로 저장(4-6 절). 총 횟수가 즉시 줄어든다. 캘린더에서는 취소선 + `휴강`(자동이면 `휴강·자동`) |
 | 보강 추가 | 캘린더에서 날짜를 골라 추가해도 `/attendance` 에 반영된다 |
 
 ### 8-7. 컴포넌트·API
@@ -892,14 +913,20 @@ components/attendance/
 
 | 시점 | 호출 |
 |---|---|
-| 현황 | `GET /api/attendance/summary?semester=2026-2` |
-| 회차 목록 | `GET /api/attendance/sessions?course=<id>` |
-| 출결 찍기 | `PATCH /api/attendance/sessions/{id}` `{attendance}` |
-| 휴강·보강 | `PATCH .../sessions/{id}` `{state:"canceled"}` · `POST /api/attendance/sessions` |
-| 누적 수정 | `PATCH /api/attendance/courses/{id}` `{manualAdjust}` |
-| 시간표 자동 수집 | `POST /api/attendance/timetable/import` — 학사정보시스템 시간표 조회 파싱(`강의시간` → 요일·교시) |
-| 시간표 저장 | `PUT /api/attendance/timetable` → 회차 재생성 결과를 응답에 포함 |
-| 캘린더 | 같은 회차가 `GET /api/events` 에 `kind:"class"` 로 함께 온다 |
+| 현황 | `GET /api/attendance/summary?semester=2026-2` — 과목마다 회차 목록까지 한 번에 온다(7과목 × 30회차, 탭 전환에 추가 요청 없음) |
+| 회차 목록 | `GET /api/attendance/sessions?course=<id>&from=&to=` (다른 기능용 — 화면은 summary 를 쓴다) |
+| 출결 찍기 | `PATCH /api/attendance/sessions/{id}` `{attendance}` — 다시 계산한 과목 + 새 경고(`alerts`)를 돌려준다 |
+| 휴강·되돌리기 | `PATCH .../sessions/{id}` `{state:"canceled"\|"scheduled"}` (자동 휴강 회차에 `scheduled` = 수업함). 휴강을 풀면서 출결은 `{state:"scheduled", attendance}` 한 번 |
+| 보강 | `POST /api/attendance/sessions` `{courseId, date, periods}` · 내가 추가한 보강만 `DELETE .../sessions/{id}` |
+| 몰아서 입력 | `POST /api/attendance/sessions/bulk` `{items:[{id, attendance}]}` — `모두 출석으로` |
+| 누적 수정·설정 | `PATCH /api/attendance/courses/{id}` `{adjust:{absent, late}}` · `{limitRatio}` · `{lateToAbsence}` · `{countEarlyLeaveAsLate}` · `{excluded}` |
+| 시간표 자동 수집 | `POST /api/attendance/timetable/import` → `GET` 으로 진행 상태(`progress`) — 학사정보시스템 시간표 조회 파싱(`강의시간` → 요일·교시) |
+| 시간표 저장 | `PUT /api/attendance/timetable` `{courses:[{courseId, meetings}], validFrom?}` → 회차 재생성 결과(`generated`)를 응답에 포함 · `DELETE .../timetable/{courseId}` 자동값으로 되돌리기 |
+| 학기·교시 | `PUT /api/attendance/semester` 개강·종강·휴업일 · `PUT/DELETE /api/attendance/periods` 교시 ↔ 시각 |
+| 캘린더 | 같은 회차가 `GET /api/events` 에 `kind:"class"` 로 함께 온다(휴업일 회차는 빼고). **주·목록 보기에서만** 그린다 — 월·학기 격자는 마감이 '+N개'로 밀리므로 뺀다 |
+| 알림 | 상태가 올라가면 서버가 알림 센터(`/api/notifications`, `kind:"attendance"`, `href:/attendance?course=`)에 넣는다. 헤더 종은 `/api/status` 의 `attendance.updatedAt` 이 바뀌면 다시 받는다 |
+
+> 구현(2026-09-28): 컴포넌트는 위 4개 + 출결 칩 공용 부품 `AttendanceChips.tsx`(회차 목록·이번 주·캘린더 수업 상세가 같이 쓴다). 데이터 훅은 `lib/useAttendance.ts`. 자세한 결정은 요구사항정의서 F3 12절.
 
 ### 8-8. 로딩·빈·에러
 
@@ -982,10 +1009,15 @@ flowchart TD
 
 | 요소 | 동작 |
 |---|---|
-| 파일 행 | 클릭 → 원문 뷰어(`?file=`) |
-| 상태 | `대기 / 분석 중 (n/m) / 준비됨 / 실패 / 텍스트 없음` — 색만으로 구분하지 않는다 |
-| 드래그 앤 드롭 | 영역 전체가 드롭 타깃. 업로드 즉시 대기열에 들어간다 |
-| 삭제 | 직접 추가한 파일만. e클래스 수집분은 원본이 그쪽이라 잠근다 |
+| 파일 행 | 클릭 → 원문 뷰어(`?file=`). 아래 줄에 `3주차(추정) · 45쪽 · 2.3MB · 강의자료 · <활동·게시글 이름>` |
+| 종류 필터·검색 | `전체 / 강의자료 / 게시판 첨부 / 과제 첨부 / 직접 추가` + 파일 이름 검색 (화면 안에서만 거른다) |
+| 행 오른쪽 | `내려받기` · `e클래스에서 보기`(원문 링크) · `삭제`(직접 추가분만, 수집분은 자물쇠) |
+| 상태 | `분석 대기 / 분석 중 / 준비됨 / 분석 실패 / 텍스트 없는 PDF / 열 수 없음(암호) / 분석 제외 / 중복 파일 / 파일 없음` — 색만으로 구분하지 않고, 사유 한 줄을 그 아래 적는다 |
+| 드래그 앤 드롭 | 영역 전체가 드롭 타깃. 100MB·문서 확장자만. 올리면 바로 목록에 들어간다 |
+| 삭제 | 직접 추가분과 **e클래스에서 내려간 보관본**만. 아직 올라와 있는 자료는 잠근다(지워도 다음 스캔에 다시 들어온다) |
+| 자료 보관 | 수집분은 F4 보관함(`F4_Textbook_agent/data/materials/`)으로 들여와 거기서 연다 — 목록 아래에 보관함 경로를 적어 준다 |
+| `다시 훑기` | 수집 폴더를 다시 읽는다(F6 동기화 없이 파일만 바뀐 경우) |
+| `e클래스에서 가져오기` | 과목 목록 화면의 버튼 = F6 동기화(`POST /api/sync`). 자료를 받아오는 일은 F6 가 한다 |
 
 ### 9-4. 요약 탭
 
@@ -1052,33 +1084,43 @@ flowchart TD
 |---|---|
 | 여는 법 | `?file=mt:…&page=12` (`push`) — 요약·문제·질문 어디서든 같은 뷰어 |
 | 표시 | PDF 를 앱 안에서 렌더링하고 해당 페이지로 이동. 인용 문장이 있으면 하이라이트 |
+| 1차 구현 | 브라우저 내장 PDF 뷰어를 `iframe` 으로 쓴다(`/api/materials/{id}/file#page=12`) — 쪽 이동·검색·인쇄가 이미 된다. 하이라이트가 필요해지면 그때 pdf.js(미결 Q5). `.hwp`·`.pptx` 처럼 못 그리는 형식은 `내려받아서 보세요` + 내려받기 버튼 |
 | 닫기 | 뒤로가기·ESC → 원래 탭과 스크롤 위치로 복귀 |
 | 큰 파일 | 해당 페이지 주변만 먼저 렌더링 |
 
 ### 9-8. 컴포넌트·API
 
 ```
-app/courses/page.tsx            (신규) 목록 + 과목 상세(쿼리로 분기)
-components/courses/
-  MaterialList.tsx    파일 목록·상태·드롭존
-  SummaryPanel.tsx    요약 카드 + 근거 칩 + 범위 필터
-  QuestionList.tsx    문제 목록(접힘)
-  QuizRunner.tsx      풀기 모드 전체 화면
-  AskPanel.tsx        질문 채팅 + 근거 카드
-  PdfViewer.tsx       원문 뷰어(공용)
-  CitationChip.tsx    `[p.12]` — 모든 생성물이 공유
+app/courses/page.tsx                 목록 + 과목 상세(쿼리로 분기)
+components/pages/CoursesPage.tsx     ✅ 목록 · 자료 탭 · 원문 뷰어(진짜) + 요약·문제·질문(예시)
+lib/materials.ts · lib/useMaterials.ts  ✅ /api/materials 타입과 데이터 훅 (업로드·삭제·다시 훑기)
+  MaterialsTab        파일 목록 · 종류 필터 · 검색 · 드롭존 · 열기/내려받기/삭제
+  SourceViewer        원문 뷰어(공용) — PDF·텍스트는 iframe, 그 밖은 내려받기 안내
+  SummaryPanel ⏳     요약 카드 + 근거 칩 + 범위 필터
+  QuestionList ⏳     문제 목록(접힘) · QuizRunner 풀기 모드 · AskPanel 질문 채팅
+  CitationChip        `[p.12]` — 모든 생성물이 공유
 ```
 
 | 시점 | 호출 |
 |---|---|
-| 과목·자료 목록 | `GET /api/courses` · `GET /api/materials?course=<id>` |
-| 업로드 | `POST /api/materials` (multipart) → 대기열 등록 |
-| 인덱싱 상태 | `GET /api/materials/status?course=<id>` — 진행 중엔 3초 폴링 |
-| 요약 | `GET /api/summaries?scope&target` · `POST /api/summaries` (생성) |
-| 문제 | `GET /api/questionsets?course=<id>` · `POST /api/questionsets` |
-| 풀이 | `POST /api/quiz/attempts` · `PATCH /api/quiz/attempts/{id}` |
-| 질문 | `POST /api/ask` `{courseId, question}` → `{text, citations, found}` |
-| 원문 | `GET /api/materials/{id}/file` (로컬 파일 스트림) |
+| 과목·자료 목록 | `GET /api/materials?course=<id>&kind=&q=` — 과목 요약(목록 화면)과 자료 목록을 한 번에 |
+| 상태(타일·폴링) | `GET /api/materials/status` — 자료 수·쪽수·확인 필요·마지막 스캔 |
+| 다시 훑기 | `POST /api/materials/scan?force=1` — 수집 폴더를 다시 읽는다(쪽수·해시까지) |
+| 업로드 | `POST /api/materials?course=<id>&name=<파일이름>` — **본문이 파일 그대로**(`fetch(url,{method:'POST',body:file})`). multipart 가 아니다 |
+| 자료 하나 | `GET /api/materials/{id}` · 삭제 `DELETE /api/materials/{id}`(직접 추가분만) |
+| 원문 | `GET /api/materials/{id}/file` (inline) · `?download=1` (내려받기) — 로컬 파일 스트림, Range 지원 |
+| 요약 | `GET /api/summaries?scope&target` · `POST /api/summaries` (생성) ⏳ |
+| 문제 | `GET /api/questionsets?course=<id>` · `POST /api/questionsets` ⏳ |
+| 풀이 | `POST /api/quiz/attempts` · `PATCH /api/quiz/attempts/{id}` ⏳ |
+| 질문 | `POST /api/ask` `{courseId, question}` → `{text, citations, found}` ⏳ |
+
+> ⏳ 표시는 아직 없는 API 다(모델 선정 뒤). 1차 구현(2026-09-30)은 **자료 탭과 원문 뷰어까지** — 요약·문제·질문 탭은 예시 데이터로 서 있다.
+> 자료 한 줄이 주는 값: `id · courseId · title · source(eclass|upload) · kind(lecture|board|assignment|upload) · kindLabel ·
+> activity · post · ext · pages · sizeMB · week · weekGuess · stored(link|copy|upload|eclass) · detached ·
+> state · stateLabel · note · viewable · canDelete · eclassUrl · fileUrl · downloadUrl`.
+> `state` 는 `pending`(분석 대기) · `running` · `done` · `failed` · `ocr_needed`(텍스트 없는 PDF) · `locked`(암호) ·
+> `unsupported`(분석 제외) · `duplicate`(중복) · `missing`(파일 없음) — 화면은 `stateLabel` 을 그대로 쓴다.
+> 파일은 F4 보관함에서 온다(`stored`) — `detached` 는 e클래스에서 내려갔지만 보관본이 남은 자료로, **이때만 삭제가 열린다**.
 
 ### 9-9. 로딩·빈·에러
 
@@ -1090,6 +1132,7 @@ components/courses/
 | 생성 실패 | 카드 자리에 "만들지 못했습니다" + 사유 한 줄 + `다시 시도` |
 | 근거 부족 | 요약 하단에 `근거를 찾은 항목만 표시했습니다 (2건 제외)` |
 | API 미설정·한도 | 상단 띠로 안내. **자료 목록과 원문 뷰어는 계속 동작한다** |
+| 보관 실패 | 그 자료 줄에 사유 한 줄(권한·디스크 등). 원문은 수집 폴더에서 그대로 열린다 |
 
 ### 9-10. 반응형
 
@@ -1118,7 +1161,7 @@ flowchart TD
     ADJ --> PV
     PV -->|"등록하기"| REG["캘린더에 학습 블록 등록<br/>(kind=study)"]
     REG --> CAL["/ 캘린더"]
-    CAL -->|"학습 블록 클릭"| BLK["그날 볼 자료 목록<br/>+ 완료 체크 → F4 자료로"]
+    CAL -->|"학습 블록(2026-10-01부터 공부 캘린더에만)"| BLK["/study-calendar<br/>날짜 선택 + 완료 체크"]
     E -->|"진행 중 계획"| PR["?exam=...&step=progress<br/>진도 막대"]
     PR -->|"2일 밀림"| RB["재조정 제안 → 미리보기 다시"]
     RB --> PV
@@ -1136,6 +1179,7 @@ flowchart TD
 | `step` | `options` `preview` `progress` | 계획 없으면 `options`, 있으면 `progress` | `replace` |
 | `new` | `exam` — 시험 추가 모달 | — | `push` |
 | `review` | `1` — 확인 필요 목록만 | — | `replace` |
+| `setup` | `courses` — 과목별 시험(중간·기말 유무) 모달 (2026-10-01, 임의 일정 배너의 버튼) · `difficulty` — 난이도 시간 설정 모달 (2026-10-02, 헤더 버튼) | — | `push` |
 
 > 계획 만들기는 **페이지를 옮기지 않는다**. 같은 `/exams` 위에서 `옵션 → 미리보기 → 등록` 3단계가 오른쪽 패널로 진행된다. 중간에 나갔다 와도 `?exam=&step=` 로 그 자리에서 이어진다.
 
@@ -1203,10 +1247,10 @@ flowchart TD
 
 | 위치 | 내용 |
 |---|---|
-| `/` 캘린더 | 학습 블록이 `#4D7C0F` 책 아이콘으로. 완료하면 흐리게 + 취소선 |
-| 학습 블록 클릭 | `/?event=st:…` → 그날 볼 자료 목록(F4 링크) · 쪽수 · `완료` 버튼 |
+| `/` 캘린더 | 학습 블록(`kind=study`, id `st:<계획>:<날짜>`)이 `#4D7C0F` 책 아이콘으로. 완료하면 흐리게 + 취소선 |
+| 학습 블록 | **2026-10-01부터 전체 캘린더(`/`)에 넣지 않는다** — 공부 캘린더(`/study-calendar`)에서 날짜를 눌러 보고 완료 체크 |
 | 대시보드 타일 | `오늘 공부: 운영체제 15쪽 (38분)` + 가장 가까운 시험 D-day |
-| 시험 자체 | 캘린더에 시험 일정으로도 표시(학습 블록과 구분되는 아이콘) |
+| 시험 자체 | 캘린더에 `kind=exam`(id `ex:…`, `#B91C1C`)으로도 표시 — 학습 블록과 구분되는 아이콘. 시각이 없으면 종일 일정 |
 
 ### 10-7. 컴포넌트·API
 
@@ -1220,16 +1264,29 @@ components/exams/
   ProgressPanel.tsx   진도 막대 + 재조정
 ```
 
+구현 (2026-09-30 백엔드 · 2026-10-01 화면, `F5_Test_agent/exams/api.py` + `components/pages/ExamsPage.tsx` · `components/exams/*` · `lib/exams.ts` · `lib/useExams.ts` — 요구사항정의서 F5 11절):
+
 | 시점 | 호출 |
 |---|---|
-| 시험 목록 | `GET /api/exams?semester=` |
-| 공지 추출분 승인 | `PATCH /api/exams/{id}` `{status:"confirmed", date, time}` |
-| 시험 추가 | `POST /api/exams` |
-| 계획 계산 | `POST /api/study-plans/preview` → 등록하지 않고 결과만 |
+| 시험 목록 | `GET /api/exams?semester=&sync=1` — `exams`·`past`·`review`·`counts`·`today`·`source`·`types`·`difficulties`·`capChoices` |
+| 공지에서 다시 찾기 | `POST /api/exams/sync` (목록을 그냥 부를 때도 공지 목록이 바뀌었으면 알아서 다시 읽는다) |
+| 공지 추출분 승인 | `PATCH /api/exams/{id}` `{status:"confirmed", date, time}` — 손대면 재수집이 덮어쓰지 않는다 |
+| 시험 추가 · 삭제 | `POST /api/exams` · `DELETE /api/exams/{id}` |
+| 시험 하나 (옵션 기본값·범위 후보) | `GET /api/exams/{id}` — `options`·`scopeChoices{weeks, materials}` 가 함께 온다 |
+| 계획 계산 | `POST /api/study-plans/preview` → 등록하지 않고 결과만 (`days`·`totals`·`verdict`·`warnings`·`adjustments`·`overlap`) |
 | 계획 등록 | `POST /api/study-plans` → 학습 블록까지 생성 |
-| 진도 | `PATCH /api/study-plans/{id}/days/{date}` `{done}` |
-| 재조정 | `POST /api/study-plans/{id}/rebalance` → 미리보기 결과 반환 |
-| 취소 | `DELETE /api/study-plans/{id}` |
+| 조정안 적용 | 같은 본문에 `apply` 를 넣어 다시 부른다 (`{...options, apply: {capMinutes: 300}}`) |
+| 진도 | `PATCH /api/study-plans/{id}/days/{date}` `{done}` · 옮기기는 `{date}` |
+| 블록 상세 (그날 볼 자료) | `GET /api/study-plans/{id}/days/{date}` — F4 자료 목록이 함께 온다 |
+| 재조정 | `POST /api/study-plans/{id}/rebalance` → 미리보기 결과 반환 (캘린더는 그대로) |
+| 취소 | `DELETE /api/study-plans/{id}` — 미완료 블록만 지운다 |
+| 오늘 분량 (대시보드 타일) | `/api/status` 의 `exams` 칸 또는 `GET /api/exams/today` |
+| 과목별 시험 (2026-10-01) | 목록의 `courseSettings`·`defaults` 를 쓰고, 바꿀 때 `PATCH /api/exams/courses/{courseId}` `{midterm?, final?}` |
+| 공부 캘린더 (2026-10-01) | `GET /api/study-calendar?start=&end=` · 화면은 백엔드의 `/study-calendar`(next dev 에서도 rewrites 로 넘긴다) |
+
+> **임의 일정** (2026-10-01): 모든 과목은 중간·기말을 본다고 두고, 일정이 없으면 학사일정 수업평가 기간 안의 수업 요일로 잡는다(`isAuto`).
+> 카드·캘린더에 점선 `임의 일정`과 어떻게 잡았는지(`note`)를 보여 주고, 공지에서 일정이 나오면 `일정 확정`으로 바뀐다. 지우기 확인창은
+> "지우면 이 과목은 이 시험을 안 봄 — 날짜만 틀렸다면 ✏로 고치세요"를 먼저 말한다.
 
 > **미리보기와 등록을 나눈 이유**: 같은 계산기를 두 번 쓰되 등록만 부수효과를 갖게 해서, 화면이 "계산 결과"와 "실제 캘린더"를 헷갈리지 않게 한다.
 
@@ -1405,24 +1462,50 @@ e클래스 (과제·마감·강의자료)                              [지금 �
 ### 11-8. 컴포넌트·API
 
 ```
-app/assignments/page.tsx        (신규) 목록 + 탭 + 과목 필터
+app/assignments/page.tsx              목록 + 탭 + 과목 필터 (components/pages/AssignmentsPage.tsx)
 components/assignments/
-  AssignmentList.tsx   D-day·유형 칩·상태
-  AssignmentDetail.tsx 상세 모달(캘린더와 공용) — 기존 EventDetail 확장
-  SyncStatusBar.tsx    실패 띠(공용: F1 원천들과 함께 씀)
+  EclassSyncBanner.tsx   실패 띠 (= SyncStatusBar) — 수집 중·재시도·로그인 필요·실패 + 헤더 아래 '연속 3회 실패' 전역 띠 · LoginButton
+  EclassSource.tsx       /settings/sources 의 e클래스 행 (주기·예약 작업·마지막 성공·학교 로그인·최근 실행)
+components/events/EventDetailHost.tsx 상세 모달(캘린더와 공용) — DeadlineDetail
+lib/assignments.ts · lib/useAssignments.ts   F6 모양 · 내가 체크함·소요시간(서버) · 예전 브라우저 값 옮기기
 ```
+
+구현 (2026-09-30, `F6_Eclass_agent/eclass/api.py` — 요구사항정의서 F6 12절):
 
 | 시점 | 호출 |
 |---|---|
-| 목록 | `GET /api/assignments?tab=&course=` (또는 `/api/events` 의 `deadline` 재사용) |
-| 상세 | 목록 응답에 포함 — 별도 호출 없음 |
-| 수동 완료 | `PATCH /api/assignments/{id}` `{userDone: true}` |
-| 수집 상태 | `GET /api/status` (기존) — `sync` 에 `attempt`·`source`·`error` 추가 |
+| 목록 | `/api/events` 의 `deadline` 재사용 — `userDone`·`changed{at, before}`·`attachments`·`isNew`·`promoted` 가 실려 온다. `GET /api/assignments?tab=&course=` 는 명령줄·F9·F10 용 |
+| 상세 | 목록에 포함 · 변경 이력은 `GET /api/assignments/{id}` 의 `history` |
+| 수동 완료 | `PATCH /api/assignments/{id}` `{userDone}` → `{assignment, event}` (낙관적으로 먼저 바꾸고 실패하면 되돌린다) · 소요시간 `{estimatedHours}` |
+| 수집 상태 | `GET /api/status` — `sync` 에 `runSource`·`attempt`·`retry`·`error`·`ledger`, 새 칸 `eclass`(연속 실패·로그인 필요·재시도·다음 주기·`updatedAt`). `updated_at` = 마지막 수집 성공 |
 | 지금 수집 | `POST /api/sync` (기존) |
-| 주기 변경 | `PATCH /api/sources/eclass` `{intervalHours}` → 작업 스케줄러 재등록 |
-| 로그인 창 | `POST /api/sync/login` — 로컬에서 Playwright 창을 띄운다 |
+| 수집 원천 행 | `GET /api/sources/eclass` — 주기·작업 스케줄러·최근 실행·연속 실패·C3 로그인 상태·로그 끝부분 |
+| 주기 변경 | `PATCH /api/sources/eclass` `{intervalHours}` → 예약이 켜져 있으면 작업 스케줄러 재등록 · `{scheduled: true\|false}` 예약 켜기·끄기 |
+| 로그인 창 | `POST /api/sync/login` — 로컬에서 C3 로그인 창을 띄우고, 로그인되면 바로 수집. 진행은 `status.eclass.login` |
+| 마감 알림 설정 | `GET/PUT /api/assignments/settings` `{reminders: [d3, d1, d0]}` — `/settings/notifications` 의 '과제 마감 (F6)' 행 |
 
-### 11-9. 반응형
+### 11-9. E클래스 카테고리 · 공지·자료 (2026-10-03)
+
+대시보드 타일 이름을 **E클래스**로 바꾸고, 그 안에 두 화면을 둔다 — 화면 위 탭 링크(`EclassNav`): **과제·동영상**(`/assignments`, 위 11-1~11-8 그대로 — 탭 이름만 2026-10-03 '과제·마감'에서 바꿈) · **공지·자료**(`/eclass/posts`, 안 읽은 수 배지).
+
+| 파라미터 | 값 | 히스토리 |
+|---|---|---|
+| `filter` | `all` `unread` `notice` `board` `material` | `replace` |
+| `course` | 과목 이름 | `replace` |
+| `post` | 글·자료 id — 상세 모달(본문·첨부 이름·`e클래스에서 열기`·안 읽음으로). 열면 읽음 | `push` |
+
+- 목록은 **e클래스에 올라온 시각**(글 작성일 · 파일 Last-Modified, 모르면 받은 시각)의 날짜(오늘·어제·N월 N일)로 묶고, 안 읽은 줄은 점 + `새 글` 칩. 헤더에 `모두 읽음`. **`강의자료`** 버튼(→ `/courses`, F4)은 종류 탭 줄 오른쪽 끝 — 위(E클래스 탭)·아래(종류 탭) 구분선 사이 세로 가운데.
+- 알림 센터 `kind=eclass`(확성기 아이콘): 공지는 한 건씩 `/eclass/posts?post=<id>`, 자료실 글·강의자료는 하루 묶음 `/eclass/posts?filter=unread`. 끄기는 `/settings/notifications` 의 'E클래스 새 글·자료'.
+- 타일: `과제 N건 · 3일 안 마감 M건 · 새 공지·자료 K건`.
+
+| 시점 | 호출 |
+|---|---|
+| 목록 | `GET /api/eclass/feed` (종류·과목은 화면에서 거른다) · 다시 부름: `status.eclass.feed.updatedAt` 이 바뀔 때 |
+| 상세 | `GET /api/eclass/feed/{id}` (본문) |
+| 읽음 | `POST /api/eclass/feed/read` `{ids, read}` · `{all: true}` |
+| 알림 설정 | `GET/PUT /api/eclass/feed/settings` `{notices, materials}` |
+
+### 11-10. 반응형
 
 | 폭 | `/assignments` |
 |---|---|
@@ -2483,14 +2566,16 @@ components/team/
 
 ### F3 출결
 
-- [ ] 시간표 **자동 가져오기**(학사정보시스템 조회 → 학수번호+분반 매칭 → `강의시간` 파싱) + 못 찾은 과목만 수기 입력
-- [ ] 저장 시 **회차 자동 생성**(개강~종강 × 요일 − 공휴일) + 생성 결과 토스트
-- [ ] 과목별 현황 카드 — 막대·상태 배지(글자 병기)·**근거 줄**·누적 직접 수정
-- [ ] 회차 목록 인라인 상태 칩(출석/결석/지각/공결) + 휴강·보강
-- [ ] 이번 주 탭 — 요일별 몰아서 입력, `모두 출석으로`
-- [ ] C1 `class` 일정과 **같은 데이터** 사용(캘린더에서도 출결 체크)
-- [ ] 상태 상승 시 1회 알림 + 위험 문구에 남은 여유 숫자
-- [ ] 지난 미입력 배너, 공식 기록 아님 고지
+- [x] 시간표 **자동 가져오기**(학사정보시스템 조회 → 학수번호+분반 매칭 → `강의시간` 파싱) + 못 찾은 과목만 수기 입력
+- [x] 저장 시 **회차 자동 생성**(개강~종강 × 요일 − 공휴일 + 학교 지정 보강일) + 생성 결과 토스트
+- [x] 과목별 현황 카드 — 막대·상태 배지(글자 병기)·**근거 줄**·누적 직접 수정
+- [x] 회차 목록 인라인 상태 칩(출석/결석/지각/조퇴/공결) + 휴강·보강
+- [x] 이번 주 탭 — 요일별 몰아서 입력, `모두 출석으로` + 지난 주 미입력 모음
+- [x] C1 `class` 일정과 **같은 데이터** 사용(캘린더 주·목록 보기에서도 출결 체크)
+- [x] 상태 상승 시 1회 알림 + 위험 문구에 남은 여유 숫자
+- [x] 지난 미입력 배너, 공식 기록 아님 고지
+- [x] 교시 ↔ 시각 대응표(학교 시간표 모듈 기본, 수정·되돌리기) · 개강·종강·휴업일 직접 입력 · 학사경고 안내
+- [x] (2026-09-29) 날짜(회) 단위 계산 · 칩 5개(출석·결석·지각·공결·휴강, 조퇴 없음) · 학사일정·e클래스 공지 자동 휴강 + 근거 표시 · 공지 '확인 필요'
 
 ### F4 강의자료·RAG
 
@@ -2506,15 +2591,22 @@ components/team/
 
 ### F5 시험 공부 일정
 
-- [ ] `/exams` 목록 + 우측 패널 3단계(`?exam=&step=options|preview|progress`)
-- [ ] 공지 추출 시험의 **확인 필요 카드**(날짜 인라인 수정 + 근거 원문 링크)
-- [ ] 옵션 — 범위(F4 쪽수 자동 채움)·난이도·하루 상한·제외일 칩·마무리 복습일
-- [ ] **미리보기 표** — 날짜별 쪽수·시간·합계, 상한 초과 빨강 띠 + 조정안 3개
-- [ ] 여러 과목 겹침 경고(날짜별 누적 시간)
-- [ ] `등록하기` → 학습 블록(`kind=study`) 생성, 토스트 + `캘린더에서 보기`
-- [ ] 진도 막대·밀림 배너·`재조정`(미리보기 재확인 후 적용, 자동 변경 금지)
-- [ ] 캘린더 학습 블록 상세 — 그날 볼 자료(F4 링크) + 완료 체크
-- [ ] 대시보드 타일 `오늘 공부: N쪽`
+- [x] `/exams` 목록 + 우측 패널 3단계(`?exam=&step=options|preview|progress`) · 좁은 화면은 시트
+- [x] 공지 추출 시험의 **확인 필요 카드**(근거 원문 인용 + 공지 링크 + `맞아요` 승인 · 수정은 모달)
+- [x] 옵션 — 범위 주차 칩(F4 쪽수 자동 채움)·쪽/분 단위·난이도·하루 상한·제외일 칩·마무리 복습일·예상 문제
+- [x] **미리보기 표** — 날짜별 쪽수·시간·합계, 상한 초과 빨강 띠 + 조정안(넘친 곳에 맞는 것만, 상한 올리기는 늘 마지막)
+- [x] 여러 과목 겹침 경고(날짜별 누적 시간 — 이 계획 + 다른 과목 = 합계)
+- [x] `등록하기` → 학습 블록(`kind=study`) 생성, 토스트 + `캘린더에서 보기`
+- [x] 진도 막대·밀림 배너·`재조정`(미리보기 재확인 후 적용, 자동 변경 금지)
+- [x] 캘린더 학습 블록 상세 — 그날 볼 자료(F4 링크) + 완료 체크 · 시험 상세(근거 원문)
+- [x] 대시보드 타일 `오늘 공부: N쪽` (확인 필요·밀림이 있으면 그것부터)
+- [x] 과목별 시험(중간·기말 유무) 모달 `?setup=courses` · 임의 일정 점선 표시·안내 · 지우기 확인 문구 (2026-10-01)
+- [x] 계획 옵션: **학습일 수**가 주 옵션 + 미니 달력에서 날짜 직접 고르기(바꿀 때마다 미리보기를 조용히 다시 받는다) · 분량은 쪽수만 (2026-10-01)
+- [x] 공부 캘린더 `/study-calendar` (F5_Test_agent/web — 과목·시간·분량, 날짜 선택·완료 체크, 좁은 화면은 목록) · 시험 헤더의 `공부 캘린더` 버튼
+- [x] 전체 캘린더에는 날짜가 확정된 시험만(임의 일정·확인 필요 제외) · 시각 미정은 수업 시간 '(수업 시간)'
+- [x] 2026-10-02: 하루 상한 옵션 삭제 · 복습 기본 1일 · 헤더 `난이도 시간 설정`(쉬움 1·보통 1.5·어려움 2분/쪽, 위아래 0.5분씩) · 공부 캘린더 체크 해제·삭제
+- [x] 2026-10-02: 학습일 기본 3일 · 학습일 칸 지우고 다시 치기(비우고 떠나면 직전 값)
+- [ ] 학습 블록을 캘린더에서 **드래그**해 옮기기는 붙였지만(같은 날에 합침) 손으로 더 써 봐야 한다
 
 ### F6 과제 마감
 

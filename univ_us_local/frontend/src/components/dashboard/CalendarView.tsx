@@ -18,13 +18,14 @@ import multiMonthPlugin from "@fullcalendar/react/multimonth";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import breezyTheme from "@fullcalendar/react/themes/breezy";
 import koLocale from "@fullcalendar/react/locales/ko";
-import { ChevronLeft, ChevronRight, Keyboard, Landmark, Square, SquareCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Keyboard, Landmark, School, Square, SquareCheck, Target } from "lucide-react";
 
 import { Tabs } from "@/components/ui/Tabs";
 import { Modal } from "@/components/ui/Modal";
-import type { CalEvent, DeadlineProps, UserProps } from "@/lib/types";
-import { ACADEMIC_TYPE_META, type AcademicEvent } from "@/lib/demo";
-import { addDays, daysUntil, parseLocal, toDateStr } from "@/lib/dates";
+import type { AcademicProps, CalEvent, ClassProps, DeadlineProps, ExamProps, UserProps } from "@/lib/types";
+import { typeMeta } from "@/lib/academic";
+import { ATT_LABEL } from "@/lib/attendance";
+import { daysUntil, deadlineDay, parseLocal, toDateStr } from "@/lib/dates";
 
 // C1 서비스 캘린더 — 월·주·목록·학기 뷰 (Frontend-Route 4절). FullCalendar 7 은 클래스명이 해시라
 // 테마 변수(--fc-breezy-*)와 eventContent/className 훅으로만 스타일한다.
@@ -38,11 +39,12 @@ const VIEW_ITEMS: { key: CalView; label: string }[] = [
   { key: "semester", label: "학기" },
 ];
 
-type Extended = DeadlineProps | UserProps | { kind: "academic"; academic: AcademicEvent };
+type Extended = DeadlineProps | UserProps | AcademicProps | ClassProps | ExamProps;
 
 function deadlineInput(ev: CalEvent, now: Date): EventInput {
   const p = ev.extendedProps as DeadlineProps;
-  const overdue = !p.submitted && parseLocal(p.due) < now;
+  const done = p.submitted || p.userDone;
+  const overdue = !done && parseLocal(p.due) < now;
   return {
     id: ev.id,
     title: ev.title,
@@ -51,7 +53,7 @@ function deadlineInput(ev: CalEvent, now: Date): EventInput {
     allDay: ev.allDay,
     editable: false,
     color: overdue ? "#dc2626" : p.courseColor,
-    className: ["ev-deadline", p.submitted ? "ev-done" : ""].join(" "),
+    className: ["ev-deadline", done ? "ev-done" : ""].join(" "),
     extendedProps: p,
   };
 }
@@ -71,39 +73,112 @@ function userInput(ev: CalEvent): EventInput {
   };
 }
 
-function academicInput(a: AcademicEvent): EventInput {
-  const endIncl = a.end ? parseLocal(a.end) : null;
+/** 학사 일정(F1) — 원천이 만든 일정이라 옮길 수 없다(D6). 종일 일정의 end 는 이미 exclusive 로 온다. */
+function academicInput(ev: CalEvent): EventInput {
+  const p = ev.extendedProps as AcademicProps;
   return {
-    id: a.id,
-    title: a.title,
-    start: a.start,
-    end: a.allDay ? (endIncl ? toDateStr(addDays(endIncl, 1)) : undefined) : (a.end ?? undefined),
-    allDay: a.allDay,
+    id: ev.id,
+    title: ev.title,
+    start: ev.start,
+    end: ev.end ?? undefined,
+    allDay: ev.allDay,
     editable: false,
-    color: ACADEMIC_TYPE_META[a.type].color,
-    className: "ev-academic ev-demo",
-    extendedProps: { kind: "academic", academic: a } satisfies Extended,
+    color: typeMeta(p.type).color,
+    className: "ev-academic",
+    extendedProps: p,
+  };
+}
+
+/** 시험(F5, C1 kind=exam) — 학습 블록과 구분되는 빨강 + 과녁 아이콘. 옮길 수 없다(원천은 공지·수기). */
+function examInput(ev: CalEvent): EventInput {
+  const p = ev.extendedProps as ExamProps;
+  return {
+    id: ev.id,
+    title: ev.title,
+    start: ev.start,
+    end: ev.end ?? undefined,
+    allDay: ev.allDay,
+    editable: false,
+    color: p.color,
+    // 확인 필요·임의 일정은 점선 — 아직 확정이 아니다 (색만으로 구분하지 않게 태그도 붙인다)
+    className: ["ev-exam", p.needsReview || p.isAuto ? "ev-review" : ""].join(" "),
+    extendedProps: p,
+  };
+}
+
+/** 수업 회차(F3, C1 kind=class) — 과목 색을 연하게 깐 배경 블록. 교시 대응표로 계산된 시각에 그려진다(8-6).
+ *  결석으로 찍힌 회차는 빨강 테두리, 휴강은 흐리게+취소선. 옮길 수 없다(시간표가 원본). */
+function classInput(ev: CalEvent): EventInput {
+  const p = ev.extendedProps as ClassProps;
+  return {
+    id: ev.id,
+    title: ev.title,
+    start: ev.start,
+    end: ev.end ?? undefined,
+    allDay: false,
+    editable: false,
+    color: `${p.color}2e`, // FullCalendar 7 은 color · contrastColor 만 받는다 — 8자리 hex 로 연하게
+    contrastColor: "#0f2724",
+    className: ["ev-class", p.state === "canceled" ? "ev-done" : "", p.attendance === "absent" ? "ev-absent" : ""].join(" "),
+    extendedProps: p,
   };
 }
 
 function EventContent({ info }: { info: EventDisplayInfo }) {
   const p = info.event.extendedProps as Extended;
+  if (p.kind === "class") {
+    const tag = p.state === "canceled" ? (p.cancelSource && p.cancelSource !== "user" ? "휴강·자동" : "휴강") : p.attendance ? ATT_LABEL[p.attendance] : p.sessionKind === "makeup" ? "보강" : "";
+    return (
+      <div
+        className="fc-ev"
+        style={{ "--ev-course": p.color } as React.CSSProperties}
+        title={`수업 · ${info.event.title} ${p.periodsText}${p.room ? ` · ${p.room}` : ""}${p.sessionKind === "makeup" ? " · 보강" : ""}${
+          p.state === "canceled" ? ` · 휴강${p.autoCancel ? ` (${p.autoCancel.reason ?? ""})` : ""}` : p.attendance ? ` · ${ATT_LABEL[p.attendance]}` : ""
+        }`}
+      >
+        <School aria-hidden />
+        {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
+        <span className="fc-ev-title">{info.event.title}</span>
+        {tag && <span className="fc-ev-tag">{tag}</span>}
+      </div>
+    );
+  }
   if (p.kind === "deadline") {
-    const d = daysUntil(parseLocal(p.due));
-    const tag = p.submitted ? "✓" : d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`;
+    const d = daysUntil(deadlineDay(parseLocal(p.due)));
+    const tag = p.submitted || p.userDone ? "✓" : d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`;
+    // 자정 마감은 전날 23:59~24:00 칸으로 온다(F6 to_event) — 시각은 '24:00' 으로
+    const midnight = !info.event.allDay && /T00:00(:00)?$/.test(p.due) && info.event.startStr.slice(0, 10) !== p.due.slice(0, 10);
+    const timeText = info.timeText && midnight ? "24:00" : info.timeText;
     return (
       <div className="fc-ev" title={`${p.courseShort} · ${info.event.title}${p.status ? ` · ${p.status}` : ""}`}>
-        {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
+        {timeText && <span className="fc-ev-time">{timeText}</span>}
         <span className="fc-ev-title">{info.event.title}</span>
         <span className="fc-ev-tag">{tag}</span>
       </div>
     );
   }
+  if (p.kind === "exam") {
+    return (
+      <div
+        className="fc-ev"
+        title={`시험 · ${p.typeLabel} · ${info.event.title}${p.place ? ` · ${p.place}` : ""}${p.timeUnknown ? " · 시각 미정" : ""}${
+          p.needsReview ? " · 확인 필요" : ""
+        }${p.isAuto ? " · 임의 일정(공지가 나오면 바뀜)" : ""}`}
+      >
+        <Target aria-hidden />
+        {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
+        <span className="fc-ev-title">{info.event.title}</span>
+        <span className="fc-ev-tag">{p.needsReview ? "확인" : p.isAuto ? "임의" : p.dday >= 0 ? `D-${p.dday}` : "지남"}</span>
+      </div>
+    );
+  }
   if (p.kind === "academic") {
     return (
-      <div className="fc-ev" title={`학사 · ${info.event.title} (예시)`}>
+      <div className="fc-ev" title={`학사 · ${p.typeLabel} · ${info.event.title}${p.endTime ? ` (${p.endTime} 마감)` : ""}${p.changed ? " · 날짜 변경됨" : ""}`}>
         <Landmark aria-hidden />
+        {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
         <span className="fc-ev-title">{info.event.title}</span>
+        {p.changed && <span className="fc-ev-tag">변경</span>}
       </div>
     );
   }
@@ -118,7 +193,6 @@ function EventContent({ info }: { info: EventDisplayInfo }) {
 
 export interface CalendarViewProps {
   events: CalEvent[];
-  academic: AcademicEvent[];
   view: CalView;
   initialDate?: string;
   onViewChange: (v: CalView) => void;
@@ -131,18 +205,25 @@ export interface CalendarViewProps {
 }
 
 export default function CalendarView(props: CalendarViewProps) {
-  const { events, academic, view, initialDate, onViewChange, onDateChange, onSelectRange, onEventClick, onEventMove, onLockedMove, onNew } = props;
+  const { events, view, initialDate, onViewChange, onDateChange, onSelectRange, onEventClick, onEventMove, onLockedMove, onNew } = props;
   const ref = useRef<CalendarRef>(null);
   const [title, setTitle] = useState("");
   const [help, setHelp] = useState(false);
 
   const inputs = useMemo(() => {
     const now = new Date();
-    return [
-      ...events.map((e) => (e.extendedProps.kind === "deadline" ? deadlineInput(e, now) : userInput(e))),
-      ...academic.map(academicInput),
-    ];
-  }, [events, academic]);
+    return events.map((e) =>
+      e.extendedProps.kind === "deadline"
+        ? deadlineInput(e, now)
+        : e.extendedProps.kind === "academic"
+          ? academicInput(e)
+          : e.extendedProps.kind === "class"
+            ? classInput(e)
+            : e.extendedProps.kind === "exam"
+              ? examInput(e)
+              : userInput(e),
+    );
+  }, [events]);
 
   const api = () => ref.current?.getApi();
 
@@ -252,7 +333,8 @@ export default function CalendarView(props: CalendarViewProps) {
         }}
         eventClick={(info: EventClickInfo) => {
           info.jsEvent.preventDefault();
-          onEventClick(info.event.id);
+          const p = info.event.extendedProps as Extended;
+          onEventClick(p.kind === "academic" ? p.refId : info.event.id);
         }}
         eventDrop={(info: EventDropInfo) => {
           if (!info.event.startEditable) {

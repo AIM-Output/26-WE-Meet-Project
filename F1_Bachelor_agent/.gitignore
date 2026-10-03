@@ -1,0 +1,11 @@
+# 수집 결과 DB(내 숨김·메모 포함)와 실행 상태 — 공유하지 않는다
+data/
+state/
+.env
+.env.*
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

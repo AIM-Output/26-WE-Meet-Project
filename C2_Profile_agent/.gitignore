@@ -1,0 +1,7 @@
+# 내 프로필(학년·평점·민감정보)과 실행 상태 — 공유하지 않는다
+data/
+state/
+
+__pycache__/
+*.pyc
+.pytest_cache/

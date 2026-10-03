@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CircleCheck, ClipboardList, LogIn, RefreshCw, Sparkles, SquareCheck } from "lucide-react";
+import { CircleCheck, ClipboardList, RefreshCw, Sparkles, SquareCheck } from "lucide-react";
 import { Page, PageHeader, Group } from "@/components/ui/Layout";
 import { Tabs } from "@/components/ui/Tabs";
-import { Banner, EmptyState, SkeletonList, SyncBanner } from "@/components/ui/Feedback";
+import { EmptyState, SkeletonList } from "@/components/ui/Feedback";
 import { Chip, CourseChip, DdayChip, StatusBadge } from "@/components/ui/Chip";
 import { ProgressBar } from "@/components/ui/Progress";
-import { useToast } from "@/components/ui/Toast";
 import { EventDetailHost } from "@/components/events/EventDetailHost";
+import { EclassSyncBanner, useEclassSyncTone } from "@/components/assignments/EclassSyncBanner";
+import { EclassNav } from "@/components/assignments/EclassNav";
 import { useAppData } from "@/components/app/AppData";
 import { useAssignments } from "@/lib/useAssignments";
 import { navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
 import { ESTIMATE_OPTIONS, GROUP_META, hoursLeftToday, isOpen, isStaleOverdue, sortByPriority, type Assignment, type PriorityGroup } from "@/lib/priority";
-import { daysUntil, fmtDue, fmtHours, fmtRelative } from "@/lib/dates";
+import { daysUntil, deadlineDay, fmtDeadline, fmtHours, fmtRelative, parseLocal } from "@/lib/dates";
 
-// /assignments — 과제·마감 (F6) + 우선순위 그룹 (F7). Frontend-Route 11-3 · 12-1.
+// /assignments — 과제·동영상 (F6) + 우선순위 그룹 (F7). Frontend-Route 11-3 · 12-1.
 
 const TABS = ["open", "done", "past"] as const;
 const SORTS = ["priority", "due", "course"] as const;
@@ -101,7 +102,7 @@ function AssignmentRow({
     <motion.li layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-surface-2 md:flex-nowrap md:px-4">
         <span className="w-12 flex-none">
-          <DdayChip date={a.due} done={!isOpen(a)} now={now} />
+          <DdayChip date={deadlineDay(a.due)} done={!isOpen(a)} now={now} />
         </span>
         <button type="button" className="min-w-0 flex-1 basis-[60%] text-left" onClick={() => navigateQuery({ event: a.id }, "push")}>
           <span className="flex min-w-0 items-center gap-2">
@@ -109,17 +110,27 @@ function AssignmentRow({
             <Chip square className="flex-none">
               {a.kindLabel}
             </Chip>
+            {a.p.changed && isOpen(a) && (
+              <Chip tone="accent" square className="flex-none" title={a.p.changed.before ? `이전 마감 ${fmtDeadline(parseLocal(a.p.changed.before), now)}` : undefined}>
+                변경됨
+              </Chip>
+            )}
+            {a.p.isNew && isOpen(a) && (
+              <Chip tone="primary" square className="flex-none">
+                새 과제
+              </Chip>
+            )}
           </span>
           <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-[13px]">
             <CourseChip name={a.p.courseShort} color={color ?? a.p.courseColor} />
             <span className="text-faint">·</span>
-            {isOpen(a) ? <span className="text-muted">{a.reason}</span> : <span className="num text-muted">{fmtDue(a.due, now)}</span>}
+            {isOpen(a) ? <span className="text-muted">{a.reason}</span> : <span className="num text-muted">{fmtDeadline(a.due, now)}</span>}
           </span>
         </button>
         <span className="flex flex-none items-center gap-2 max-md:w-full max-md:justify-end">
-          <span className="num hidden text-[13px] text-muted lg:inline">{fmtDue(a.due, now)}</span>
+          <span className="num hidden text-[13px] text-muted lg:inline">{fmtDeadline(a.due, now)}</span>
           {a.submitted ? (
-            <StatusBadge tone="ok">{a.p.status || "제출 완료"}</StatusBadge>
+            <StatusBadge tone="ok">{a.p.status || (a.kindLabel === "동영상" ? "시청 완료" : "제출 완료")}</StatusBadge>
           ) : a.userDone ? (
             <button type="button" onClick={() => setUserDone(a.id, false)} title="누르면 체크를 풉니다" className="rounded-full">
               <Chip tone="ok" dashed icon={<SquareCheck aria-hidden />}>
@@ -136,9 +147,9 @@ function AssignmentRow({
 }
 
 export default function AssignmentsPage() {
-  const toast = useToast();
   const { status, syncing, loading, startSync, courses, courseColor } = useAppData();
   const { list, setEstimate, setUserDone, now } = useAssignments();
+  const syncState = useEclassSyncTone();
   const [tab, setTab] = useQueryParam<Tab>("tab", "open", TABS);
   const [sort, setSort] = useQueryParam<Sort>("sort", "priority", SORTS);
   const course = useQueryValue("course");
@@ -147,9 +158,6 @@ export default function AssignmentsPage() {
   const openList = filtered.filter((a) => isOpen(a) && a.group !== "overdue");
   const doneList = filtered.filter((a) => !isOpen(a)).sort((a, b) => b.due.getTime() - a.due.getTime());
   const pastList = filtered.filter((a) => isOpen(a) && a.group === "overdue").sort((a, b) => b.due.getTime() - a.due.getTime());
-
-  const exit = status?.sync.exit_code;
-  const syncState = syncing ? "running" : exit === 2 ? "login" : exit !== null && exit !== undefined && exit !== 0 && exit !== 3 ? "failed" : "ok";
 
   const renderList = (items: Assignment[]) => (
     <ul className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -216,13 +224,13 @@ export default function AssignmentsPage() {
   };
 
   const courseNames = [...new Set(list.map((a) => a.p.courseShort))].sort((a, b) => a.localeCompare(b, "ko"));
-  const syncedAt = status?.updated_at;
+  const syncedAt = status?.eclass?.lastOkAt ?? status?.updated_at;
 
   return (
     <Page>
       <PageHeader
         icon={<ClipboardList />}
-        title="과제·마감"
+        title="E클래스"
         meta={
           <Link href="/settings/sources" className="num inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-surface-3">
             {syncState === "ok" ? <CircleCheck className="size-3.5 text-ok" aria-hidden /> : <RefreshCw className="size-3.5 text-warn" aria-hidden />}
@@ -258,37 +266,13 @@ export default function AssignmentsPage() {
           </>
         }
       />
+      <EclassNav />
 
-      <div className="mb-5 space-y-3">
-        <SyncBanner
-          state={syncState}
-          action={
-            syncState === "login" ? (
-              <button type="button" className="btn btn-sm" onClick={() => toast("eclass_agent 폴더의 login.cmd 를 실행하세요 (로그인 창 API 연결 전)")}>
-                <LogIn aria-hidden />
-                로그인 창 열기
-              </button>
-            ) : syncState === "failed" ? (
-              <button type="button" className="btn btn-sm" onClick={startSync}>
-                지금 수집
-              </button>
-            ) : undefined
-          }
-        >
-          {syncState === "running"
-            ? status?.sync.source === "external"
-              ? "예약 동기화 진행 중… 목록은 이전 데이터 그대로입니다"
-              : "e클래스 수집 중… 목록은 이전 데이터 그대로입니다"
-            : syncState === "login"
-              ? `e클래스 로그인이 필요합니다 — 마지막 성공 ${fmtRelative(syncedAt)}`
-              : `마지막 수집이 실패했습니다 (코드 ${exit}) — 마지막 성공 ${fmtRelative(syncedAt)}`}
-        </SyncBanner>
-        {list.length > 0 && (
-          <Banner tone="neutral">
-            소요시간 수정과 &lsquo;내가 체크함&rsquo;은 과제 API 가 생기기 전까지 <b>이 브라우저에만</b> 저장됩니다.
-          </Banner>
-        )}
-      </div>
+      {syncState !== "ok" && (
+        <div className="mb-5">
+          <EclassSyncBanner />
+        </div>
+      )}
 
       <Tabs
         className="mb-5"

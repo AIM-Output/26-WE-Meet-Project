@@ -1,0 +1,7 @@
+# 내 출결 기록·시간표와 실행 상태 — 공유하지 않는다
+data/
+state/
+
+__pycache__/
+*.pyc
+.pytest_cache/

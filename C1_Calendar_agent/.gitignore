@@ -1,0 +1,7 @@
+# 내 일정·할 일 (univus.db) — 공유하지 않는다
+data/
+state/
+
+__pycache__/
+*.pyc
+.pytest_cache/

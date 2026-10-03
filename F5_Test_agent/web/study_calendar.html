@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 캘린더 · 유니버스</title>
+<!--
+  F5 시험 공부 일정 — 공부만 보는 캘린더 (2026-10-01 사용자 요청).
+  캘린더만 봐도 오늘 무엇을 얼마나 공부할지 한 번에 알 수 있게: 날짜마다 **과목 · 시간 · 분량**만.
+
+  - 데이터: GET /api/study-calendar?start=&end=  (F5_Test_agent/exams/service.py study_calendar)
+  - 완료 체크·해제: PATCH /api/study-plans/{planId}/days/{date} {done} — 다 끝나 닫힌 계획도 체크를 풀면 다시 열린다
+  - 삭제: DELETE /api/study-plans/{planId}/days/{date} — 완료한 것도 지운다. 마지막 블록이면 계획도 (2026-10-02)
+  - 이 파일은 F5_Test_agent/web 에 있고, 대시보드 서버가 /study-calendar 로 준다(같은 출처라 로그인·CORS 가 필요 없다).
+  - 전체 캘린더와 달리 날짜가 확정되지 않은 시험(임의 일정·확인 필요)도 표시를 달아 보여 준다 — 그 날짜에 맞춰 공부하고 있으니까.
+  - 표시 색은 대시보드 디자인 토큰(globals.css)과 같다. 바깥 라이브러리를 쓰지 않는다.
+-->
+<style>
+  :root {
+    --bg: #f3f6f5; --surface: #ffffff; --surface-2: #f7f9f9; --surface-3: #edf2f1;
+    --border: #dce4e2; --border-strong: #c3cfcc;
+    --text: #11302c; --muted: #4a5e5a; --faint: #677a76;
+    --primary: #0f766e; --primary-soft: #e3f4f1;
+    --accent: #ea580c; --accent-text: #c2410c; --accent-soft: #fff0e5;
+    --danger: #dc2626; --danger-text: #b91c1c; --danger-soft: #feecec;
+    --ok-text: #047857; --study: #4d7c0f; --study-soft: #eef7dc;
+    --ring: rgba(15, 118, 110, 0.32);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Pretendard, "Pretendard Variable", -apple-system, "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+  header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+  header.top .back { font-size: 13px; font-weight: 600; color: var(--muted); }
+  header.top h1 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+  .grow { flex: 1; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.icon { width: 32px; padding: 0; justify-content: center; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; height: 30px; padding: 0 12px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+  .today { padding: 16px; margin-bottom: 16px; display: grid; gap: 10px; }
+  .today h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .today h2 .tag { font-size: 12px; font-weight: 700; color: var(--study); background: var(--study-soft); padding: 2px 8px; border-radius: 999px; }
+  .today .sum { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+  .item .what, .item .amount { white-space: nowrap; }
+  .item.exam .what { white-space: normal; min-width: 0; flex: 1 1 auto; }
+  .item input { width: 18px; height: 18px; accent-color: var(--study); flex: none; }
+  .item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .item .what { font-weight: 700; }
+  .item .amount { font-weight: 700; color: var(--study); }
+  .item .meta { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+  .item.done .what, .item.done .amount { text-decoration: line-through; color: var(--faint); }
+  .del {
+    flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 7px; height: 26px; padding: 0 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .del:hover { color: var(--danger-text); border-color: var(--danger); background: var(--danger-soft); }
+  .item.exam { background: var(--danger-soft); border-color: #f5c2c2; }
+  .item.exam .what { color: var(--danger-text); }
+  .item.exam.unsure { background: var(--surface); border-style: dashed; border-color: var(--danger); }
+  .empty { color: var(--muted); padding: 6px 2px; }
+
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .bar h2 { margin: 0 6px; font-size: 18px; min-width: 128px; text-align: center; }
+
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: hidden; }
+  .wd { padding: 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .wd.sun { color: var(--danger-text); } .wd.sat { color: var(--primary); }
+  .cell {
+    min-height: 118px; padding: 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 3px; cursor: pointer; background: var(--surface); text-align: left;
+    border-top: 0; border-left: 0; font: inherit; color: inherit;
+  }
+  .cell:nth-child(7n) { border-right: 0; }
+  .cell:hover { background: var(--surface-2); }
+  .cell.out { background: var(--surface-2); color: var(--faint); }
+  .cell.sel { box-shadow: inset 0 0 0 2px var(--primary); }
+  .cell .d { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .cell.todayc .d span { background: var(--primary); color: #fff; border-radius: 999px; padding: 0 7px; }
+  .cell .tot { margin-left: auto; font-size: 11px; color: var(--study); font-weight: 700; }
+  .ln { font-size: 12px; line-height: 1.3; padding: 2px 5px; border-radius: 5px; overflow: hidden; }
+  .ln .c { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ln .a { color: var(--muted); white-space: nowrap; }
+  .ln.study { background: var(--study-soft); box-shadow: inset 3px 0 0 var(--cc, var(--study)); }
+  .ln.study .a b { color: var(--study); }
+  .ln.review { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--cc, var(--study)); }
+  .ln.done { opacity: .5; } .ln.done .c { text-decoration: line-through; }
+  .ln.exam { background: var(--danger-soft); color: var(--danger-text); }
+  .ln.exam.unsure { background: transparent; border: 1px dashed var(--danger); }
+  .more { font-size: 11px; color: var(--muted); padding-left: 5px; }
+
+  .list { padding: 6px 12px; }
+  .day { padding: 12px 4px; border-bottom: 1px solid var(--border); display: grid; gap: 6px; }
+  .day:last-child { border-bottom: 0; }
+  .day h3 { margin: 0; font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+  .day h3 small { color: var(--muted); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .err { padding: 14px 16px; border-radius: 12px; background: var(--danger-soft); color: var(--danger-text); margin-bottom: 12px; display: none; }
+
+  @media (max-width: 720px) {
+    /* 좁은 화면: 시각·시간·시험은 둘째 줄로 내린다 — 과목명이 세로로 쪼개지고 오른쪽이 넘치던 것 */
+    .item .meta { flex-basis: 100%; margin-left: 38px; white-space: normal; }
+    .item.exam .meta { margin-left: 0; }
+    .cell { min-height: 64px; padding: 4px; }
+    .ln .a, .cell .tot { display: none; }
+    .ln { padding: 1px 4px; font-size: 11px; }
+    header.top h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <a class="back" href="/exams">← 시험</a>
+      <h1>공부 캘린더</h1>
+      <div class="sub">시험 공부만 — 과목 · 시간 · 분량</div>
+    </div>
+    <div class="grow"></div>
+    <div class="seg" role="group" aria-label="보기">
+      <button type="button" id="vMonth" aria-pressed="true">달력</button>
+      <button type="button" id="vList" aria-pressed="false">목록</button>
+    </div>
+  </header>
+
+  <div class="err" id="err" role="alert"></div>
+
+  <section class="card today" aria-labelledby="selTitle">
+    <h2 id="selTitle"><span class="tag">오늘 공부</span><span id="selDate" class="num"></span><span class="sum num" id="selSum"></span></h2>
+    <ul class="items" id="selItems"></ul>
+  </section>
+
+  <div class="bar">
+    <button type="button" class="btn icon" id="prev" aria-label="이전 달">‹</button>
+    <h2 id="title" class="num" aria-live="polite"></h2>
+    <button type="button" class="btn icon" id="next" aria-label="다음 달">›</button>
+    <button type="button" class="btn" id="goToday">오늘</button>
+    <div class="grow"></div>
+    <a class="btn" href="/exams">계획 만들기·고치기</a>
+  </div>
+
+  <section class="card" id="monthView" aria-label="월 달력">
+    <div class="grid" id="grid"></div>
+  </section>
+  <section class="card list" id="listView" aria-label="날짜별 목록" hidden></section>
+
+  <div class="legend">
+    <span><i style="background:var(--study-soft);box-shadow:inset 3px 0 0 var(--study)"></i>공부 (쪽 · 시간)</span>
+    <span><i style="background:var(--surface-3)"></i>마무리 복습</span>
+    <span><i style="background:var(--danger-soft)"></i>시험</span>
+    <span><i style="border:1px dashed var(--danger)"></i>날짜 미확정 시험 (임의·확인 필요)</span>
+    <span>시각은 기본 19:00 — 공강 학습 플랜(F8)이 붙으면 하루 안에서 다시 배치됩니다</span>
+  </div>
+</div>
+
+<script>
+(() => {
+  const WD = ["일", "월", "화", "수", "목", "금", "토"];
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const hm = (m) => { m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h}시간 ${r}분` : h ? `${h}시간` : `${r}분`; };
+  const md = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+
+  const todayIso = iso(new Date());
+  const qs = new URLSearchParams(location.search);
+  let cursor = qs.get("month") ? parse(qs.get("month") + "-01") : new Date();
+  cursor = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  let selected = todayIso;
+  let view = window.matchMedia("(max-width: 720px)").matches ? "list" : "month";
+  let data = { days: [] };
+  let byDate = new Map();
+
+  const $ = (id) => document.getElementById(id);
+
+  function range() {
+    const first = new Date(cursor);
+    const start = new Date(first); start.setDate(1 - first.getDay());           // 그 주 일요일부터
+    const end = new Date(start); end.setDate(start.getDate() + 41);             // 6주
+    return { start, end };
+  }
+
+  async function load() {
+    const { start, end } = range();
+    try {
+      const res = await fetch(`/api/study-calendar?start=${iso(start)}&end=${iso(end)}`, { cache: "no-store" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+      data = await res.json();
+      byDate = new Map(data.days.map((d) => [d.date, d]));
+      $("err").style.display = "none";
+    } catch (e) {
+      $("err").textContent = `공부 일정을 불러오지 못했습니다: ${e.message} — 대시보드 서버가 켜져 있는지 확인하세요`;
+      $("err").style.display = "block";
+    }
+    render();
+  }
+
+  function examLine(x, big) {
+    const unsure = !x.confirmed;
+    const tag = x.isAuto ? " (임의)" : x.needsReview ? " (확인 필요)" : "";
+    const when = x.time ? `${x.time}${x.endTime ? "~" + x.endTime : ""}` : "시각 미정";
+    if (big) {
+      return `<li class="item exam${unsure ? " unsure" : ""}">
+        <span class="what">🎯 ${esc(x.course)} ${esc(x.title)}${tag}</span>
+        <span class="meta num">${esc(when)}${x.place ? " · " + esc(x.place) : ""}</span></li>`;
+    }
+    return `<div class="ln exam${unsure ? " unsure" : ""}" title="${esc(`${x.course} ${x.title}${tag} · ${when}`)}">
+      <span class="c">🎯 ${esc(x.course)} ${esc(x.typeLabel)}${x.isAuto ? "?" : ""}</span>
+      <span class="a num">${esc(x.time || "시각 미정")}</span></div>`;
+  }
+
+  function amount(b) {
+    if (b.kind === "review") return `전체 복습${b.quiz ? ` + 문제 ${b.quiz}개` : ""}`;
+    return `${b.pages}쪽`;
+  }
+
+  function blockLine(b) {
+    const cls = `ln ${b.kind === "review" ? "review" : "study"}${b.done ? " done" : ""}`;
+    return `<div class="${cls}" style="--cc:${esc(b.color)}" title="${esc(`${b.course} · ${b.time} · ${amount(b)} · ${hm(b.minutes)}${b.done ? " · 완료" : ""}`)}">
+      <span class="c">${esc(b.course)}</span>
+      <span class="a num">${esc(b.time)} <b>${esc(amount(b))}</b> · ${esc(hm(b.minutes))}</span></div>`;
+  }
+
+  function itemsFor(dateIso) {
+    const d = byDate.get(dateIso);
+    if (!d || (!d.blocks.length && !d.exams.length)) {
+      return `<li class="empty">${dateIso === todayIso ? "오늘은 공부 계획이 없습니다" : "이날은 공부 계획이 없습니다"} — 시험 화면에서 계획을 만들면 여기에 나옵니다.</li>`;
+    }
+    const exams = d.exams.map((x) => examLine(x, true)).join("");
+    const blocks = d.blocks.map((b) => `
+      <li class="item${b.done ? " done" : ""}">
+        <input type="checkbox" ${b.done ? "checked" : ""} ${b.editable ? "" : "disabled"}
+          data-plan="${b.planId}" data-date="${dateIso}" aria-label="${esc(`${b.course} ${amount(b)} 완료`)}">
+        <span class="dot" style="background:${esc(b.color)}"></span>
+        <span class="what">${esc(b.course)}</span>
+        <span class="amount num">${esc(amount(b))}</span>
+        <span class="meta num">${esc(b.time)}~${esc(b.endTime)} · ${esc(hm(b.minutes))} · ${esc(b.examType)} ${esc(md(b.examDate))}</span>
+        ${b.deletable ? `<button type="button" class="del" data-del-plan="${b.planId}" data-date="${dateIso}"
+          aria-label="${esc(`${md(dateIso)} ${b.course} ${amount(b)} 공부 일정 삭제`)}">삭제</button>` : ""}
+      </li>`).join("");
+    return exams + blocks;
+  }
+
+  function renderSelected() {
+    const d = byDate.get(selected);
+    $("selTitle").querySelector(".tag").textContent = selected === todayIso ? "오늘 공부" : "공부";
+    $("selDate").textContent = md(selected);
+    $("selSum").textContent = d && d.blocks.length
+      ? `합계 ${d.totalPages ? d.totalPages + "쪽 · " : ""}${hm(d.totalMinutes)}${
+          d.blocks.some((b) => b.done) ? ` · 남은 ${hm(d.blocks.filter((b) => !b.done).reduce((s, b) => s + b.minutes, 0))}` : ""}`
+      : "";
+    $("selItems").innerHTML = itemsFor(selected);
+  }
+
+  function renderMonth() {
+    const { start } = range();
+    let html = WD.map((w, i) => `<div class="wd${i === 0 ? " sun" : i === 6 ? " sat" : ""}">${w}</div>`).join("");
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(start); day.setDate(start.getDate() + i);
+      const k = iso(day);
+      const d = byDate.get(k);
+      const out = day.getMonth() !== cursor.getMonth();
+      const lines = d ? [...d.exams.map((x) => examLine(x, false)), ...d.blocks.map(blockLine)] : [];
+      const shown = lines.slice(0, 4).join("");
+      const more = lines.length > 4 ? `<span class="more">+${lines.length - 4}개 더</span>` : "";
+      const tot = d && d.totalMinutes ? `<span class="tot num">${hm(d.totalMinutes)}</span>` : "";
+      const label = `${md(k)}${d ? ` · 공부 ${d.blocks.length}건${d.exams.length ? ` · 시험 ${d.exams.length}건` : ""}` : ""}`;
+      html += `<button type="button" class="cell${out ? " out" : ""}${k === todayIso ? " todayc" : ""}${k === selected ? " sel" : ""}"
+        data-date="${k}" aria-label="${esc(label)}" aria-pressed="${k === selected}">
+        <span class="d"><span class="num">${day.getDate()}</span>${tot}</span>${shown}${more}</button>`;
+    }
+    $("grid").innerHTML = html;
+  }
+
+  function renderList() {
+    const days = data.days.filter((d) => parse(d.date).getMonth() === cursor.getMonth() && (d.blocks.length || d.exams.length));
+    $("listView").innerHTML = days.length
+      ? days.map((d) => `<div class="day"><h3>${md(d.date)}${d.date === todayIso ? " · 오늘" : ""}
+          <small class="num">${d.totalMinutes ? hm(d.totalMinutes) : ""}</small></h3>
+          <ul class="items">${itemsFor(d.date)}</ul></div>`).join("")
+      : `<p class="empty">이 달에는 공부 계획이 없습니다.</p>`;
+  }
+
+  function render() {
+    $("title").textContent = `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월`;
+    $("vMonth").setAttribute("aria-pressed", String(view === "month"));
+    $("vList").setAttribute("aria-pressed", String(view === "list"));
+    $("monthView").hidden = view !== "month";
+    $("listView").hidden = view !== "list";
+    renderSelected();
+    if (view === "month") renderMonth(); else renderList();
+  }
+
+  function move(n) {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + n, 1);
+    const url = new URL(location.href);
+    url.searchParams.set("month", `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`);
+    history.replaceState(null, "", url);
+    load();
+  }
+
+  async function toggle(input) {
+    input.disabled = true;
+    try {
+      const res = await fetch(`/api/study-plans/${input.dataset.plan}/days/${input.dataset.date}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: input.checked }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+    } catch (e) {
+      input.checked = !input.checked;
+      $("err").textContent = `저장하지 못했습니다: ${e.message}`;
+      $("err").style.display = "block";
+    }
+    await load();
+  }
+
+  async function remove(btn) {
+    const label = btn.getAttribute("aria-label").replace(/ 공부 일정 삭제$/, "");
+    if (!confirm(`${label} — 이 공부 일정을 지울까요?\n완료한 기록도 함께 지워지고, 되돌릴 수 없습니다.`)) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/study-plans/${btn.dataset.delPlan}/days/${btn.dataset.date}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+    } catch (e) {
+      $("err").textContent = `지우지 못했습니다: ${e.message}`;
+      $("err").style.display = "block";
+    }
+    await load();
+  }
+
+  document.addEventListener("click", (e) => {
+    const del = e.target.closest("button[data-del-plan]");
+    if (del) { remove(del); return; }
+    const cell = e.target.closest(".cell");
+    if (cell) { selected = cell.dataset.date; render(); }
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("input[data-plan]")) toggle(e.target);
+  });
+  $("prev").onclick = () => move(-1);
+  $("next").onclick = () => move(1);
+  $("goToday").onclick = () => { selected = todayIso; cursor = new Date(); cursor.setDate(1); move(0); };
+  $("vMonth").onclick = () => { view = "month"; render(); };
+  $("vList").onclick = () => { view = "list"; render(); };
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, select, textarea")) return;
+    if (e.key === "ArrowLeft" && e.altKey) move(-1);
+    if (e.key === "ArrowRight" && e.altKey) move(1);
+  });
+  load();
+  setInterval(load, 60_000);   // 다른 화면에서 체크·재조정하면 1분 안에 따라온다
+})();
+</script>
+</body>
+</html>

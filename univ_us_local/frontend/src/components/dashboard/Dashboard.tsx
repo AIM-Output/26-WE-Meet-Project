@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { PanelLeftOpen } from "lucide-react";
 import { useAppData } from "@/components/app/AppData";
@@ -58,9 +59,15 @@ const FILTER_ITEMS: { key: Filter; label: string }[] = [
 ];
 
 export default function Dashboard() {
-  const { events, status, loading, error, refresh } = useAppData();
+  const { events, status, loading, error, refresh, profile } = useAppData();
+  const router = useRouter();
+
+  // 첫 실행 — 프로필이 하나도 없고 '나중에 하기'도 안 눌렀으면 첫 설정으로 (Frontend-Route 5-1)
+  useEffect(() => {
+    if (profile && !profile.exists && !profile.onboardingSkipped) router.replace("/onboarding?step=1");
+  }, [profile, router]);
   const toast = useToast();
-  const { list: academic, reviewCount } = useAcademic();
+  const { reviewCount } = useAcademic();
   const [view, setView] = useQueryParam<CalView>("view", "month", VIEWS);
   const [filter, setFilter] = useQueryParam<Filter>("filter", "all", FILTERS);
   const dateParam = useQueryValue("date");
@@ -82,23 +89,25 @@ export default function Dashboard() {
   const briefing = useMemo(() => (new Date().getHours() >= 8 ? composeBriefing(events) : null), [events]);
 
   const calEvents = useMemo(() => {
+    // 수업 회차(F3 class)는 한 주에 10개 넘게 반복된다 — 월·학기 격자에서는 마감이 '+N개'로 밀리므로 주·목록 보기에서만 그린다
+    const showClasses = view === "week" || view === "list";
+    // 학사 일정은 '학사' 뷰에서만 그린다 — 전체 뷰에 섞으면 학교 일정이 내 일정을 덮는다.
+    // 필요한 것은 상세에서 '내 일정에 넣기'로 내 일정(kind=user)을 만들면 전체 뷰에 보인다.
+    const pool = events.filter((e) => e.extendedProps.kind !== "academic" && (showClasses || e.extendedProps.kind !== "class"));
     switch (filter) {
       case "eclass":
-        return events.filter((e) => e.extendedProps.kind === "deadline");
+        return pool.filter((e) => e.extendedProps.kind === "deadline" || e.extendedProps.kind === "class");
       case "mine":
         return events.filter((e) => e.extendedProps.kind === "user" && !e.extendedProps.isTodo);
       case "todo":
         return events.filter((e) => e.extendedProps.kind === "user" && e.extendedProps.isTodo);
       case "academic":
-        return [];
+        // 학사 일정은 /api/events 에 '내 해당·승인·담기'만 온다 (F1-S01). 눌러서 상세 → '내 일정에 넣기'
+        return events.filter((e) => e.extendedProps.kind === "academic");
       default:
-        return events;
+        return pool;
     }
-  }, [events, filter]);
-  const calAcademic = useMemo(
-    () => (filter === "all" || filter === "academic" ? academic.filter((a) => a.status === "confirmed" && a.appliesToMe !== false) : []),
-    [academic, filter],
-  );
+  }, [events, filter, view]);
 
   const openNew = (kind: "event" | "todo", start?: string, end?: string, allDay?: boolean) =>
     navigateQuery({ new: kind, start, end, allDay: allDay ? "1" : null }, "push");
@@ -172,7 +181,6 @@ export default function Dashboard() {
           ) : (
             <CalendarView
               events={calEvents}
-              academic={calAcademic}
               view={view}
               initialDate={dateParam ? (dateParam.length === 7 ? `${dateParam}-01` : dateParam) : undefined}
               onViewChange={(v) => setView(v)}
@@ -188,7 +196,7 @@ export default function Dashboard() {
                 } else openNew(filter === "todo" ? "todo" : "event", toLocalIso(s), toLocalIso(e));
               }}
               onEventClick={(id) => navigateQuery({ event: id }, "push")}
-              onLockedMove={() => toast("e클래스·학사에서 가져온 일정은 옮길 수 없습니다")}
+              onLockedMove={() => toast("e클래스·학사·수업 시간표에서 온 일정은 옮길 수 없습니다")}
               onEventMove={async (id, s, e, allDay, revert) => {
                 try {
                   await api.updateEvent(id, {

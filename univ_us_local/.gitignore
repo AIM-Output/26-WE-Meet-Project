@@ -1,4 +1,5 @@
 # univ_us_local
+# 내 일정 DB(univus.db)는 2026-09-30 에 ../C1_Calendar_agent/data/ 로 옮겼다. 옛 파일이 남아도 커밋되지 않게 둔다.
 data/
 backend/.venv/
 __pycache__/

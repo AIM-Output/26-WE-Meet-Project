@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, CalendarPlus, ListTodo, Maximize2, RefreshCw, Send, Sparkles, TriangleAlert } from "lucide-react";
 import { useAppData } from "@/components/app/AppData";
-import { useToast } from "@/components/ui/Toast";
 import { fmtRelative } from "@/lib/dates";
+import type { AcademicStatus } from "@/lib/types";
 import { CHAT_EXAMPLES } from "@/lib/demo";
 import { navigateQuery } from "@/lib/useQueryState";
 
@@ -62,11 +62,25 @@ function SyncRow({
   );
 }
 
+/** 학사 원천(학사일정 표·학사공지·학과) 중 가장 최근 성공 시각과 일정 수 — '3분 전 · 160건' (F1-S02) */
+function academicMeta(a: AcademicStatus | undefined): string {
+  if (!a) return "상태 확인 중";
+  if (!a.available) return "F1_Bachelor_agent 를 불러오지 못했습니다";
+  if (a.sync?.retry?.next_at) return `수집 실패 — ${a.sync.retry.next_at.slice(11, 16)}에 다시 시도`;
+  const on = (a.sources ?? []).filter((s) => s.enabled);
+  const last = on.map((s) => s.lastOkAt).filter(Boolean).sort().at(-1) ?? null;
+  if (!last) return "아직 수집하지 않았습니다";
+  const n = on.reduce((sum, s) => sum + (s.count ?? 0), 0);
+  return `${fmtRelative(last)} · ${n}건`;
+}
+
 export default function ActionPanel({ reviewCount, onNew }: { reviewCount: number; onNew: (kind: "event" | "todo") => void }) {
-  const { status, syncing, error, startSync } = useAppData();
-  const toast = useToast();
-  const [academicBusy, setAcademicBusy] = useState(false);
+  const { status, syncing, error, startSync, academicSyncing, startAcademicSync, startLogin, loginRunning } = useAppData();
   const failed = status && !syncing && status.sync.exit_code !== null && status.sync.exit_code !== 0 && status.sync.exit_code !== 3;
+  const academic = status?.academic;
+  const acFailed = (academic?.sources ?? []).filter((s) => s.enabled && (s.state === "failed" || s.state === "format_changed"));
+  // 마지막 학사일정 수집에서 새로 찾아 바로 등록된 일정 (수집 중에는 셈이 바뀌므로 끝난 뒤에 보인다)
+  const newCount = academicSyncing ? 0 : (academic?.newCount ?? 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,7 +101,13 @@ export default function ActionPanel({ reviewCount, onNew }: { reviewCount: numbe
             label="e클래스 동기화"
             busy={syncing}
             busyText={status?.sync.source === "external" ? "예약 동기화 진행 중…" : "동기화 중…"}
-            meta={status ? `${fmtRelative(status.updated_at)} · 과제 ${status.counts.deadlines}건` : "상태 확인 중"}
+            meta={
+              status
+                ? status.eclass?.retry
+                  ? "네트워크 오류 — 재시도 대기 중"
+                  : `${fmtRelative(status.eclass?.lastOkAt ?? status.updated_at)} · 과제 ${status.counts.deadlines}건`
+                : "상태 확인 중"
+            }
             disabled={!!error}
             onClick={startSync}
             error={
@@ -95,10 +115,21 @@ export default function ActionPanel({ reviewCount, onNew }: { reviewCount: numbe
                 <>
                   <TriangleAlert className="mt-px size-3.5 flex-none" aria-hidden />
                   <span>
-                    {status?.sync.exit_code === 2 ? "로그인이 필요합니다" : "마지막 동기화가 실패했습니다"} ·{" "}
-                    <Link href="/settings/sources" className="underline">
-                      수집 원천
-                    </Link>
+                    {status?.sync.exit_code === 2 ? (
+                      <>
+                        로그인이 필요합니다 ·{" "}
+                        <button type="button" className="underline" onClick={() => void startLogin()} disabled={loginRunning}>
+                          {loginRunning ? "로그인 창에서 진행 중…" : "로그인 창 열기"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {status?.sync.exit_code === 4 ? "인터넷 연결 문제로 실패했습니다" : "마지막 동기화가 실패했습니다"} ·{" "}
+                        <Link href="/settings/sources" className="underline">
+                          수집 원천
+                        </Link>
+                      </>
+                    )}
                   </span>
                 </>
               ) : undefined
@@ -106,17 +137,24 @@ export default function ActionPanel({ reviewCount, onNew }: { reviewCount: numbe
           />
           <SyncRow
             label="학사일정 동기화"
-            busy={academicBusy}
-            busyText="학사일정 수집 중…"
-            meta="오늘 06:00 · 24건"
-            demo
-            onClick={() => {
-              setAcademicBusy(true);
-              window.setTimeout(() => {
-                setAcademicBusy(false);
-                toast("학사일정 수집 API 가 아직 없습니다 — 예시 데이터를 보여 줍니다");
-              }, 900);
-            }}
+            busy={academicSyncing}
+            busyText={academic?.sync?.source === "external" ? "예약 수집 진행 중…" : "학사일정 수집 중…"}
+            meta={academicMeta(academic)}
+            disabled={!!error || academic?.available === false}
+            onClick={() => void startAcademicSync()}
+            error={
+              acFailed.length > 0 && !academicSyncing ? (
+                <>
+                  <TriangleAlert className="mt-px size-3.5 flex-none" aria-hidden />
+                  <span>
+                    {acFailed.map((s) => s.name).join(", ")} {acFailed.some((s) => s.state === "format_changed") ? "형식이 바뀐 것 같습니다" : "수집 실패"} ·{" "}
+                    <Link href="/settings/sources" className="underline">
+                      수집 원천
+                    </Link>
+                  </span>
+                </>
+              ) : undefined
+            }
           />
           <button
             type="button"
@@ -132,18 +170,41 @@ export default function ActionPanel({ reviewCount, onNew }: { reviewCount: numbe
         </div>
       </Block>
 
-      {reviewCount > 0 && (
-        <Link
-          href="/academic?tab=review"
-          className="card flex items-center gap-3 border-[#f5dca6] bg-warn-soft p-4 transition-colors hover:border-warn"
+      {(reviewCount > 0 || newCount > 0) && (
+        // 크기는 예전 '확인 필요' 상자 그대로 — 제목 한 줄 + 설명 한 줄. 숫자마다 가는 곳이 달라 링크를 둘로 나눈다
+        <div
+          className={`card flex items-center gap-3 p-4 ${reviewCount > 0 ? "border-[#f5dca6] bg-warn-soft text-warn-text" : "border-primary-soft-2 bg-primary-soft text-primary"}`}
         >
-          <TriangleAlert className="size-5 flex-none text-warn-text" aria-hidden />
+          {reviewCount > 0 ? <TriangleAlert className="size-5 flex-none" aria-hidden /> : <Sparkles className="size-5 flex-none" aria-hidden />}
           <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-bold text-warn-text">확인 필요 {reviewCount}건</span>
-            <span className="block text-[12px] text-warn-text/80">공지에서 찾은 학사일정 — 등록 전 확인</span>
+            <span
+              className="block truncate text-[14px] font-bold whitespace-nowrap"
+              title={[newCount > 0 && `신규 일정 ${newCount}건`, reviewCount > 0 && `확인 필요 ${reviewCount}건`].filter(Boolean).join(" · ")}
+            >
+              {newCount > 0 && (
+                <Link href="/academic" className="underline-offset-2 hover:underline">
+                  신규 일정 {newCount}건
+                </Link>
+              )}
+              {newCount > 0 && reviewCount > 0 && " · "}
+              {reviewCount > 0 && (
+                <Link href="/academic?tab=review" className="underline-offset-2 hover:underline">
+                  확인 필요 {reviewCount}건
+                </Link>
+              )}
+            </span>
+            <span className="block truncate text-[12px] opacity-80">
+              {newCount > 0 && academic?.lastRunAt ? `${fmtRelative(academic.lastRunAt)} 수집에서 새로 찾은 학사일정` : "공지에서 찾은 학사일정 — 등록 전 확인"}
+            </span>
           </span>
-          <ArrowRight className="size-4 flex-none text-warn-text" aria-hidden />
-        </Link>
+          <Link
+            href={reviewCount > 0 ? "/academic?tab=review" : "/academic"}
+            className="flex-none rounded-sm opacity-90 hover:opacity-100"
+            aria-label={reviewCount > 0 ? "확인 필요 보기" : "학사일정 보기"}
+          >
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </div>
       )}
 
       <ChatCard />

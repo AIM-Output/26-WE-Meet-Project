@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
-import { useStored } from "./storage";
-import { demoAcademic, type AcademicEvent } from "./demo";
+import { useAppData } from "@/components/app/AppData";
 
-// F1 학사일정 (예시 데이터 + 사용자가 바꾼 값). PATCH /api/academic/events/{id} 가 생기면 그쪽으로 옮긴다.
-type Override = Partial<Pick<AcademicEvent, "status" | "memo" | "reminders" | "start" | "end">>;
-
+// F1 학사일정 — GET /api/academic/events 한 번을 모든 화면이 나눠 쓴다(AppDataProvider). 탭 전환은 화면에서 거른다.
 export function useAcademic() {
-  const [overrides, setOverrides] = useStored<Record<string, Override>>("academic-overrides", {});
-
-  const list = useMemo(() => demoAcademic.map((e) => ({ ...e, ...overrides[e.id] })), [overrides]);
-
-  const update = (id: string, patch: Override) => setOverrides((m) => ({ ...m, [id]: { ...m[id], ...patch } }));
-
-  return { list, update, reviewCount: list.filter((e) => e.status === "review").length };
+  const { academic, academicError, academicSyncing, updateAcademic, refreshAcademic, startAcademicSync, status } = useAppData();
+  return {
+    data: academic,
+    list: academic?.items ?? [],
+    loading: academic === null && !academicError,
+    error: academicError,
+    update: updateAcademic,
+    refresh: refreshAcademic,
+    sync: startAcademicSync,
+    syncing: academicSyncing,
+    reviewCount: status?.academic?.reviewCount ?? 0,
+    status: status?.academic ?? null,
+  };
 }

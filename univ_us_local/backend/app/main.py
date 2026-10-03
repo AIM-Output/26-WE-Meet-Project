@@ -5,26 +5,27 @@
 - /api/*            프론트가 쓰는 JSON API
 - /                 frontend/out (next build 결과) 가 있으면 정적으로 서빙. 없으면 안내 페이지.
 개발 중에는 `next dev`(3000) 가 /api 를 여기로 넘겨준다 (frontend/next.config.ts rewrites).
+
+이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5).
 """
 from __future__ import annotations
 
-import re
 from contextlib import asynccontextmanager
-from typing import Literal, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
 
+from . import academic, attendance, calendar_events, exams, graduation, materials
 from . import config as C
-from . import eclass_data, store
+from . import eclass_data, student_profile
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    store.init()
+    calendar_events.init()               # C1: 표 만들기 · 옛 자리(univ_us_local/data)의 일정 DB 옮기기
+    student_profile.migrate_legacy()     # 예전 kv 프로필이 남아 있으면 C2 로 옮긴다 (한 번)
     yield
 
 
@@ -59,94 +60,7 @@ async def check_origin(request: Request, call_next):
     return await call_next(request)
 
 
-# ---------------------------------------------------------------- 모델
-
-CategoryKey = Literal["personal", "study", "team", "etc"]
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
-
-
-class UserEventIn(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    start: str
-    end: Optional[str] = None
-    all_day: bool = False
-    category: CategoryKey = "personal"
-    memo: str = ""
-    is_todo: bool = False      # 할 일 — To Do List 에서 완료 체크 가능
-    done: bool = False
-
-
-class UserEventPatch(BaseModel):
-    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    start: Optional[str] = None
-    end: Optional[str] = None
-    all_day: Optional[bool] = None
-    category: Optional[CategoryKey] = None
-    memo: Optional[str] = None
-    is_todo: Optional[bool] = None
-    done: Optional[bool] = None
-
-
-def _check_dates(start: Optional[str], end: Optional[str]) -> None:
-    for label, v in (("start", start), ("end", end)):
-        if v is not None and not DATE_RE.match(v):
-            raise HTTPException(422, f"{label} 형식이 잘못됐습니다: {v!r} (YYYY-MM-DD 또는 YYYY-MM-DDTHH:MM[:SS])")
-    if start and end and end <= start:
-        raise HTTPException(422, "종료가 시작보다 빠르거나 같습니다.")
-
-
-def _parse_user_id(event_id: str) -> int:
-    if not event_id.isdigit():
-        raise HTTPException(404, "사용자 일정이 아닙니다 (e클래스 마감은 수정할 수 없습니다).")
-    return int(event_id)
-
-
 # ---------------------------------------------------------------- API
-
-@app.get("/api/events")
-def get_events(start: Optional[str] = None, end: Optional[str] = None) -> list[dict]:
-    """e클래스 마감 + 사용자 일정. start/end(YYYY-MM-DD)를 주면 그 구간에 걸치는 것만."""
-    deadlines, _ = eclass_data.load_deadline_events()
-    events = deadlines + store.list_events()
-    if start or end:
-        def overlaps(ev: dict) -> bool:
-            s = ev["start"][:10]
-            e = (ev.get("end") or ev["start"])[:10]
-            return (not end or s <= end) and (not start or e >= start)
-        events = [ev for ev in events if overlaps(ev)]
-    return events
-
-
-@app.post("/api/events", status_code=201)
-def post_event(body: UserEventIn) -> dict:
-    _check_dates(body.start, body.end)
-    data = body.model_dump()
-    data["title"] = data["title"].strip()
-    data["memo"] = data["memo"].strip()
-    return store.create_event(**data)
-
-
-@app.patch("/api/events/{event_id}")
-def patch_event(event_id: str, body: UserEventPatch) -> dict:
-    uid = _parse_user_id(event_id)
-    current = store.get_event(uid)
-    if not current:
-        raise HTTPException(404, "일정이 없습니다.")
-    fields = body.model_dump(exclude_unset=True)
-    if "title" in fields:
-        fields["title"] = fields["title"].strip()
-    _check_dates(fields.get("start", current["start"]), fields.get("end", current["end"]))
-    updated = store.update_event(uid, fields)
-    if not updated:
-        raise HTTPException(404, "일정이 없습니다.")
-    return updated
-
-
-@app.delete("/api/events/{event_id}", status_code=204)
-def delete_event(event_id: str) -> None:
-    if not store.delete_event(_parse_user_id(event_id)):
-        raise HTTPException(404, "일정이 없습니다.")
-
 
 @app.get("/api/courses")
 def get_courses() -> list[dict]:
@@ -155,28 +69,91 @@ def get_courses() -> list[dict]:
 
 @app.get("/api/status")
 def get_status() -> dict:
-    deadlines, updated_at = eclass_data.load_deadline_events()
-    counts = store.count_events()
+    eclass_data.deliver()                # F6: 때가 된 마감 알림·마감 변경·수집 실패를 알림 센터로 (1분마다 불린다)
+    eclass = eclass_data.status_block()
+    calendar = calendar_events.summary()
+    counts = calendar["counts"]
     return {
-        "updated_at": updated_at,
+        "updated_at": eclass.get("lastOkAt") or eclass.get("reconciledAt"),   # 마지막으로 e클래스 수집에 성공한 시각
         "sync": eclass_data.sync_state(),
         "counts": {
             "courses": len(eclass_data.load_courses()),
-            "deadlines": len(deadlines),
+            "deadlines": (eclass.get("counts") or {}).get("total", 0),
             "userEvents": counts["total"],
             "todos": counts["todos"],
             "todosDone": counts["done"],
         },
-        "categories": C.CATEGORIES,
-        "eclassDataDir": str(C.ECLASS_DATA_DIR),
+        "categories": calendar["categories"],
+        "eclassDataDir": eclass_data.data_dir(),
         "log": eclass_data.last_log_lines(),
+        "calendar": calendar,                # C1: 내 일정 DB 자리 · 못 불러왔으면 error
+        "eclass": eclass,                    # F6: 진행 중·지난 마감 수 · 연속 실패 · 로그인 필요 · 재시도 · 다음 주기 · updatedAt
+        "academic": academic.status(),       # F1: 원천별 수집 상태 · 확인 필요 건수 · updatedAt
+        "graduation": graduation.status(),   # F2: 남은 학점 · 판정 · 한 줄 요약 · updatedAt (기능 타일)
+        "attendance": attendance.status(),   # F3: 위험 과목 · 확인 안 한 수업 · 시간표 미입력 · updatedAt (기능 타일)
+        "materials": materials.status(),     # F4: 강의자료 수 · 쪽수 · 확인 필요 · updatedAt (기능 타일)
+        "exams": exams.status(),             # F5: 오늘 분량 · 다가오는 시험 · 확인 필요 · 밀린 계획 · updatedAt (기능 타일)
     }
 
 
 @app.post("/api/sync")
 def post_sync() -> dict:
-    """eclass_agent/run-sync.cmd 를 백그라운드로 실행한다. 진행 상황은 /api/status 의 sync 로 본다."""
+    """e클래스 수집(F6)을 백그라운드로 띄운다 — 이미 돌고 있으면 새로 띄우지 않는다. 진행 상황은 /api/status 의 sync 로 본다."""
     return eclass_data.start_sync()
+
+
+def _profile_changed() -> None:
+    """프로필이 바뀌면 F1 '내 해당'·F2 졸업요건 기준·F3 학사경고 안내가 달라진다 — updatedAt 을 올려 화면이 다시 받게 한다 (C2-R08)."""
+    academic.touch()
+    graduation.touch()
+    attendance.touch()
+
+
+# ---------------------------------------------------------------- 기능 라우터
+
+# C1 캘린더 — /api/events (C1_Calendar_agent/calendar_core/api.py)
+# 내 일정·할 일은 C1 이 저장하고, 다른 기능이 캘린더에 얹는 일정은 아래 소스 함수로 넘겨준다 (C1 3절).
+CALENDAR_SOURCES = (
+    lambda start, end: eclass_data.load_deadline_events(),   # F6 과제·퀴즈·동영상 마감 (kind=deadline)
+    academic.calendar_events,                                # F1 학사 일정 (kind=academic, 내 캘린더에 등록된 것만)
+    attendance.calendar_events,                              # F3 수업 회차 (kind=class)
+    exams.calendar_events,                                   # F5 시험(kind=exam) · 학습 블록(kind=study)
+)
+if (_c1_router := calendar_events.router(CALENDAR_SOURCES)) is not None:
+    app.include_router(_c1_router)
+
+# F6 과제·마감 — /api/assignments* · /api/sources/eclass · /api/sync/login (F6_Eclass_agent/eclass/api.py)
+# F1 의 /api/sources/{key} 보다 먼저 붙여야 /api/sources/eclass 가 F6 로 간다.
+if (_f6_router := eclass_data.router()) is not None:
+    app.include_router(_f6_router)
+
+# C2 프로필·학과 마스터 — /api/profile* · /api/master/* (C2_Profile_agent/student/api.py)
+if (_c2_router := student_profile.router(on_change=_profile_changed)) is not None:
+    app.include_router(_c2_router)
+
+# F1 학사 일정 — /api/academic/* · /api/sources* · /api/notifications* (F1_Bachelor_agent/bachelor/api.py)
+if (_f1_router := academic.router()) is not None:
+    app.include_router(_f1_router)
+
+# F2 졸업요건 — /api/graduation/* (F2_Graduation_agent/graduation/api.py)
+# 이수 내역을 가져올 때 같이 읽은 평점·학년은 C2 프로필에 '자동'으로 넣고, 그러면 F1 도 다시 판정하게 한다.
+if (_f2_router := graduation.router(on_profile_change=academic.touch)) is not None:
+    app.include_router(_f2_router)
+
+# F3 출결 — /api/attendance/* (F3_Attendance_agent/attendance/api.py)
+# 수업 회차는 /api/events 에 kind=class 로 섞이고, 상태가 올라가면 경고가 알림 센터(F1 notifications)에 들어간다.
+if (_f3_router := attendance.router()) is not None:
+    app.include_router(_f3_router)
+
+# F4 강의자료 — /api/materials* (F4_Textbook_agent/textbook/api.py)
+# F6 가 내려받아 둔 파일을 과목별 자료로 세우고, 원문을 이 서버가 스트림으로 넘겨준다 (밖으로는 나가지 않는다).
+if (_f4_router := materials.router()) is not None:
+    app.include_router(_f4_router)
+
+# F5 시험 공부 일정 — /api/exams* · /api/study-plans* (F5_Test_agent/exams/api.py)
+# e클래스 공지에서 시험을 찾아 '확인 필요'로 세우고, 확인한 계획을 학습 블록(kind=study)으로 캘린더에 넣는다.
+if (_f5_router := exams.router()) is not None:
+    app.include_router(_f5_router)
 
 
 # ---------------------------------------------------------------- 정적 프론트

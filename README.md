@@ -9,11 +9,22 @@
 ```
 저장소 폴더/
 ├── README.md                 ← 지금 보는 문서
-├── eclass_agent/             e클래스 로그인 + 자료·마감 수집기 (Python)
+├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
+├── C3_Login_agent/           학교(SSO) 자동 로그인 + 브라우저 — F6·C2·F2·F11 이 같이 씀 (Python)
+├── F6_Eclass_agent/          F6 e클래스 과제·마감·자료 수집 → 캘린더·할 일·마감 알림 (로그인은 C3 것을 빌림)
+├── F1_Bachelor_agent/        F1 학사일정 자동 등록·알림 (학교 공개 페이지 수집 — 로그인 불필요)
+├── C2_Profile_agent/         내 프로필·학과 목록 (F1·F2·F11 이 같이 씀 — 설치할 것 없음)
+├── F2_Graduation_agent/      F2 졸업요건·학점 트래커 (학사시스템 이수 내역 → 영역별 남은 학점 — 설치할 것 없음)
+├── F3_Attendance_agent/      F3 출결·학사경고 예방 (공개 시간표 조회 → 수업 회차·결석 한도 경고 — 설치할 것 없음)
+├── F4_Textbook_agent/        F4 강의자료 보관·열람 (F6 가 받은 자료를 보관함에 모아 과목별로 열기 — 설치할 것 없음)
+├── F5_Test_agent/            F5 시험 공부 일정 (공지에서 시험 찾고 분량을 날짜로 역산 → 학습 블록 — 설치할 것 없음)
 ├── univ_us_local/            대시보드 로컬 서버 웹 (FastAPI + Next.js 빌드 결과)
 ├── notice_agent/             (선택) 장학 공지 매칭 도구 — 이 가이드에서는 다루지 않음
 ├── 유니버스 열기.cmd          더블클릭 → 서버 켜고 브라우저로 대시보드 열기
 ├── 유니버스 종료.cmd          더블클릭 → 서버 끄기
+├── 요구사항정의서.md          기능별 요구사항 (무엇을 만드는가) — 기능 개발 전 먼저 볼 문서
+├── Frontend-Route.md         화면·라우트·흐름 정의 (어느 주소에 어떤 순서로)
+├── Frontend-Figma.md · Frontend-Screens.md   디자인 팀 가이드 · 그릴 화면 목록
 └── WE-Meet_프로젝트계획서 …   기획 문서 (docx / pdf)
 ```
 
@@ -95,15 +106,17 @@ cd 26-WE-Meet-Project
 dir
 ```
 
-`eclass_agent`, `univ_us_local`, `유니버스 열기.cmd` 등이 보이면 성공입니다.
+`C3_Login_agent`, `F6_Eclass_agent`, `univ_us_local`, `유니버스 열기.cmd` 등이 보이면 성공입니다.
 **이 폴더를 이 문서에서 "프로젝트 폴더" 라고 부릅니다.**
 
 ---
 
-## 3. e클래스 수집기 설치 (`eclass_agent`)
+## 3. 학교 로그인 도구 설치 (`C3_Login_agent`)
+
+학교 로그인과 브라우저 엔진은 한 폴더(`C3_Login_agent`)에 모여 있고, e클래스 수집(F6)·프로필 가져오기(C2)·졸업요건(F2)이 같이 씁니다.
 
 ```powershell
-cd eclass_agent
+cd C3_Login_agent
 .\setup.cmd
 ```
 
@@ -131,7 +144,7 @@ cd eclass_agent
    - 창이 안 닫히면 → PowerShell 창을 클릭하고 **Enter**.
    - 최대 10분 안에 끝내야 합니다. 시간이 지나면 `.\login.cmd` 를 다시 실행하세요.
 
-이제 `eclass_agent\state\` 안에 로그인 세션이 저장됐습니다. **이 폴더는 절대 남에게 보내지 마세요** (= 내 계정으로 로그인된 상태 그 자체입니다).
+이제 `C3_Login_agent\state\` 안에 로그인 세션이 저장됐습니다. **이 폴더는 절대 남에게 보내지 마세요** (= 내 계정으로 로그인된 상태 그 자체입니다).
 
 ### (선택) 자동 재로그인 등록
 
@@ -145,15 +158,17 @@ cd eclass_agent
 - 저장 위치 `state\cred.bin` 은 Windows DPAPI 로 암호화되어 **내 Windows 계정에서만** 풀립니다. 파일을 복사해 가도 소용없습니다.
 - 지우려면 `.\setup-creds.cmd --clear`.
 - 학교 비밀번호를 바꾸면 `.\setup-creds.cmd` 를 다시 실행하세요.
-- 몇 시간마다 자동 수집까지 하려면 → [eclass_agent/AUTOMATION.md](eclass_agent/AUTOMATION.md)
+- 몇 시간마다 자동 수집까지 하려면 → [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) (대시보드 **수집 원천 → 예약 실행 `켜기`** 한 번이면 됩니다)
 
 ---
 
 ## 5. 크롤링 (자료·마감 수집)
 
+수집기는 `F6_Eclass_agent` 폴더에 있습니다 (로그인·브라우저는 4단계의 `C3_Login_agent` 것을 씁니다).
 먼저 **내려받지 않고 목록만** 확인해 봅니다.
 
 ```powershell
+cd ..\F6_Eclass_agent
 .\sync.cmd --dry-run
 ```
 
@@ -164,7 +179,7 @@ cd eclass_agent
 ```
 
 - 처음엔 자료 양에 따라 **몇 분 ~ 십여 분** 걸립니다 (서버 부하를 줄이려고 요청 사이에 1.5초씩 쉽니다).
-- 결과는 `eclass_agent\data\` 에 쌓입니다:
+- 결과는 `F6_Eclass_agent\data\` 에 쌓입니다:
 
 | 파일 | 내용 |
 |---|---|
@@ -174,9 +189,9 @@ cd eclass_agent
 | `data\<과목명>\<활동>\` | 강의자료 파일 (pdf, pptx, hwp …) |
 
 - 두 번째부터는 이미 받은 파일은 건너뛰므로 빠릅니다.
-- 마감만 빨리 갱신: `.\sync.cmd --only deadlines`
+- 과제·마감만 빨리 갱신: `.\sync.cmd --only assign,deadlines`
 
-> 수집하지 않는 것: 동영상 본체, 퀴즈·출석, 학생들이 글을 쓰는 게시판(Q&A·팀빌딩 등). 학교 저작권 안내를 지키기 위한 설계이므로 바꾸지 마세요.
+> 수집하지 않는 것: 동영상 본체, 퀴즈 문제(마감 일시만 가져옴)·출석, 학생들이 글을 쓰는 게시판(Q&A·팀빌딩 등). 학교 저작권 안내를 지키기 위한 설계이므로 바꾸지 마세요.
 
 ---
 
@@ -190,16 +205,34 @@ cd eclass_agent
 - 준비되면 브라우저가 자동으로 **http://localhost:8000** 을 엽니다.
 - 작업표시줄에 최소화된 **"Univ-Us Local Server"** 창이 하나 생깁니다. **이 창을 닫으면 서버가 꺼집니다.** 그냥 두세요.
 
-화면 구성:
+첫 화면(대시보드) 구성:
 
 | 위치 | 내용 |
 |---|---|
+| 맨 위 | 오늘 브리핑 카드 (오늘 일정·마감 임박을 실제 일정으로 요약) |
 | 가운데 캘린더 | e클래스 마감(과목별 색) + 내 일정 + 할 일. 날짜 클릭/드래그로 새 일정 추가, 드래그로 이동 |
-| 왼쪽 | 일정·할 일 추가 버튼, **"e클래스 동기화"** 버튼(= `sync.cmd` 를 대신 실행), 월별 완료율 |
-| 오른쪽 | 할 일 목록 (미제출 과제 = 할 일, 제출 완료 = 완료). D-day 표시 |
-| 상단 | 마지막 동기화 시각 |
+| 왼쪽 | 일정·할 일 추가 버튼, **"e클래스 동기화"** 버튼(= `sync.cmd` 를 대신 실행), **"학사일정 동기화"** 버튼(학교 학사일정·학사공지 수집 — 처음 누르면 1분쯤 설치 후 수집), 확인 필요 학사일정 |
+| 오른쪽 | 할 일 목록 (미제출 과제 = 할 일, 제출 완료·내가 체크함 = 완료). D-day 표시. 마감 D-3·D-1·당일 아침에는 헤더 종에 알림 |
+| 상단 | 마지막 동기화 시각, 알림(종), 설정 메뉴 |
+| 맨 아래 | **기능 타일** — 눌러서 기능별 화면으로 이동 (아래 표) |
 
-캘린더에 과제가 안 보이면 → 5단계 수집이 끝났는지, `eclass_agent\data\deadlines.json` 이 있는지 확인하세요. 왼쪽 **"e클래스 동기화"** 버튼을 눌러도 됩니다.
+기능별 화면 (대시보드 아래 기능 타일 / 상단 설정 메뉴):
+
+| 메뉴 | 기능 | 데이터 |
+|---|---|---|
+| 학사일정 | F1 학교 학사일정·학사공지 → 캘린더 자동 등록, 확인 필요 일정 | ✅ 실제 (로그인 불필요) |
+| E클래스 | F6 과제·동영상 마감 목록(내가 체크함·소요시간) + **공지·자료** 새 글 | ✅ 실제 (5단계 수집 결과) |
+| 졸업요건 | F2 영역별 이수·남은 학점 (학사정보시스템 기이수성적 가져오기) | ✅ 실제 |
+| 출결 | F3 시간표 → 수업 회차, 결석 한도·학사경고 예방, 휴강 자동 반영 | ✅ 실제 |
+| 강의자료 | F4 받은 자료를 과목·주차별로 열기 | ✅ 목록·열람은 실제 / 요약·문제·질문은 예시 |
+| 시험 | F5 공지에서 시험 찾기 → 분량을 날짜로 역산한 학습 블록 | ✅ 실제 |
+| 기회 · 팀플 · 브리핑 · 대화 | F11~13 · F16 · F10 · F9 | 🚧 예시 데이터 (화면만, 개발 예정) |
+| 설정 → 내 프로필 | C2 학과·학년 (학사정보시스템에서 가져오기) | ✅ 실제 |
+| 설정 → 수집 원천 · 졸업요건 기준 · 가용 시간 · 알림 | 원천 켜고 끄기·예약 실행 등 | 일부 실제, 일부 예시 |
+
+화면에 **"예시 데이터"** 띠가 보이면 아직 실제 데이터가 연결되지 않은 화면입니다. 졸업요건·출결·내 프로필은 학사정보시스템 로그인(4단계)이 필요합니다.
+
+캘린더에 과제가 안 보이면 → 5단계 수집이 끝났는지, `F6_Eclass_agent\data\deadlines.json` 이 있는지 확인하세요. 왼쪽 **"e클래스 동기화"** 버튼을 눌러도 됩니다.
 
 ### 끄기
 
@@ -212,8 +245,8 @@ cd eclass_agent
 | 하고 싶은 것 | 방법 |
 |---|---|
 | 대시보드 열기 | `유니버스 열기.cmd` 더블클릭 |
-| e클래스 최신 자료·마감 가져오기 | 대시보드 왼쪽 **e클래스 동기화** 버튼, 또는 PowerShell 에서 `eclass_agent` 폴더 → `.\sync.cmd` |
-| "세션 만료" 라고 나올 때 | `eclass_agent` 폴더에서 `.\login.cmd` 다시 (4단계). 자동 재로그인을 등록했다면 저절로 됨 |
+| e클래스 최신 자료·마감 가져오기 | 대시보드 왼쪽 **e클래스 동기화** 버튼, 또는 PowerShell 에서 `F6_Eclass_agent` 폴더 → `.\sync.cmd` |
+| "로그인이 필요합니다" 가 나올 때 | 대시보드의 **로그인 창 열기** 버튼 (= `C3_Login_agent` 폴더에서 `.\login.cmd`, 4단계). 자동 재로그인을 등록했다면 대부분 저절로 됨 |
 | 끄기 | `유니버스 종료.cmd` |
 | 팀 저장소의 새 버전 받기 | 프로젝트 폴더에서 PowerShell → `git pull` → 대시보드 껐다 켜기 |
 
@@ -225,11 +258,12 @@ cd eclass_agent
 
 | ❌ 금지 | 이유 |
 |---|---|
-| `eclass_agent\state\` 폴더를 복사·공유·업로드 | **내 계정으로 로그인된 상태**(세션 쿠키, 암호화된 비밀번호)가 들어 있음 |
-| `eclass_agent\data\` 를 남에게 전송·클라우드·깃허브 업로드 | 학교 강의자료 — 학교 저작권 안내상 **타인 배포·인터넷 게시 금지** |
-| `git add -f` / `.gitignore` 수정으로 위 폴더를 커밋 | 위와 같음. 두 폴더는 이미 `.gitignore` 로 막혀 있음 |
+| `C3_Login_agent\state\` 폴더를 복사·공유·업로드 | **내 계정으로 로그인된 상태**(세션 쿠키, 암호화된 비밀번호)가 들어 있음 |
+| `F6_Eclass_agent\data\` · `F4_Textbook_agent\data\` 를 남에게 전송·클라우드·깃허브 업로드 | 학교 강의자료 — 학교 저작권 안내상 **타인 배포·인터넷 게시 금지** |
+| 다른 기능 폴더의 `data\` (`C1`·`C2`·`F1`~`F5`) 공유 | 내 일정·프로필·**성적(이수 내역)**·출결·시험 계획 = 개인정보 |
+| `git add -f` / `.gitignore` 수정으로 위 폴더를 커밋 | 위와 같음. 모든 기능 폴더의 `data\`·`state\` 는 이미 `.gitignore` 로 막혀 있음 |
 | 팀원 PC 에서 내 계정으로 `login.cmd` | 계정정보 공유 = 학교 금지 사항 |
-| `config.py` 의 `REQUEST_INTERVAL` 을 줄이기 | e클래스 서버에 부담 → 계정 차단 위험 |
+| `F6_Eclass_agent\eclass\config.py` 의 `REQUEST_INTERVAL` 을 줄이기 | e클래스 서버에 부담 → 계정 차단 위험 |
 
 `git status` 를 쳤을 때 `state/`, `data/`, `.venv/` 가 **보이지 않아야** 정상입니다.
 
@@ -250,16 +284,19 @@ Windows 의 가짜 python 별칭입니다. 이 프로젝트는 `py` 와 `.venv` 
 인터넷(특히 학교 와이파이 방화벽)을 확인하고 다시 `.\setup.cmd`. 프록시 환경이면 휴대폰 핫스팟으로 시도.
 
 **Q. `login.cmd` 를 실행했는데 `Executable doesn't exist … playwright install` 이 나와요**
-브라우저 엔진이 없습니다. `.\setup.cmd` 를 다시 실행하세요. (전역 `python login.py` 로 실행하면 이 오류가 납니다 — **항상 `.cmd` 파일로** 실행하세요.)
+브라우저 엔진이 없습니다. `.\setup.cmd` 를 다시 실행하세요. (`.venv` 가 아닌 전역 `python` 으로 직접 실행하면 이 오류가 납니다 — **항상 `.cmd` 파일로** 실행하세요.)
 
 **Q. 로그인 창이 떴는데 10분 안에 못 끝냈어요 / 창을 실수로 닫았어요**
 `.\login.cmd` 를 다시 실행하면 됩니다.
 
-**Q. `sync.cmd` 가 `세션이 만료` / `exit 2` 로 멈춰요**
-로그인 세션이 끝난 것입니다. `.\login.cmd` 다시 (4단계).
+**Q. `sync.cmd` 가 `로그인 필요` / `exit 2` 로 멈춰요**
+로그인 세션이 끝났고 자동 재로그인도 안 된 것입니다. 대시보드의 **로그인 창 열기** 또는 `C3_Login_agent\login.cmd` (4단계).
+
+**Q. `sync.cmd` 가 `네트워크 오류` / `exit 4` 로 멈춰요**
+인터넷 연결 문제입니다. 예약 실행이면 5·15·45분 뒤 스스로 다시 시도합니다. 직접 돌렸다면 연결을 확인하고 다시.
 
 **Q. `sync.cmd` 가 `이미 실행 중` 이라고 해요**
-대시보드의 동기화 버튼이나 이전 실행이 아직 돌고 있습니다. 끝날 때까지 기다리세요. 정말 아무것도 안 도는데 계속 그러면 `eclass_agent\state\sync.lock` 파일을 지우세요.
+대시보드의 동기화 버튼이나 이전 실행이 아직 돌고 있습니다. 끝날 때까지 기다리세요. 정말 아무것도 안 도는데 계속 그러면 `F6_Eclass_agent\state\sync.lock` 파일을 지우세요.
 
 **Q. `유니버스 열기.cmd` 가 `서버가 90초 안에 응답하지 않았습니다`**
 최소화된 **"Univ-Us Local Server"** 창을 열어 빨간 오류를 보세요.
@@ -268,7 +305,7 @@ Windows 의 가짜 python 별칭입니다. 이 프로젝트는 `py` 와 `.venv` 
 - 그 외 → 창 내용을 캡처해서 팀 채팅에
 
 **Q. 대시보드는 열리는데 캘린더가 비어 있어요**
-`eclass_agent\data\deadlines.json` 이 있는지 확인. 없으면 5단계 `.\sync.cmd`. 있으면 페이지 새로고침(F5).
+`F6_Eclass_agent\data\deadlines.json` 이 있는지 확인. 없으면 5단계 `.\sync.cmd`. 있으면 페이지 새로고침(F5).
 
 **Q. 한글이 `?????` 나 깨진 글자로 보여요**
 `.cmd` 파일들은 한국어 Windows 기준입니다. 시스템 표시 언어가 한국어인지 확인하고, PowerShell 대신 **Windows Terminal**(Microsoft Store, 무료) 로 실행해 보세요.
@@ -285,8 +322,16 @@ Windows 의 가짜 python 별칭입니다. 이 프로젝트는 `py` 와 `.venv` 
 
 | 문서 | 내용 |
 |---|---|
-| [eclass_agent/README.md](eclass_agent/README.md) | 수집기 옵션(`--course`, `--only deadlines`), 결과 파일 구조, 지키는 선 |
-| [eclass_agent/AUTOMATION.md](eclass_agent/AUTOMATION.md) | 작업 스케줄러로 몇 시간마다 자동 수집 |
+| [C1_Calendar_agent/README.md](C1_Calendar_agent/README.md) | 서비스 캘린더 — `/api/events` 합치기 규칙·내 일정·할 일 저장·명령줄(`run.cmd list`) |
+| [C3_Login_agent/README.md](C3_Login_agent/README.md) | 학교 SSO 자동 로그인 — 신뢰 기기·재인증 순서·자격증명 암호화·다른 기능이 빌려 쓰는 법 |
+| [F6_Eclass_agent/README.md](F6_Eclass_agent/README.md) | e클래스 수집기 옵션(`--course`, `--only`), 결과 파일·과제 원장 규칙(신규·마감 변경·내가 체크함), 마감 알림, 지키는 선 |
+| [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) | 작업 스케줄러로 정각 4시간마다 자동 수집 · 놓친 주기 따라잡기 · 네트워크 재시도 |
+| [F1_Bachelor_agent/README.md](F1_Bachelor_agent/README.md) | 학사일정 수집 원천·규칙·명령줄(`sync.cmd`, `run.cmd list`)·매일 06·18시 자동 수집 등록 |
+| [C2_Profile_agent/README.md](C2_Profile_agent/README.md) | 내 프로필 저장 규칙·학과 목록(교육과정검색)·학사정보시스템 가져오기·API |
+| [F2_Graduation_agent/README.md](F2_Graduation_agent/README.md) | 졸업요건 계산 규칙·기본 룰셋과 근거·기이수성적 가져오기·명령줄(`run.cmd status`)·API |
+| [F3_Attendance_agent/README.md](F3_Attendance_agent/README.md) | 출결 계산 규칙(날짜(회) 단위·1/4 한도·경고 단계)·시간표 자동 가져오기·학사일정·e클래스 공지 자동 휴강·명령줄(`run.cmd status`)·API |
+| [F4_Textbook_agent/README.md](F4_Textbook_agent/README.md) | 강의자료 보관 규칙(하드링크·복사)·목록 만드는 규칙(종류·쪽수·텍스트 유무·중복)·직접 추가·원문 열기/내려받기·명령줄(`run.cmd status`)·API |
+| [F5_Test_agent/README.md](F5_Test_agent/README.md) | 시험 공지 추출 규칙(신뢰도·확인 필요)·역산 계산식·상한 초과 조정안·진도·재조정·명령줄(`run.cmd status`)·API |
 | [univ_us_local/README.md](univ_us_local/README.md) | 대시보드 구조·API·개발 모드 |
 | [notice_agent/README.md](notice_agent/README.md) | (선택) 장학 공지 매칭·신청서 초안 도구 |
 | [WE-Meet_서버_플랫폼_검토.md](WE-Meet_서버_플랫폼_검토.md) | 왜 "개인 로컬 서버" 구조인지 (설계 배경) |

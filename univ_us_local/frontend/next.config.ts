@@ -12,7 +12,11 @@ const nextConfig: NextConfig = isExport
   ? { output: "export", trailingSlash: true }
   : {
       async rewrites() {
-        return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
+        return [
+          { source: "/api/:path*", destination: `${backend}/api/:path*` },
+          // 공부 캘린더는 F5_Test_agent/web 의 페이지를 백엔드가 준다 (2026-10-01)
+          { source: "/study-calendar", destination: `${backend}/study-calendar` },
+        ];
       },
     };
 

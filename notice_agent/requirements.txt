@@ -28,7 +28,7 @@ python-dateutil>=2.9,<3
 openai>=2.0,<3
 
 # ── SSO 소스(학사정보시스템 장학 카탈로그, 프로필 자동 채움) 전용 ──
-# 공개 게시판만 쓸 거면 설치하지 않아도 된다. 브라우저는 eclass_agent 의
+# 공개 게시판만 쓸 거면 설치하지 않아도 된다. 브라우저는 C3_Login_agent 의
 # .venv\pw-browsers 를 재사용하므로 별도 다운로드가 필요 없다 (run.cmd 참고).
 playwright>=1.45,<2
 

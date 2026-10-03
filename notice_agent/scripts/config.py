@@ -34,7 +34,7 @@ CACHE_DIR = DATA_DIR / "cache"             # LLM 응답 캐시
 LOG_DIR = DATA_DIR / "logs"
 MANIFEST_FILE = DATA_DIR / "manifest.json"  # 신규 판별용 (id → content_hash)
 PROFILE_FILE = DATA_DIR / "profile.json"    # 사용자 프로필 (assets/profile.example.json 을 복사)
-STATE_FILE = STATE_DIR / "storage_state.json"  # 자체 SSO 세션 (eclass_agent 것을 못 쓸 때만)
+STATE_FILE = STATE_DIR / "storage_state.json"  # 자체 SSO 세션 (C3_Login_agent 것을 못 쓸 때만)
 
 # ── 수집 정책 ──────────────────────────────────────────────
 REQUEST_INTERVAL = 1.5      # 초. 동시성은 항상 1. 줄이지 말 것.
@@ -129,15 +129,15 @@ SOURCES: list[dict] = [
         "name": "학사정보시스템 › 장학 › 전체 장학 안내 (교내·법정·교외 카탈로그)",
         "kind": "hakstd",
         "base": "https://hakstd.jnu.ac.kr",
-        "requires_login": True,     # SSO. eclass_agent 세션/무인 로그인을 재사용한다 (sso_session.py)
+        "requires_login": True,     # SSO. C3_Login_agent 세션/무인 로그인을 재사용한다 (sso_session.py)
         "enabled": True,
     },
 ]
 
 # ── SSO (학사정보시스템) ─────────────────────────────────────
-# eclass_agent 가 이미 신뢰기기 쿠키(2차 인증 면제 ~1년)와 DPAPI 자격증명을 관리한다.
+# C3_Login_agent 가 이미 신뢰기기 쿠키(2차 인증 면제 ~1년)와 DPAPI 자격증명을 관리한다.
 # 그 폴더를 가리키면 로그인 코드를 다시 만들지 않고 세션만 빌려 쓴다.
-ECLASS_AGENT_DIR = Path(os.environ.get("ECLASS_AGENT_DIR") or ROOT.parent / "eclass_agent")
+C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or ROOT.parent / "C3_Login_agent")
 HAKSTD_BASE = "https://hakstd.jnu.ac.kr"
 HAKSTD_DASHBOARD = f"{HAKSTD_BASE}/Home/DashBoard"
 HAKSTD_CATALOG_ALL = f"{HAKSTD_BASE}/web/Jang/Jang012"      # 전체 장학 안내 (지원대상·성적기준 전문)

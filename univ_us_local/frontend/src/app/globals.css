@@ -293,6 +293,11 @@ body {
   .ev-done { opacity: 0.5; }
   .ev-done .fc-ev-title { text-decoration: line-through; }
   .ev-demo { background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0 6px, transparent 6px 12px); }
+  /* 수업 회차(F3 class) — 과목 색을 연하게 깐 블록 + 왼쪽 과목 색 막대, 결석은 빨강 테두리(Frontend-Route 8-6) */
+  .ev-class .fc-ev { align-self: stretch; align-items: flex-start; box-shadow: inset 3px 0 0 var(--ev-course, var(--faint)); padding-left: 8px; }
+  .ev-absent .fc-ev { box-shadow: inset 3px 0 0 var(--ev-course, var(--faint)), inset 0 0 0 2px var(--danger); }
+  /* 확인 필요 시험(F5) — 아직 승인하지 않은 공지 추출분. 점선으로 '확정 아님'을 함께 보여 준다 */
+  .ev-review .fc-ev { outline: 1px dashed currentColor; outline-offset: -2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

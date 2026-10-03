@@ -1,0 +1,76 @@
+{
+  "id": "jnu:common:ge:2023",
+  "kind": "common",
+  "university": "전남대학교",
+  "appliesFrom": 2023,
+  "appliesTo": null,
+  "checks": [
+    {
+      "key": "ge_creative",
+      "label": "역량교양 창의",
+      "minCredits": 3,
+      "field": "geArea",
+      "match": ["창의"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 역량교양 3개 영역에서 각 3학점 이상"
+    },
+    {
+      "key": "ge_emotion",
+      "label": "역량교양 감성",
+      "minCredits": 3,
+      "field": "geArea",
+      "match": ["감성"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 역량교양 3개 영역에서 각 3학점 이상"
+    },
+    {
+      "key": "ge_community",
+      "label": "역량교양 공동체",
+      "minCredits": 3,
+      "field": "geArea",
+      "match": ["공동체"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 역량교양 3개 영역에서 각 3학점 이상"
+    },
+    {
+      "key": "ge_basic_sw",
+      "label": "기초교양 기초SW",
+      "minCredits": 3,
+      "field": "geArea",
+      "match": ["기초SW", "기초 SW", "기초소프트웨어"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 기초교양 기초SW 3학점 이상"
+    },
+    {
+      "key": "ge_expression",
+      "label": "균형교양 표현과소통",
+      "minCredits": 3,
+      "field": "geArea",
+      "match": ["표현과소통", "표현과 소통"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 균형교양 표현과소통 3학점 이상"
+    },
+    {
+      "key": "ge_career",
+      "label": "균형교양 진로와창업",
+      "minCredits": 2,
+      "field": "geArea",
+      "match": ["진로와창업", "진로와 창업"],
+      "evidence": "교양 교육과정 이수 및 편성 — 2023학년도 이후 입학자: 균형교양 진로와창업 2학점 이상"
+    },
+    {
+      "key": "ge_humanities",
+      "label": "인문학 교양",
+      "minCredits": 8,
+      "field": "geArea",
+      "match": ["창의", "감성", "공동체", "인간과사회", "인간과 사회", "표현과소통", "표현과 소통"],
+      "approximate": true,
+      "evidence": "모든 학생은 인문학 관련 교양교과목 8학점 이상 — 인정 영역: 역량교양 창의·감성·공동체, 균형교양 인간과사회·표현과소통. 이 영역 과목을 모두 인문학으로 세므로 채워도 '확인 필요'로 둔다"
+    }
+  ],
+  "notes": [
+    "2023학년도 이후 입학자의 교양 이수 인정 범위는 30~45학점이다 (교양 교육과정 이수 및 편성)",
+    "교양 영역 조건은 학사정보시스템 기이수성적의 '교양영역' 칸으로 센다 — 그 칸이 비어 있으면 '확인 필요'로 표시한다"
+  ],
+  "source": {
+    "docName": "전남대 교육혁신본부 교양 교육과정 이수 및 편성",
+    "url": "https://ile.jnu.ac.kr/ko/liberal/organize",
+    "checkedAt": "2026-09-28"
+  },
+  "version": 1
+}

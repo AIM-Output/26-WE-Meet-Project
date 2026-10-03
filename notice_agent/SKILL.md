@@ -38,7 +38,7 @@ Univ-Us 저장소에서는 `notice_ai-agent` 브랜치(`src/notice/`)에 해당�
 ```powershell
 cd <프로젝트 폴더>\notice_agent
 .\setup.cmd                              # .venv + 패키지 (+ .env 복사)
-.\run.cmd profile_from_hakstd            # 프로필 자동 채움 (SSO, eclass_agent 세션 재사용) — 또는 assets\profile.example.json 을 data\profile.json 으로 복사
+.\run.cmd profile_from_hakstd            # 프로필 자동 채움 (SSO, C3_Login_agent 세션 재사용) — 또는 assets\profile.example.json 을 data\profile.json 으로 복사
 notepad data\profile.json                # 소득구간·관심사·초안용 정보(draft_context) 채우기
 notepad .env                             # LLM_MAIN_BASE_URL / API_KEY / MODEL (없으면 규칙 추출만 → 전부 '확인 필요')
 .\run.cmd pipeline --pages 2             # 처음 한 번: 과거 글까지
@@ -53,7 +53,7 @@ notepad .env                             # LLM_MAIN_BASE_URL / API_KEY / MODEL (
 - 소스는 `scripts/config.py: SOURCES` (key · kind · 게시판 파라미터 · 키워드 필터 · 로그인 필요 여부). 구조가 같은 게시판은 같은 `kind` 를 쓴다 — 셀렉터는 `references/site-structure.md`.
 - 신규 판별: `data/manifest.json` 의 `id → content_hash`. 제목이 그대로면 본문을 다시 받지 않는다(요청 절약). 바뀌면 `UPD`.
 - 첨부: PDF 는 텍스트를 뽑아 추출 입력에 붙인다. HWP/HWPX 는 못 읽는다 → `notes` 에 남기고 '확인 필요' 근거가 된다. 본문이 이미지뿐이면 `body_is_image_only`.
-- SSO 소스(`hakstd_catalog`)는 `scripts/sso_session.py` 가 **eclass_agent 의 세션·무인 로그인을 빌려 쓴다**. 비밀번호는 이 스킬 코드가 다루지 않는다. 세션이 없으면 `--interactive` 로 창을 띄워 직접 로그인.
+- SSO 소스(`hakstd_catalog`)는 `scripts/sso_session.py` 가 **C3_Login_agent 의 세션·무인 로그인을 빌려 쓴다**. 비밀번호는 이 스킬 코드가 다루지 않는다. 세션이 없으면 `--interactive` 로 창을 띄워 직접 로그인.
 - 요청 간격 1.5초·동시성 1 (`REQUEST_INTERVAL` 줄이지 말 것).
 
 ### 4.2 추출 `scripts/extract.py` (+ `rules_extract.py`, `assets/prompts/extract_requirements.md`)
@@ -94,15 +94,15 @@ notepad .env                             # LLM_MAIN_BASE_URL / API_KEY / MODEL (
 | 개인정보 최소 | 프로필에 식별 정보 없음, LLM 프롬프트에 이름·학번 없음, `data/`·`state/` gitignore, 학사시스템은 조회만 |
 | 서버 부담 | 요청 간격 1.5초, 목록 1~2페이지, 첨부 20MB 제한 |
 | 모델 비종속 | `LLM_MAIN_*` 슬롯만 사용(OpenAI 호환). 모델명이 코드에 없다 |
-| 인증 | SSO 비밀번호는 eclass_agent(DPAPI)만 다룬다. 이 스킬은 세션 파일만 빌린다 |
+| 인증 | SSO 비밀번호는 C3_Login_agent(DPAPI)만 다룬다. 이 스킬은 세션 파일만 빌린다 |
 
 ## 7. 실패 모드와 대처
 
 | 증상 | 원인 / 대처 |
 |---|---|
 | `프로필 파일이 없습니다` | `profile_from_hakstd` 또는 예시 복사. 종료 코드 2 |
-| `학사정보시스템 로그인 실패` | SSO 세션 만료 + 자격증명 없음. eclass_agent `login.cmd`(수동) / `setup-creds.cmd`(무인) 또는 `collect --source hakstd_catalog --interactive` |
-| 2차 인증 패널이 뜸 | 신뢰기기 쿠키(~1년) 만료. eclass_agent `login.cmd` 한 번 수동 실행 |
+| `학사정보시스템 로그인 실패` | SSO 세션 만료 + 자격증명 없음. C3_Login_agent `login.cmd`(수동) / `setup-creds.cmd`(무인) 또는 `collect --source hakstd_catalog --interactive` |
+| 2차 인증 패널이 뜸 | 신뢰기기 쿠키(~1년) 만료. C3_Login_agent `login.cmd` 한 번 수동 실행 |
 | `CERTIFICATE_VERIFY_FAILED` | 중간 인증서 없는 서버(international). `truststore` 설치 여부 확인. `verify=False` 금지 |
 | 목록 0건 / 파싱 오류 | 사이트 개편. `references/site-structure.md` 의 셀렉터와 대조 후 `scripts/sources/<kind>.py` 수정. K2Web 은 RSS 대안 |
 | 전부 `needs_review` | LLM 미설정(규칙 추출 상한 0.6) — 의도된 동작. `.env` 채우고 `extract --all` |

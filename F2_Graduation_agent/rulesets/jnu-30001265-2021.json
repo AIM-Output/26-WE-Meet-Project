@@ -1,0 +1,103 @@
+{
+  "id": "jnu:30001265:2021:single",
+  "kind": "department",
+  "university": "전남대학교",
+  "collegeCode": "30001229",
+  "college": "AI융합대학",
+  "deptCode": "30001265",
+  "department": "인공지능학부",
+  "majorCode": null,
+  "major": null,
+  "admissionYear": 2021,
+  "admissionYearTo": 2022,
+  "track": "single",
+  "totalCredits": 140,
+  "totalEvidence": "인공지능학부 홈페이지 졸업안내 '졸업소요학점' 표 — 졸업학점 140 (적용년도 2021-2022)",
+  "minGpa": null,
+  "minGpaEvidence": "학과 졸업안내·전남대 교육과정 안내에 최저 졸업 평점이 없다 — 교학규정에서 확인되면 여기에 넣는다",
+  "areas": [
+    {
+      "key": "ge_required",
+      "label": "교양필수",
+      "minCredits": 18,
+      "overflowTo": "ge_elective",
+      "coursesFrom": "교필",
+      "evidence": "졸업소요학점 표 교양필수 18 · 과목은 교육과정검색 '교필' (6과목 18학점)"
+    },
+    {
+      "key": "ge_elective",
+      "label": "교양선택",
+      "minCredits": 18,
+      "overflowTo": "free",
+      "evidence": "졸업소요학점 표 교양선택 18 (교양 소계 36)"
+    },
+    {
+      "key": "major_required",
+      "label": "전공필수",
+      "minCredits": 15,
+      "overflowTo": "major_elective",
+      "coursesFrom": "전필",
+      "evidence": "졸업소요학점 표 전공기본과정 전공필수 15 · 과목은 교육과정검색 '전필' (학부 4 + 전공 캡스톤 1 = 15학점)"
+    },
+    {
+      "key": "major_elective",
+      "label": "전공선택",
+      "minCredits": 33,
+      "overflowTo": "free",
+      "evidence": "졸업소요학점 표 전공기본과정 전공선택 33 (전공기본과정 소계 48)"
+    },
+    {
+      "key": "free",
+      "label": "일반선택",
+      "minCredits": 0,
+      "evidence": "졸업학점에서 교양·전공을 뺀 나머지. 표의 일반선택 35 는 전공심화과정 21학점을 들은 경우의 값이라 최소 기준으로 두지 않는다"
+    }
+  ],
+  "checks": [],
+  "certifications": [
+    {
+      "key": "thesis",
+      "label": "졸업논문",
+      "detail": "전공프로젝트를 수행한 학생은 그 프로젝트 논문을 작성해 지도교수 확인을 받은 뒤 합격·불합격을 판정받는다",
+      "required": true,
+      "evidence": "인공지능학부 졸업안내 '졸업자격인정기준' 전공영역 (전체 입학년도)"
+    },
+    {
+      "key": "foreign_language",
+      "label": "외국어 영역",
+      "detail": "하나 이상: ① 회화시간이 포함된 영어 교과목 이수 ② 생활영어1 또는 생활영어2 이수 ③ TOEIC 600 이상 (다른 공인시험은 TOEIC 환산)",
+      "required": true,
+      "hintCourses": ["생활영어1", "생활영어2"],
+      "evidence": "인공지능학부 졸업안내 '졸업자격인정기준' 외국어영역 (2021~ 입학)"
+    }
+  ],
+  "categoryMap": {
+    "교필": "ge_required",
+    "교양필수": "ge_required",
+    "교선": "ge_elective",
+    "교양선택": "ge_elective",
+    "교양": "ge_elective",
+    "전필": "major_required",
+    "전공필수": "major_required",
+    "전선": "major_elective",
+    "전공선택": "major_elective",
+    "일선": "free",
+    "일반선택": "free"
+  },
+  "notes": [
+    "전공심화과정(전공기본과정 48학점 + 21학점)은 선택이다 — 이수하면 졸업증서에 '전공심화과정 이수'가 표기된다 (전남대 교육과정 안내)",
+    "복수전공은 전공기본과정 학점을 모두 취득하고 주전공과 최대 9학점 중복 인정, 부전공은 21학점 이상·최대 6학점 중복 인정 (전남대 교육과정 안내) — 1차는 단일전공만 계산한다",
+    "장기수료자(수료 3년 이상)는 취업·창업 증빙으로 졸업자격인정을 받을 수 있다 (학과 졸업안내)"
+  ],
+  "source": {
+    "docName": "인공지능학부 홈페이지 졸업안내 (졸업소요학점·졸업자격인정기준)",
+    "url": "https://aisw.jnu.ac.kr/aisw/515/subview.do",
+    "related": [
+      {"docName": "전남대 교육과정 안내 (전공기본·심화·복수·부전공)", "url": "https://www.jnu.ac.kr/MainUniLife/Curriculum/Curriculum"},
+      {"docName": "교육과정검색 (과목 목록)", "url": "https://www.jnu.ac.kr/WebApp/web/DBM/ENG/CurriCulumn/CurriCulumnSM.aspx"}
+    ],
+    "checkedAt": "2026-09-28"
+  },
+  "version": 1,
+  "verified": true
+}

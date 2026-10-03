@@ -1,0 +1,19 @@
+# F1_Bachelor_agent — 학사 일정 자동 등록·알림 (수집기 전용 .venv)
+#
+#   .\setup.cmd        (또는 python -m venv .venv && .venv\Scripts\python -m pip install -r requirements.txt)
+#
+# 버전 표기는 notice_agent/requirements.txt 와 같은 세대로 맞춘다.
+# 대시보드 백엔드(univ_us_local)는 이 목록이 필요 없다 — store·service·api 는 표준 라이브러리 + fastapi 만 쓴다.
+
+# ── 수집 (공개 페이지라 HTTP 만으로 충분, 로그인 없음) ─────
+requests>=2.32,<3
+beautifulsoup4>=4.13,<5
+lxml>=6.0,<7
+# 일부 학교 서버는 중간 인증서를 보내지 않는다 — 검증을 끄지 않고 OS 신뢰 저장소를 쓴다.
+truststore>=0.9,<1
+
+# ── 본문에 날짜가 없고 PDF 공고문만 있는 공지 ─────────────
+pypdf>=6.0,<7
+
+# ── 테스트 ───────────────────────────────────────────────
+pytest>=8.4,<10

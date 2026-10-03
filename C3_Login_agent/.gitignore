@@ -1,0 +1,7 @@
+# 절대 공유 금지: state/ = 내 계정으로 로그인된 상태(세션 쿠키·신뢰 기기) + 암호화된 자격증명
+state/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

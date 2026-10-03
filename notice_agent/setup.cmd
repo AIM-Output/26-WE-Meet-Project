@@ -1,5 +1,5 @@
 @echo off
-REM notice_agent 최초 설치: .venv 생성 + 패키지 설치. (Playwright 브라우저는 eclass_agent 것을 재사용하므로 내려받지 않음)
+REM notice_agent 최초 설치: .venv 생성 + 패키지 설치. (Playwright 브라우저는 C3_Login_agent 것을 재사용하므로 내려받지 않음)
 cd /d "%~dp0"
 set PYTHONUTF8=1
 chcp 65001 >nul

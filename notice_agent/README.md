@@ -13,7 +13,7 @@ cd <프로젝트 폴더>\notice_agent
 ```
 
 - Python 3.12 (`py -3.12`) 로 `.venv` 를 만들고 패키지를 설치한다. `.env` 가 없으면 `.env.example` 을 복사한다.
-- 학사정보시스템(SSO) 소스와 프로필 자동 채움은 Playwright 를 쓰는데, 브라우저는 **eclass_agent 의 `.venv\pw-browsers`** 를 그대로 쓴다 (따로 내려받지 않음). eclass_agent 가 없으면 `.venv\Scripts\playwright install chromium` 을 `PLAYWRIGHT_BROWSERS_PATH=<이 폴더>\.venv\pw-browsers` 로 실행할 것 (사용자 프로필 폴더에 두면 이 PC 에서는 안 보인다).
+- 학사정보시스템(SSO) 소스와 프로필 자동 채움은 Playwright 를 쓰는데, 브라우저는 **C3_Login_agent 의 `.venv\pw-browsers`** 를 그대로 쓴다 (따로 내려받지 않음). C3_Login_agent 가 없으면 `.venv\Scripts\playwright install chromium` 을 `PLAYWRIGHT_BROWSERS_PATH=<이 폴더>\.venv\pw-browsers` 로 실행할 것 (사용자 프로필 폴더에 두면 이 PC 에서는 안 보인다).
 
 ## 사용
 
@@ -69,4 +69,4 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove
 
 ## 지키는 선
 
-요청 간격 1.5초 · 학사시스템은 조회만(신청 버튼 안 누름) · 비밀번호는 eclass_agent(DPAPI)만 · `data/` `state/` 공유 금지 · 제출은 사람이.
+요청 간격 1.5초 · 학사시스템은 조회만(신청 버튼 안 누름) · 비밀번호는 C3_Login_agent(DPAPI)만 · `data/` `state/` 공유 금지 · 제출은 사람이.

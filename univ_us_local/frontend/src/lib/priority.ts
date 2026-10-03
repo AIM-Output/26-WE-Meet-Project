@@ -1,8 +1,8 @@
 // F7 과제 우선순위 — 요구사항정의서 F7 5절 계산 규칙.
 //   h = 마감 − 지금 (시간), w = 예상 소요 × 안전계수 1.5, s = h − w
 //   놓친 마감: h < 0 · 지금 해야 함: s ≤ 0 또는 h ≤ 24 · 이번 주: s ≤ 7일 · 나중에: 그 외
-// ⚠ 원래는 백엔드 GET /api/assignments 가 계산해 준다(Frontend-Route 12-4). API 가 생기기 전까지
-//    같은 규칙을 여기서 계산하고, 사용자가 고친 소요시간·'내가 체크함'은 브라우저에 임시 저장한다.
+// 사용자가 고친 소요시간·'내가 체크함'은 F6 과제 원장(서버)에 있고 /api/events 의 deadline 에 실려 온다.
+// ⚠ 순위 계산은 F7 을 붙일 때 백엔드 GET /api/assignments?sort=priority 로 옮긴다(Frontend-Route 12-4). 그때까지 여기서.
 
 import type { CalEvent, DeadlineProps } from "./types";
 import { daysUntil, fmtHours, parseLocal } from "./dates";
@@ -57,19 +57,14 @@ function reasonOf(h: number, w: number, s: number, est: number): string {
   return `마감 ${Math.round(h / 24)}일 전 · ${fmtHours(est)} 필요`;
 }
 
-export function buildAssignments(
-  events: CalEvent[],
-  estimates: Record<string, number>,
-  userDone: Record<string, boolean>,
-  now = new Date(),
-): Assignment[] {
+export function buildAssignments(events: CalEvent[], now = new Date()): Assignment[] {
   const out: Assignment[] = [];
   for (const ev of events) {
     if (ev.extendedProps.kind !== "deadline") continue;
     const p = ev.extendedProps;
     const due = parseLocal(p.due);
     const kindLabel = kindOf(p, ev.title);
-    const est = Math.max(0.25, estimates[ev.id] ?? DEFAULT_HOURS[kindLabel]);
+    const est = Math.max(0.25, p.estimateHours ?? DEFAULT_HOURS[kindLabel]);
     const h = (due.getTime() - now.getTime()) / 3_600_000;
     const w = est * SAFETY_FACTOR;
     const s = h - w;
@@ -82,9 +77,9 @@ export function buildAssignments(
       due,
       kindLabel,
       submitted: p.submitted,
-      userDone: !p.submitted && !!userDone[ev.id],
+      userDone: !p.submitted && !!p.userDone,
       estimate: est,
-      estimateSource: estimates[ev.id] !== undefined ? "user" : "default",
+      estimateSource: p.estimateHours !== null && p.estimateHours !== undefined ? "user" : "default",
       remainingHours: h,
       neededHours: w,
       slackHours: s,

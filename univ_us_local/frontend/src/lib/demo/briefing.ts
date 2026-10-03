@@ -2,7 +2,7 @@
 // 서버가 생기기 전까지 오늘 것은 실제 일정·마감으로 같은 모양을 조립하고(composeBriefing), 지난 것은 예시를 쓴다.
 
 import type { CalEvent } from "../types";
-import { addDays, fmtDue, fmtTime, isSameDay, parseLocal, startOfDay, toDateStr } from "../dates";
+import { addDays, daysUntil, fmtDeadline, fmtTime, isSameDay, parseLocal, startOfDay, toDateStr } from "../dates";
 import { buildAssignments, isOpen, sortByPriority } from "../priority";
 
 export interface BriefingLine {
@@ -33,16 +33,27 @@ export function composeBriefing(events: CalEvent[], now = new Date()): Briefing 
     }
     return isSameDay(s, today);
   };
+  const acHref = (e: CalEvent) => `/academic?event=${encodeURIComponent(e.extendedProps.kind === "academic" ? e.extendedProps.refId : e.id)}`;
   const mine = events
-    .filter((e) => e.extendedProps.kind === "user" && on(e))
+    .filter((e) => (e.extendedProps.kind === "user" || e.extendedProps.kind === "academic") && on(e))
     .sort((a, b) => a.start.localeCompare(b.start))
-    .map((e) => ({ text: `${e.allDay ? "종일" : fmtTime(parseLocal(e.start))} ${e.title}`, href: `/?event=${encodeURIComponent(e.id)}` }));
+    .map((e) => ({
+      text: `${e.allDay ? "종일" : fmtTime(parseLocal(e.start))} ${e.extendedProps.kind === "academic" ? "학사 · " : ""}${e.title}`,
+      href: e.extendedProps.kind === "academic" ? acHref(e) : `/?event=${encodeURIComponent(e.id)}`,
+    }));
+  // 학사 일정 D-3 이내 — 알림이 켜진 것만 (F1-R35 '알림 항목이 브리핑에 그대로 실린다'; 수업일수·휴업일 같은 건 빠진다)
+  const academicSoon = events
+    .filter((e) => e.extendedProps.kind === "academic" && e.extendedProps.reminders.length > 0)
+    .map((e) => ({ e, d: daysUntil(parseLocal(e.start), now) }))
+    .filter(({ d }) => d >= 1 && d <= 3)
+    .sort((a, b) => a.d - b.d)
+    .map(({ e, d }) => ({ text: `D-${d} ${e.title}`, href: acHref(e) }));
 
-  const list = buildAssignments(events, {}, {}, now).filter(isOpen);
+  const list = buildAssignments(events, now).filter(isOpen);
   const soon = list
     .filter((a) => a.due >= now && a.due < addDays(tomorrow, 3))
     .sort((a, b) => a.due.getTime() - b.due.getTime())
-    .map((a) => ({ text: `${fmtDue(a.due, now)} ${a.title}`, href: `/?event=${encodeURIComponent(a.id)}` }));
+    .map((a) => ({ text: `${fmtDeadline(a.due, now)} ${a.title}`, href: `/?event=${encodeURIComponent(a.id)}` }));
   const top = sortByPriority(list.filter((a) => a.group !== "overdue"))
     .slice(0, 3)
     .map((a, i) => ({ text: `${i + 1}) ${a.title}`, href: "/assignments?sort=priority" }));
@@ -55,7 +66,7 @@ export function composeBriefing(events: CalEvent[], now = new Date()): Briefing 
     headline: null,
     classes: [],
     events: mine,
-    deadlines: soon,
+    deadlines: [...soon, ...academicSoon],
     top,
   };
 }

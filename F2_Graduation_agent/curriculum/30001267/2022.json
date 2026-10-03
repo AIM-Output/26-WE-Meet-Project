@@ -1,0 +1,401 @@
+{
+ "code": "30001267",
+ "collegeCode": "30001229",
+ "year": 2022,
+ "fetchedAt": "2026-09-28T21:37:51",
+ "source": "https://www.jnu.ac.kr/WebApp/web/DBM/ENG/CurriCulumn/CurriCulumnSM.aspx?aYear=2022&aLanguage=1&aColl=30001229&aDept=30001267&aPageNum=1",
+ "courses": [
+  {
+   "grade": 1,
+   "term": "1",
+   "category": "전선",
+   "name": "공학설계입문",
+   "code": "ENV1005",
+   "credits": 3.0
+  },
+  {
+   "grade": 1,
+   "term": "2",
+   "category": "전선",
+   "name": "C프로그래밍및실습",
+   "code": "CIS9017",
+   "credits": 3.0
+  },
+  {
+   "grade": 1,
+   "term": "2",
+   "category": "전선",
+   "name": "논리회로",
+   "code": "ECE2010",
+   "credits": 3.0
+  },
+  {
+   "grade": 1,
+   "term": "2",
+   "category": "전선",
+   "name": "공학수학1",
+   "code": "ENG1003",
+   "credits": 3.0
+  },
+  {
+   "grade": 1,
+   "term": "2",
+   "category": "전선",
+   "name": "이산수학",
+   "code": "MTH2010",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전선",
+   "name": "컴퓨터구조",
+   "code": "CIS2004",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전선",
+   "name": "리눅스시스템",
+   "code": "CIS2010",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전필",
+   "name": "자료구조",
+   "code": "CIS3001",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전선",
+   "name": "선형대수학",
+   "code": "ECE2011",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전선",
+   "name": "확률및통계",
+   "code": "ENV1001",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전선",
+   "name": "웹프로그래밍및실습",
+   "code": "STT3015",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "1",
+   "category": "전필",
+   "name": "JAVA프로그래밍및실습",
+   "code": "STT3019",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전필",
+   "name": "인공지능",
+   "code": "CIS3003",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전필",
+   "name": "알고리즘",
+   "code": "CIS3016",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전선",
+   "name": "시스템프로그래밍",
+   "code": "ECE3043",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전선",
+   "name": "소프트웨어시스템설계",
+   "code": "SAI0001",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전선",
+   "name": "오픈소스소프트웨어",
+   "code": "SAI0003",
+   "credits": 3.0
+  },
+  {
+   "grade": 2,
+   "term": "2",
+   "category": "전선",
+   "name": "C++프로그래밍및실습",
+   "code": "STT2008",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능설계프로젝트",
+   "code": "AIC0012",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "운영체제",
+   "code": "CIS2001",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "모바일응용소프트웨어",
+   "code": "CIS4022",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "기계학습",
+   "code": "CPE9020",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "데이터통신",
+   "code": "ECE3007",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "IoT시스템",
+   "code": "SAI0004",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능시스템",
+   "code": "SAI0028",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "애플리케이션보안",
+   "code": "SAI0033",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "딥러닝",
+   "code": "AIC0023",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이타베이스시스템",
+   "code": "CIS3009",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "컴퓨터네트워크",
+   "code": "ECE3026",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이터마이닝",
+   "code": "IDE3035",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이터과학",
+   "code": "SAI0002",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "영상이해",
+   "code": "SAI0025",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "산학협력프로젝트(캡스톤디자인)",
+   "code": "SAI0029",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "인공지능소프트웨어개발및운영파이프라인",
+   "code": "SAI0049",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "컴파일러",
+   "code": "CIS4004",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "신호처리",
+   "code": "MAE2019",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "컴퓨터비전",
+   "code": "MPE0051",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전필",
+   "name": "인공지능캡스톤디자인",
+   "code": "SAI0008",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "로봇프로그래밍",
+   "code": "SAI0010",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "자연어처리",
+   "code": "SAI0026",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "정보보호법및관리체계",
+   "code": "SAI0041",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "생체신호계측기술",
+   "code": "AIC0022",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "병렬프로그래밍",
+   "code": "SAI0005",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "지식표현과추론",
+   "code": "SAI0006",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "확률그래프모델",
+   "code": "SAI0015",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "검색엔진",
+   "code": "SAI0016",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "지능로봇응용",
+   "code": "SAI0017",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "강화학습",
+   "code": "SAI0018",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "음성인식",
+   "code": "SAI0027",
+   "credits": 3.0
+  }
+ ]
+}

@@ -35,6 +35,7 @@ export function EventForm({
   categories,
   onSave,
   onClose,
+  heading,
 }: {
   open: boolean;
   mode: "create" | "edit";
@@ -42,9 +43,11 @@ export function EventForm({
   categories: Record<CategoryKey, CategoryInfo>;
   onSave: (input: UserEventInput) => Promise<void>;
   onClose: () => void;
+  /** 모달 제목을 바꿀 때 — 학사 일정 '내 일정에 넣기' */
+  heading?: string;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title={mode === "create" ? (draft.isTodo ? "새 할 일" : "새 일정") : draft.isTodo ? "할 일 수정" : "일정 수정"}>
+    <Modal open={open} onClose={onClose} title={heading ?? (mode === "create" ? (draft.isTodo ? "새 할 일" : "새 일정") : draft.isTodo ? "할 일 수정" : "일정 수정")}>
       {/* key 로 초안이 바뀔 때마다 입력값을 새로 잡는다 */}
       <FormBody key={`${mode}-${draft.start.getTime()}-${draft.isTodo}`} mode={mode} draft={draft} categories={categories} onSave={onSave} onClose={onClose} />
     </Modal>

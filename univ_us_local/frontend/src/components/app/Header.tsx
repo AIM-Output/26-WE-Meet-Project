@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Bell,
@@ -9,19 +10,22 @@ import {
   ChevronRight,
   Gift,
   Landmark,
+  Megaphone,
   Plus,
   RefreshCw,
   Settings,
   Sun,
+  Target,
   TriangleAlert,
   UserCheck,
   WifiOff,
 } from "lucide-react";
 import { Popover } from "@/components/ui/Layout";
 import { useAppData } from "./AppData";
+import { EclassFailureStrip } from "@/components/assignments/EclassSyncBanner";
 import { navigateQuery } from "@/lib/useQueryState";
-import { useStored } from "@/lib/storage";
-import { demoNotifications, type AppNotification } from "@/lib/demo";
+import { api } from "@/lib/api";
+import type { AppNotification, NotificationList } from "@/lib/types";
 import { SETTINGS } from "@/lib/features";
 import { fmtRelative, parseLocal } from "@/lib/dates";
 
@@ -68,8 +72,11 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <span className={`size-2 rounded-full ${status.sync.exit_code === 0 || status.sync.exit_code === null ? "bg-ok" : "bg-warn"}`} aria-hidden />
-                    수집 {fmtRelative(status.updated_at)}
+                    <span
+                      className={`size-2 rounded-full ${status.eclass?.warn ? "bg-danger" : status.sync.exit_code === 0 || status.sync.exit_code === null || status.sync.exit_code === 3 ? "bg-ok" : "bg-warn"}`}
+                      aria-hidden
+                    />
+                    수집 {fmtRelative(status.eclass?.lastOkAt ?? status.updated_at)}
                   </>
                 )}
               </Link>
@@ -88,6 +95,7 @@ export default function Header() {
             백엔드에 연결할 수 없습니다. <code className="rounded bg-white/15 px-1">run.cmd</code> 가 실행 중인지 확인하세요.
           </div>
         )}
+        {!error && <EclassFailureStrip />}
       </header>
 
       {/* 폰: 일정 추가는 오른쪽 아래 떠 있는 버튼(3-2) */}
@@ -112,39 +120,124 @@ const KIND_ICON: Record<AppNotification["kind"], React.ReactNode> = {
   briefing: <Sun aria-hidden />,
   opportunity: <Gift aria-hidden />,
   attendance: <UserCheck aria-hidden />,
+  exam: <Target aria-hidden />,
+  eclass: <Megaphone aria-hidden />,
+  system: <TriangleAlert aria-hidden />,
 };
+
+/** 같은 시각에 알림이 많으면 한 줄로 묶는다 (F1 9절 '같은 시각에 알림 20건') */
+type Group = { key: string; items: AppNotification[] };
+function groupByTime(list: AppNotification[], over: number): Group[] {
+  const out: Group[] = [];
+  for (const n of list) {
+    const k = `${n.at.slice(0, 16)}|${n.missed}`;
+    const g = out.find((x) => x.key === k);
+    if (g) g.items.push(n);
+    else out.push({ key: k, items: [n] });
+  }
+  return out.flatMap((g) => (g.items.length > over ? [g] : g.items.map((n) => ({ key: n.id, items: [n] }))));
+}
 
 function NotificationButton() {
   const router = useRouter();
-  const [readMap, setReadMap] = useStored<Record<string, boolean>>("notifications-read", {});
-  const items = demoNotifications.map((n) => ({ ...n, read: n.read || !!readMap[n.id] }));
-  const unread = items.filter((n) => !n.read).length;
-  const missed = items.filter((n) => n.missed);
-  const today = items.filter((n) => !n.missed);
+  const { status } = useAppData();
+  const [data, setData] = useState<NotificationList | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const markAll = () => setReadMap(Object.fromEntries(items.map((n) => [n.id, true])));
+  const load = useCallback(async () => {
+    try {
+      setData(await api.notifications());
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
+  }, []);
 
-  const Row = ({ n, close }: { n: (typeof items)[number]; close: () => void }) => (
+  // 처음 + 1분마다 + 학사·출결 데이터가 바뀔 때 (알림 배달은 서버가 목록을 부를 때 계산한다 — 놓친 알림 포함)
+  // 출결 경고(F3)는 상태가 올라가는 순간 서버가 알림 표에 넣는다 → 출결 updatedAt 이 바뀌면 다시 받는다
+  // 과제 마감 알림(F6)은 서버가 상태 확인(1분) 때 알림 표에 넣는다 → 과제 원장·마지막 실행이 바뀌면 다시 받는다
+  const academicStamp = status?.academic?.updatedAt;
+  const attendanceStamp = status?.attendance?.updatedAt;
+  const eclassStamp = `${status?.eclass?.updatedAt ?? ""}|${status?.sync.finished_at ?? ""}|${status?.eclass?.feed?.total ?? ""}`;
+  useEffect(() => {
+    void Promise.resolve().then(load);
+    const id = window.setInterval(load, 60_000);
+    return () => window.clearInterval(id);
+  }, [load, academicStamp, attendanceStamp, eclassStamp]);
+
+  const items = data?.items ?? [];
+  const unread = data?.unread ?? 0;
+  const over = data?.bundleOver ?? 3;
+  const missed = groupByTime(items.filter((n) => n.missed && !n.read), over);
+  const recent = groupByTime(items.filter((n) => !(n.missed && !n.read)), over);
+
+  const markRead = (ids: string[]) => {
+    setData((d) => (d ? { ...d, items: d.items.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)), unread: Math.max(0, d.unread - ids.filter((id) => d.items.find((n) => n.id === id && !n.read)).length) } : d));
+    void Promise.all(ids.map((id) => api.readNotification(id))).catch(() => load());
+  };
+  const markAll = () => {
+    setData((d) => (d ? { ...d, items: d.items.map((n) => ({ ...n, read: true })), unread: 0 } : d));
+    void api.readAllNotifications().catch(() => load());
+  };
+
+  const Row = ({ n, close }: { n: AppNotification; close: () => void }) => (
     <li>
       <button
         type="button"
         className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
         onClick={() => {
-          setReadMap((m) => ({ ...m, [n.id]: true }));
+          if (!n.read) markRead([n.id]);
           close();
-          router.push(n.href);
+          if (n.href) router.push(n.href);
         }}
       >
         <span className={`mt-0.5 grid size-7 flex-none place-items-center rounded-lg [&>svg]:size-3.5 ${n.read ? "bg-surface-3 text-faint" : "bg-primary-soft text-primary"}`}>
-          {KIND_ICON[n.kind]}
+          {KIND_ICON[n.kind] ?? <Bell aria-hidden />}
         </span>
         <span className="min-w-0 flex-1">
           <span className={`block text-[14px] leading-snug ${n.read ? "text-muted" : "font-semibold text-text"}`}>{n.title}</span>
+          {n.body && <span className="block truncate text-[12px] text-muted">{n.body}</span>}
           <span className="num text-[12px] text-faint">{fmtRelative(parseLocal(n.at))}</span>
         </span>
         {!n.read && <span className="mt-2 size-2 flex-none rounded-full bg-accent" aria-label="안 읽음" />}
       </button>
     </li>
+  );
+
+  const GroupRows = ({ groups, close }: { groups: Group[]; close: () => void }) => (
+    <ul>
+      {groups.map((g) =>
+        g.items.length === 1 ? (
+          <Row key={g.key} n={g.items[0]} close={close} />
+        ) : (
+          <li key={g.key}>
+            <button
+              type="button"
+              aria-expanded={!!openGroups[g.key]}
+              className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
+              onClick={() => setOpenGroups((m) => ({ ...m, [g.key]: !m[g.key] }))}
+            >
+              <span className="mt-0.5 grid size-7 flex-none place-items-center rounded-lg bg-primary-soft text-primary [&>svg]:size-3.5">
+                <Landmark aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold leading-snug">학사 일정 {g.items.length}건</span>
+                <span className="block truncate text-[12px] text-muted">{g.items[0].title} 외</span>
+              </span>
+              <ChevronRight className={`mt-1.5 size-4 flex-none text-faint transition-transform ${openGroups[g.key] ? "rotate-90" : ""}`} aria-hidden />
+            </button>
+            {openGroups[g.key] && (
+              <ul className="ml-6 border-l border-border pl-1">
+                {g.items.map((n) => (
+                  <Row key={n.id} n={n} close={close} />
+                ))}
+              </ul>
+            )}
+          </li>
+        ),
+      )}
+    </ul>
   );
 
   return (
@@ -181,9 +274,11 @@ function NotificationButton() {
         <div className="py-2">
           <div className="flex items-center justify-between px-4 pt-1 pb-2">
             <span className="text-[15px] font-bold">알림</span>
-            <span className="rounded bg-surface-3 px-1.5 text-[11px] font-semibold text-faint">예시</span>
+            <span className="text-[11px] font-semibold text-faint">학사일정</span>
           </div>
-          {items.length === 0 ? (
+          {failed && !data ? (
+            <p className="px-4 py-8 text-center text-[14px] text-danger-text">알림을 불러오지 못했습니다</p>
+          ) : items.length === 0 ? (
             <p className="px-4 py-8 text-center text-[14px] text-faint">새 알림이 없습니다</p>
           ) : (
             <div className="thin-scroll max-h-[60vh] overflow-y-auto px-1">
@@ -191,13 +286,17 @@ function NotificationButton() {
                 <>
                   <p className="flex items-center gap-1.5 px-3 pt-1 pb-1 text-[12px] font-bold text-warn-text">
                     <TriangleAlert className="size-3.5" aria-hidden />
-                    놓친 알림 {missed.length} <span className="font-medium text-faint">· PC 가 꺼져 있던 동안</span>
+                    놓친 알림 {missed.reduce((s, g) => s + g.items.length, 0)} <span className="font-medium text-faint">· PC 가 꺼져 있던 동안</span>
                   </p>
-                  <ul>{missed.map((n) => <Row key={n.id} n={n} close={close} />)}</ul>
+                  <GroupRows groups={missed} close={close} />
                 </>
               )}
-              <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-faint">오늘</p>
-              <ul>{today.map((n) => <Row key={n.id} n={n} close={close} />)}</ul>
+              {recent.length > 0 && (
+                <>
+                  <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-faint">최근</p>
+                  <GroupRows groups={recent} close={close} />
+                </>
+              )}
             </div>
           )}
           <div className="mt-1 flex items-center justify-between border-t border-border px-3 pt-2">

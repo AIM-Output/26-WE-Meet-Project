@@ -1,17 +1,6 @@
 // F4 강의자료 예시 — Frontend-Route 9절. 요약·문제·답변은 모두 citations(근거 쪽수)를 달고 온다.
-
-export type MaterialState = "ready" | "indexing" | "queued" | "failed" | "notext";
-
-export interface Material {
-  id: string; // mt:…
-  courseId: string;
-  name: string;
-  pages: number | null;
-  origin: "eclass" | "upload";
-  state: MaterialState;
-  progress?: [number, number];
-  week: number;
-}
+// **자료 목록은 이제 진짜다** (F4_Textbook_agent → /api/materials, lib/materials.ts) — 여기 남은 것은
+// 아직 모델이 정해지지 않은 요약·문제·질문뿐이다.
 
 export interface Citation {
   file: string;
@@ -38,29 +27,7 @@ export interface Question {
   cites: Citation[];
 }
 
-const SE = "74261";
 const c = (file: string, fileName: string, page: number, quote?: string): Citation => ({ file, fileName, page, quote });
-
-export const demoMaterials: Material[] = [
-  { id: "mt:se11", courseId: SE, name: "1-1 Course Introduction.pdf", pages: 13, origin: "eclass", state: "ready", week: 1 },
-  { id: "mt:se12", courseId: SE, name: "1-2 SE Overview.pdf", pages: 35, origin: "eclass", state: "ready", week: 1 },
-  { id: "mt:se21", courseId: SE, name: "2-1 소프트웨어품질1.pdf", pages: 38, origin: "eclass", state: "ready", week: 2 },
-  { id: "mt:se22", courseId: SE, name: "2-2 소프트웨어품질2.pdf", pages: 48, origin: "eclass", state: "indexing", progress: [2, 7], week: 2 },
-  { id: "mt:se31", courseId: SE, name: "3-1 전통적인 개발 프로세스.pdf", pages: 65, origin: "eclass", state: "queued", week: 3 },
-  { id: "mt:se-up1", courseId: SE, name: "3주차 보충자료.pdf", pages: 21, origin: "upload", state: "ready", week: 3 },
-  { id: "mt:se-up2", courseId: SE, name: "스캔본_필기.pdf", pages: null, origin: "upload", state: "notext", week: 3 },
-];
-
-/** 과목별 자료 수 (목록 화면용 예시) */
-export const demoMaterialCounts: Record<string, { files: number; ready: number }> = {
-  "74245": { files: 4, ready: 4 },
-  "74259": { files: 5, ready: 3 },
-  "74261": { files: 7, ready: 4 },
-  "74926": { files: 0, ready: 0 },
-  "75381": { files: 4, ready: 2 },
-  "78566": { files: 0, ready: 0 },
-  "78570": { files: 1, ready: 1 },
-};
 
 export const demoSummaries: SummaryCard[] = [
   {

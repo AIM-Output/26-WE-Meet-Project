@@ -83,7 +83,7 @@ A를 택할 때 신경 쓸 것: **서울 리전** 필수(해외 IP 차단 가능
 1. `storage_state.json` 평문 → `auth.py`의 `_protect/_unprotect`를 그대로 써서 암호화. Playwright `new_context(storage_state=…)`는 **dict도 받으므로** 복호화 내용을 파일로 쓰지 않고 메모리에서 바로 넘길 수 있다.
 2. DPAPI는 "파일 도난·다른 사용자"에 대한 보호이지 **같은 계정으로 실행되는 악성코드는 막지 못한다**(엔트로피가 소스에 있음). 크롬 비밀번호 저장소와 같은 수준임을 문서에 명시.
 3. 로그인 실패 시 `state/login_debug.png`에 아이디가 찍힐 수 있음 → 마스킹 또는 보관기간 제한. `state/`가 OneDrive 등 동기화 폴더 밖인지 확인(현재는 밖).
-4. `eclass_agent/auth.py:14`의 `ENTROPY = b"eclass-agent/jnu/v1"`는 폴더명이 아니라 암호화 키 재료 → **절대 변경 금지**(기존 `cred.bin` 복호화 불가).
+4. `C3_Login_agent/login/auth.py`(2026-09-30 까지 `eclass_agent/auth.py:14`)의 `ENTROPY = b"eclass-agent/jnu/v1"`는 폴더명이 아니라 암호화 키 재료 → **절대 변경 금지**(기존 `cred.bin` 복호화 불가).
 
 ### 6.2 서버로 옮길 때의 보관 모드 (사용자가 선택)
 

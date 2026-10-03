@@ -1,17 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Download, GraduationCap } from "lucide-react";
 import { Page } from "@/components/ui/Layout";
 import { Chip } from "@/components/ui/Chip";
-import { DemoNotice } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { DeptPicker } from "@/components/profile/DeptPicker";
-import { useProfile } from "@/lib/useProfile";
+import { ImportProblem } from "@/components/pages/SettingsPages";
+import { useProfile, useProfileImport } from "@/lib/useProfile";
 import { navigateQuery, useQueryParam } from "@/lib/useQueryState";
-import { deptPath, demoImported, TRACK_LABEL, type Track } from "@/lib/demo";
+import { fmtGpa, TRACK_LABEL, type Track } from "@/lib/profile";
 
 // /onboarding — 첫 설정 3단계: 학과 → 입학년도·이수유형 → 학사시스템에서 가져오기(선택). Frontend-Route 5-1.
 // 단계 이동은 push(뒤로가기로 이전 단계), 2단계를 마치면 이미 쓸 수 있으므로 3단계는 언제든 건너뛴다.
@@ -22,15 +21,16 @@ const LABELS = ["학과", "입학년도 · 이수유형", "가져오기"];
 export default function OnboardingPage() {
   const router = useRouter();
   const toast = useToast();
-  const { profile, setProfile, dept } = useProfile();
+  const { doc, profile: p, update, source } = useProfile();
+  const imp = useProfileImport();
   const [step] = useQueryParam<(typeof STEPS)[number]>("step", "1", STEPS);
-  const [importing, setImporting] = useState(false);
   const n = Number(step);
   const go = (s: number) => navigateQuery({ step: String(s) }, "push");
   const year = new Date().getFullYear();
+  const imported = !!doc?.importedAt;
 
-  const finish = (msg: string) => {
-    setProfile((p) => ({ ...p, onboardingSkipped: false }));
+  const finish = async (msg: string) => {
+    if (doc?.onboardingSkipped) await update({ onboardingSkipped: false });
     toast(msg, { tone: "success" });
     router.push("/");
   };
@@ -82,10 +82,10 @@ export default function OnboardingPage() {
                   <h2 id="s1" className="mb-4 text-[18px] font-bold">
                     학과를 골라 주세요
                   </h2>
-                  <DeptPicker value={profile.deptCode} onChange={(d) => setProfile((p) => ({ ...p, deptCode: d.code }))} />
-                  {dept && (
+                  <DeptPicker value={p?.majorCode ?? p?.deptCode ?? null} onChange={(d) => void update({ affiliation: { deptCode: d.deptCode, majorCode: d.majorCode } })} />
+                  {p?.deptPath && (
                     <p className="mt-3 text-[14px]">
-                      선택: <b>{deptPath(dept)}</b>
+                      선택: <b>{p.deptPath}</b>
                     </p>
                   )}
                 </section>
@@ -103,11 +103,11 @@ export default function OnboardingPage() {
                     <select
                       id="adm"
                       className="field w-40"
-                      value={profile.admissionYear ?? ""}
-                      onChange={(e) => setProfile((p) => ({ ...p, admissionYear: e.target.value ? Number(e.target.value) : null }))}
+                      value={p?.admissionYear ?? ""}
+                      onChange={(e) => void update({ admissionYear: e.target.value ? Number(e.target.value) : null })}
                     >
                       <option value="">선택</option>
-                      {Array.from({ length: 8 }, (_, i) => year - i).map((y) => (
+                      {Array.from({ length: 10 }, (_, i) => year - i).map((y) => (
                         <option key={y} value={y}>
                           {y}학년도
                         </option>
@@ -122,18 +122,18 @@ export default function OnboardingPage() {
                           key={t}
                           type="button"
                           role="radio"
-                          aria-checked={profile.track === t}
-                          onClick={() => setProfile((p) => ({ ...p, track: t }))}
-                          className={`btn ${profile.track === t ? "border-primary bg-primary-soft text-primary hover:bg-primary-soft" : ""}`}
+                          aria-checked={p?.track === t}
+                          onClick={() => void update({ track: t })}
+                          className={`btn ${p?.track === t ? "border-primary bg-primary-soft text-primary hover:bg-primary-soft" : ""}`}
                         >
                           {TRACK_LABEL[t]}
                         </button>
                       ))}
                     </div>
                   </fieldset>
-                  {profile.admissionYear && profile.track && dept && (
+                  {p?.admissionYear && p.track && p.deptCode && (
                     <p className="rounded-xl bg-primary-soft px-4 py-3 text-[14px] text-primary">
-                      졸업요건 기준이 <b>{profile.admissionYear} {dept.major ?? dept.dept}</b> 로 붙습니다. 이제 바로 쓸 수 있어요.
+                      졸업요건 기준이 <b>{p.admissionYear} {p.major ?? p.department}</b> 로 붙습니다. 이제 바로 쓸 수 있어요.
                     </p>
                   )}
                 </section>
@@ -145,41 +145,34 @@ export default function OnboardingPage() {
                     학사정보시스템에서 가져오기 <span className="text-[14px] font-medium text-faint">(선택)</span>
                   </h2>
                   <p className="text-[14px] text-muted">학년·학적·평점·이수학점을 이 PC 의 로그인 창으로 가져옵니다. 로그인 정보는 PC 밖으로 나가지 않습니다.</p>
-                  <DemoNotice what="학사시스템 가져오기" />
-                  {profile.auto.length > 0 ? (
+                  <ImportProblem imp={imp} />
+                  {imported && p ? (
                     <ul className="grid grid-cols-2 gap-2 text-[14px]">
-                      {[
-                        ["학년", `${profile.grade}학년`],
-                        ["학적", profile.enrollment],
-                        ["평점", `${profile.gpa}/4.5`],
-                        ["취득학점", `${profile.credits}`],
-                      ].map(([k, v]) => (
-                        <li key={k} className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2">
-                          <span className="text-muted">{k}</span>
+                      {(
+                        [
+                          ["학년", "grade", p.grade ? `${p.grade}학년` : null],
+                          ["학적", "enrollmentStatus", p.enrollmentStatus],
+                          ["평점", "gpa", fmtGpa(p.gpa)],
+                          ["취득학점", "earnedCredits", p.earnedCredits !== null ? `${p.earnedCredits}학점` : null],
+                        ] as const
+                      ).map(([label, key, v]) => (
+                        <li key={key} className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2">
+                          <span className="text-muted">{label}</span>
                           <span className="flex items-center gap-2 font-semibold">
-                            {v}
-                            <Chip tone="primary" square>
-                              자동
-                            </Chip>
+                            {v ?? <span className="font-normal text-faint">못 읽음</span>}
+                            {source(key) === "auto" && (
+                              <Chip tone="primary" square>
+                                자동
+                              </Chip>
+                            )}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={importing}
-                      onClick={() => {
-                        setImporting(true);
-                        window.setTimeout(() => {
-                          setImporting(false);
-                          setProfile((p) => ({ ...p, ...demoImported, auto: ["grade", "enrollment", "gpa", "credits", "semesters"] }));
-                        }, 900);
-                      }}
-                    >
-                      {importing ? <span className="spin" aria-hidden /> : <Download aria-hidden />}
-                      {importing ? "가져오는 중…" : "학사정보시스템에서 가져오기"}
+                    <button type="button" className="btn btn-primary" disabled={imp.running} onClick={() => void imp.start()}>
+                      {imp.running ? <span className="spin" aria-hidden /> : <Download aria-hidden />}
+                      {imp.running ? "가져오는 중… (30초쯤)" : "학사정보시스템에서 가져오기"}
                     </button>
                   )}
                 </section>
@@ -198,8 +191,8 @@ export default function OnboardingPage() {
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => {
-                setProfile((p) => ({ ...p, onboardingSkipped: true }));
+              onClick={async () => {
+                await update({ onboardingSkipped: true });
                 router.push("/");
               }}
             >
@@ -208,7 +201,7 @@ export default function OnboardingPage() {
           )}
           <div className="ml-auto flex gap-2">
             {n === 3 && (
-              <button type="button" className="btn" onClick={() => finish("설정을 마쳤습니다")}>
+              <button type="button" className="btn" onClick={() => void finish("설정을 마쳤습니다")}>
                 건너뛰기
               </button>
             )}
@@ -216,15 +209,15 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={(n === 1 && !profile.deptCode) || (n === 2 && (!profile.admissionYear || !profile.track))}
+                disabled={(n === 1 && !p?.deptCode) || (n === 2 && (!p?.admissionYear || !p?.track))}
                 onClick={() => go(n + 1)}
               >
                 다음
                 <ArrowRight aria-hidden />
               </button>
             ) : (
-              profile.auto.length > 0 && (
-                <button type="button" className="btn btn-primary" onClick={() => finish("설정을 마쳤습니다 — 이제 내 해당 일정만 골라 드립니다")}>
+              imported && (
+                <button type="button" className="btn btn-primary" onClick={() => void finish("설정을 마쳤습니다 — 이제 내 해당 일정만 골라 드립니다")}>
                   완료
                   <Check aria-hidden />
                 </button>

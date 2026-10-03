@@ -14,7 +14,7 @@ import { isOpen, sortByPriority } from "@/lib/priority";
 import { navigateQuery } from "@/lib/useQueryState";
 import { api } from "@/lib/api";
 import type { CalEvent, UserProps } from "@/lib/types";
-import { fmtDue, parseLocal } from "@/lib/dates";
+import { deadlineDay, fmtDeadline, fmtDue, parseLocal } from "@/lib/dates";
 
 // 오른쪽 컬럼 — 🔥 먼저 할 것 상위 3건(F7-S06) + 할 일 목록(내 할 일 + 미제출 과제).
 
@@ -142,7 +142,7 @@ export default function TodoPanel({ onNewTodo }: { onNewTodo: () => void }) {
                   ) : (
                     <span
                       className={`mt-1 grid size-4 flex-none place-items-center rounded border text-[9px] font-bold ${it.done ? "border-ok bg-ok-soft text-ok-text" : "border-border-strong text-faint"}`}
-                      title={it.done ? "제출 완료" : "e클래스에서 제출하면 완료로 바뀝니다"}
+                      title={it.done ? "제출·시청 완료" : "e클래스에서 제출(동영상은 시청)하면 완료로 바뀝니다"}
                       aria-hidden
                     >
                       e
@@ -152,10 +152,10 @@ export default function TodoPanel({ onNewTodo }: { onNewTodo: () => void }) {
                     <span className={`block text-[14px] leading-snug font-medium ${it.done ? "text-faint line-through" : ""}`}>{it.title}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <CourseChip name={it.sub} color={it.color} className="max-w-[140px] text-[12px]" />
-                      <span className="num text-[12px] text-faint">{it.allDay ? `${it.when.getMonth() + 1}/${it.when.getDate()}` : fmtDue(it.when)}</span>
+                      <span className="num text-[12px] text-faint">{it.allDay ? `${it.when.getMonth() + 1}/${it.when.getDate()}` : it.kind === "deadline" ? fmtDeadline(it.when) : fmtDue(it.when)}</span>
                     </span>
                   </button>
-                  <DdayChip date={it.when} done={it.done} />
+                  <DdayChip date={it.kind === "deadline" ? deadlineDay(it.when) : it.when} done={it.done} />
                 </div>
               </motion.li>
             ))}

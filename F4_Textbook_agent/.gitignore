@@ -1,0 +1,7 @@
+# 절대 공유 금지: 강의자료 목록·직접 올린 파일 (학교 「저작권 유의사항 안내」)
+data/
+state/
+
+__pycache__/
+*.pyc
+.pytest_cache/

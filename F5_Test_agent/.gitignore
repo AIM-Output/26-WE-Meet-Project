@@ -1,0 +1,7 @@
+# 내 시험·학습 계획·진도 — 공유하지 않는다
+data/
+state/
+
+__pycache__/
+*.pyc
+.pytest_cache/

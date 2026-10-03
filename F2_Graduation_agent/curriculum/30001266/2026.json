@@ -1,0 +1,217 @@
+{
+ "code": "30001266",
+ "collegeCode": "30001229",
+ "year": 2026,
+ "fetchedAt": "2026-09-28T21:38:44",
+ "source": "https://www.jnu.ac.kr/WebApp/web/DBM/ENG/CurriCulumn/CurriCulumnSM.aspx?aYear=2026&aLanguage=1&aColl=30001229&aDept=30001266&aPageNum=1",
+ "courses": [
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능설계프로젝트",
+   "code": "AIC0012",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "소프트웨어개발론",
+   "code": "BUS8009",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "프로그래밍언어론",
+   "code": "CIS2003",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "데이타베이스시스템",
+   "code": "CIS3009",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "모바일응용소프트웨어",
+   "code": "CIS4022",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "데이터통신",
+   "code": "ECE3007",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "임베디드소프트웨어",
+   "code": "ECE3044",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "1",
+   "category": "전선",
+   "name": "지능HCI",
+   "code": "SAI0023",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "가상현실",
+   "code": "CIS3004",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "컴퓨터그래픽스",
+   "code": "CIS3020",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "소프트웨어공학론",
+   "code": "CIS3030",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "컴퓨터네트워크",
+   "code": "ECE3026",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "데이터과학",
+   "code": "SAI0002",
+   "credits": 3.0
+  },
+  {
+   "grade": 3,
+   "term": "2",
+   "category": "전선",
+   "name": "산학협력프로젝트(캡스톤디자인)",
+   "code": "SAI0029",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "컴파일러",
+   "code": "CIS4004",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "영상처리",
+   "code": "ECE4004",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "클라우드컴퓨팅",
+   "code": "ECE9054",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전필",
+   "name": "소프트웨어캡스톤디자인",
+   "code": "SAI0011",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "고급알고리즘",
+   "code": "SAI0013",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "게임소프트웨어",
+   "code": "SAI0014",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "소프트웨어리버스엔지니어링",
+   "code": "SAI0024",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "1",
+   "category": "전선",
+   "name": "인공지능소프트웨어개발및운영파이프라인",
+   "code": "SAI0049",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "분산시스템",
+   "code": "CIS3012",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "병렬프로그래밍",
+   "code": "SAI0005",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "소프트웨어검증",
+   "code": "SAI0021",
+   "credits": 3.0
+  },
+  {
+   "grade": 4,
+   "term": "2",
+   "category": "전선",
+   "name": "컴퓨터시뮬레이션",
+   "code": "SAI0022",
+   "credits": 3.0
+  }
+ ]
+}

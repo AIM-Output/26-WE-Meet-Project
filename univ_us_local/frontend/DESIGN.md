@@ -27,7 +27,7 @@
 | `--study` / `--study-soft` | `#4D7C0F` / `#EEF7DC` | 학습 블록(F5·F8) — Frontend-Route 10-6 |
 | `--blank` | `#FDE68A` | 장학 초안 `{{빈칸}}` |
 
-학사 유형 색은 요구사항정의서 F1 '색·아이콘' 표를 그대로 쓴다(`lib/demo/academic.ts` `ACADEMIC_TYPE_META`). 과목 색은 백엔드 `COURSE_PALETTE`.
+학사 유형 색은 요구사항정의서 F1 '색·아이콘' 표를 그대로 쓴다(`lib/academic.ts` `ACADEMIC_TYPE_META`). 과목 색은 백엔드 `COURSE_PALETTE`.
 
 ## 글자
 

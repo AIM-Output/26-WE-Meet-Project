@@ -24,7 +24,7 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   { key: "academic", label: "학사일정", href: "/academic", icon: Landmark, fid: "F1" },
-  { key: "assignments", label: "과제·마감", href: "/assignments", icon: ClipboardList, fid: "F6·F7" },
+  { key: "assignments", label: "E클래스", href: "/assignments", icon: ClipboardList, fid: "F6·F7" }, // 과제·동영상 + 공지·자료 (/eclass/posts)
   { key: "graduation", label: "졸업요건", href: "/graduation", icon: GraduationCap, fid: "F2" },
   { key: "attendance", label: "출결", href: "/attendance", icon: UserCheck, fid: "F3" },
   { key: "courses", label: "강의자료", href: "/courses", icon: BookOpen, fid: "F4" },
