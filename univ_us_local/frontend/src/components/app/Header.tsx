@@ -92,7 +92,7 @@ export default function Header() {
         {error && (
           <div role="alert" className="flex items-center justify-center gap-2 bg-danger px-4 py-2 text-center text-[13px] font-semibold text-white">
             <WifiOff className="size-4 flex-none" aria-hidden />
-            백엔드에 연결할 수 없습니다. <code className="rounded bg-white/15 px-1">run.cmd</code> 가 실행 중인지 확인하세요.
+            백엔드에 연결할 수 없습니다. <code className="rounded bg-white/15 px-1">유니버스 열기</code> 로 로컬 서버를 켰는지 확인하세요.
           </div>
         )}
         {!error && <EclassFailureStrip />}

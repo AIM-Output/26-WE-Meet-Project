@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime
@@ -45,22 +44,7 @@ def write_json(path: Path, obj: Any) -> None:
 
 # ---------------------------------------------------------------- 프로세스
 
-def pid_alive(pid: int) -> bool:
-    """pid 가 살아 있는 python 프로세스인가. Windows 는 tasklist 로 본다 (os.kill 은 Windows 에서 프로세스를 죽인다)."""
-    if sys.platform == "win32":
-        try:
-            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
-                                 capture_output=True, text=True, errors="replace", timeout=10).stdout
-        except Exception:                                   # noqa: BLE001
-            return False
-        return f'"{pid}"' in out and "python" in out.lower()
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
+pid_alive = C.pid_alive          # 살아 있는 python 프로세스인가 — C0 osenv (Windows tasklist · 그 외 os.kill)
 
 
 # ---------------------------------------------------------------- 잠금

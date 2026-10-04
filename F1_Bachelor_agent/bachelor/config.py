@@ -10,9 +10,16 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent            # F1_Bachelor_agent/
+
+# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or ROOT.parent / "C0_Platform_agent")
+if str(C0_AGENT_DIR) not in sys.path:
+    sys.path.append(str(C0_AGENT_DIR))
+from osenv import pid_alive, venv_python  # noqa: E402,F401 — runner·pipeline 이 쓴다
 
 
 def _load_env(path: Path) -> None:
@@ -47,14 +54,14 @@ RETRY_FILE = STATE_DIR / "retry.json"            # 예약 수집이 네트워크
 SCHEDULE_AT = os.environ.get("F1_SCHEDULE_AT", "08:00")
 RETRY_WAITS_MIN = (5, 15, 45)
 CATCHUP_AFTER_MIN = 10           # 예약 시각에서 이만큼 넘게 지나 돌면 '놓친 수집 따라잡기'(catchup)로 기록
-TASK_NAME = "UnivUs-F1-Academic-Sync"
+TASK_NAME = "UnivUs-F1-Academic-Sync"              # Windows 작업 스케줄러 (register-task.ps1)
+LAUNCHD_LABEL = "kr.univus.f1-academic-sync"       # 맥 launchd 사용자 에이전트 (~/Library/LaunchAgents/<이름>.plist)
 RUN_SCHEDULED_CMD = ROOT / "run-scheduled.cmd"
 
 
 def tasks_enabled() -> bool:
-    """작업 스케줄러를 만질지 — 테스트·격리 서버는 F1_TASKS=off."""
-    import sys
-    return sys.platform == "win32" and os.environ.get("F1_TASKS", "").lower() not in ("off", "0", "false", "no")
+    """예약 실행(Windows 작업 스케줄러 · 맥 launchd)을 만질지 — 테스트·격리 서버는 F1_TASKS=off."""
+    return sys.platform in ("win32", "darwin") and os.environ.get("F1_TASKS", "").lower() not in ("off", "0", "false", "no")
 
 # 단과대학·학부(과) 홈페이지 목록 — 저장소 스냅숏 + 다시 받은 것(data/ 쪽이 이긴다). homepages.py
 BUNDLED_DIRECTORY = ROOT / "directory" / "homepages.json"

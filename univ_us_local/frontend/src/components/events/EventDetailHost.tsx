@@ -144,12 +144,12 @@ function DeadlineDetail({ ev }: { ev: CalEvent }) {
                   "첨부",
                   <span key="a" className="flex flex-col gap-0.5">
                     {(p.attachments ?? []).map((f) => (
-                      <span key={f.path} className="inline-flex min-w-0 items-center gap-1.5" title={`F6_Eclass_agent\\${f.path}`}>
+                      <span key={f.path} className="inline-flex min-w-0 items-center gap-1.5" title={`F6_Eclass_agent/${f.path.replace(/\\/g, "/")}`}>
                         <Paperclip className="size-3.5 flex-none text-faint" aria-hidden />
                         <span className="truncate">{f.name}</span>
                       </span>
                     ))}
-                    <span className="text-[12px] text-faint">이 PC 의 F6_Eclass_agent\data 에 받아 두었습니다 (공유 금지)</span>
+                    <span className="text-[12px] text-faint">이 PC 의 F6_Eclass_agent/data 에 받아 두었습니다 (공유 금지)</span>
                   </span>,
                 ] as [string, React.ReactNode],
               ]

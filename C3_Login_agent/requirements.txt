@@ -5,3 +5,5 @@
 # 이 .venv 를 빌려 쓰는 곳: F6 e클래스 수집(playwright·bs4) · C2 프로필 가져오기 · F2 기이수성적 (학사정보시스템)
 playwright>=1.45
 beautifulsoup4>=4.12
+# 맥: 자동 재로그인용 아이디·비밀번호를 로그인 키체인에 (Windows 는 DPAPI 라 필요 없음)
+keyring>=25; sys_platform == "darwin"

@@ -66,13 +66,13 @@ def _begin(name: str) -> Optional[dict]:
 def import_problem(interactive: bool) -> Optional[str]:
     """가져오기를 시작할 수 없는 이유. None 이면 시작해도 된다."""
     if not C.C3_PYTHON.exists():
-        return "C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent\\setup.cmd 를 먼저 실행하세요"
+        return f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {C.script('setup')} 를 먼저 실행하세요"
     if not C.C3_BROWSERS.exists():
-        return "브라우저 엔진이 없습니다 — C3_Login_agent\\setup.cmd 를 다시 실행하세요"
+        return f"브라우저 엔진이 없습니다 — C3_Login_agent 의 {C.script('setup')} 를 다시 실행하세요"
     if not (C.C2_AGENT_DIR / "student" / "hakstd.py").exists():
         return "C2_Profile_agent 가 없습니다 — 학사정보시스템 로그인 절차를 거기서 빌려 씁니다"
     if not interactive and not (C.C3_STATE.exists() or C.C3_CRED.exists() or C.C2_HAKSTD_STATE.exists()):
-        return "학교 로그인 기록이 없습니다 — C3_Login_agent 의 login.cmd 를 실행하거나 '로그인 창 열기'로 가져오세요"
+        return f"학교 로그인 기록이 없습니다 — C3_Login_agent 의 {C.script('login')} 를 실행하거나 '로그인 창 열기'로 가져오세요"
     return None
 
 

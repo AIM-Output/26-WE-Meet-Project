@@ -15,11 +15,18 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent            # C2_Profile_agent/
 PROJECT_ROOT = ROOT.parent
+
+# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
+if str(C0_AGENT_DIR) not in sys.path:
+    sys.path.append(str(C0_AGENT_DIR))
+from osenv import script, venv_python  # noqa: E402,F401 — script 는 안내 문구(setup.cmd / setup.command)
 
 DATA_DIR = Path(os.environ.get("C2_DATA_DIR") or ROOT / "data")
 STATE_DIR = Path(os.environ.get("C2_STATE_DIR") or ROOT / "state")
@@ -44,7 +51,7 @@ SKIP_COLLEGES = {"30890001"}    # 협약대학(타대)
 
 # ── 학사정보시스템 (SSO) — C3_Login_agent 의 세션·재인증·브라우저를 빌린다 ──
 C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or PROJECT_ROOT / "C3_Login_agent")
-C3_PYTHON = C3_AGENT_DIR / ".venv" / "Scripts" / "python.exe"
+C3_PYTHON = venv_python(C3_AGENT_DIR / ".venv")
 C3_BROWSERS = C3_AGENT_DIR / ".venv" / "pw-browsers"
 C3_STATE = C3_AGENT_DIR / "state" / "storage_state.json"
 C3_CRED = C3_AGENT_DIR / "state" / "cred.bin"

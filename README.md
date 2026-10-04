@@ -9,6 +9,7 @@
 ```
 저장소 폴더/
 ├── README.md                 ← 지금 보는 문서
+├── C0_Platform_agent/        C0 OS 공통 계층(osenv) — Windows·macOS 차이(venv python 자리·프로세스 확인)만 모음 (설치할 것 없음)
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
 ├── C3_Login_agent/           학교(SSO) 자동 로그인 + 브라우저 — F6·C2·F2·F11 이 같이 씀 (Python)
 ├── F6_Eclass_agent/          F6 e클래스 과제·마감·자료 수집 → 캘린더·할 일·마감 알림 (로그인은 C3 것을 빌림)
@@ -24,6 +25,7 @@
 ├── 유니버스 종료.cmd          더블클릭 → 서버 끄기
 ├── 요구사항정의서.md          기능별 요구사항 (무엇을 만드는가) — 기능 개발 전 먼저 볼 문서
 ├── Frontend-Route.md         화면·라우트·흐름 정의 (어느 주소에 어떤 순서로)
+├── WE-Meet_데스크톱앱_맥지원_계획.md   macOS 지원 · 데스크톱 앱 · 얇은 서버로 가는 단계별 계획
 ├── Frontend-Figma.md · Frontend-Screens.md   디자인 팀 가이드 · 그릴 화면 목록
 └── WE-Meet_프로젝트계획서 …   기획 문서 (docx / pdf)
 ```
@@ -37,11 +39,37 @@
 
 | 항목 | 내용 |
 |---|---|
-| PC | **Windows 10/11** (64비트). macOS·리눅스는 현재 지원하지 않음 (`.cmd` 런처와 Windows 암호화 API 사용) |
+| PC | **Windows 10/11** (64비트) — 이 가이드의 기준. **macOS** 는 아래 [0-1](#0-1-맥macos-에서-쓰기) 참고 (notice_agent 만 아직 Windows 전용) |
 | 계정 | 전남대 포털 아이디/비밀번호 (e클래스 SSO 로그인에 쓰는 것) |
 | 휴대폰 | 처음 로그인할 때 **2차 인증**을 받아야 함 |
 | 인터넷 | 설치 중 약 **350MB** 내려받음 (Python 패키지 + 브라우저 엔진) |
 | 디스크 | 여유 2GB 이상 |
+
+---
+
+### 0-1. 맥(macOS) 에서 쓰기
+
+Windows 의 `X.cmd` 마다 같은 이름의 **`X.command`** 가 있습니다. Finder 에서 더블클릭하거나 터미널에서 `./X.command` 로 실행합니다.
+설계와 남은 일은 [WE-Meet_데스크톱앱_맥지원_계획.md](WE-Meet_데스크톱앱_맥지원_계획.md).
+
+1. **Python 3.12** — https://www.python.org/downloads/macos/ 설치 후 `/Applications/Python 3.12/Install Certificates.command` 도 한 번 실행 (또는 `brew install python@3.12`). Git 은 `xcode-select --install`.
+2. clone 은 2단계와 같습니다 (`~/Projects` 처럼 짧은 경로 권장).
+3. 아래 순서는 Windows 3~6단계와 같습니다.
+
+| Windows | 맥 |
+|---|---|
+| `C3_Login_agent\setup.cmd` | `C3_Login_agent/setup.command` (venv + 패키지 + Chromium) |
+| `C3_Login_agent\login.cmd` | `C3_Login_agent/login.command` |
+| `C3_Login_agent\setup-creds.cmd` | `C3_Login_agent/setup-creds.command` (자동 재로그인 — 맥은 **로그인 키체인**에 저장) |
+| `F6_Eclass_agent\sync.cmd` | `F6_Eclass_agent/sync.command` |
+| `유니버스 열기.cmd` / `유니버스 종료.cmd` | `유니버스 열기.command` / `유니버스 종료.command` (서버 출력: `univ_us_local/backend/server.log`) |
+| 각 기능 폴더 `run.cmd` | 각 기능 폴더 `run.command` |
+
+- 처음 더블클릭할 때 "확인되지 않은 개발자" 경고가 뜨면 → 파일을 **우클릭 → 열기** 한 번.
+- `권한이 없습니다` 가 뜨면 → 터미널에서 프로젝트 폴더로 가서 `chmod +x *.command */*.command univ_us_local/backend/run.command`.
+- **예약 실행**: 대시보드 **수집 원천 → 예약 실행 `켜기`** 가 맥에서는 launchd(`~/Library/LaunchAgents/kr.univus.*.plist`)에 등록합니다 — 정각 자동 수집·매일 학사일정, 잠자기였으면 깨어날 때·로그인할 때 따라잡기. 자세히는 [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md).
+- **자동 재로그인**: `setup-creds.command` 로 저장하면 비밀번호는 맥 로그인 키체인에만 들어갑니다. 처음 읽을 때 키체인 허용 창이 뜨면 **항상 허용**.
+- **아직 Windows 전용**: notice_agent(선택 기능).
 
 ---
 

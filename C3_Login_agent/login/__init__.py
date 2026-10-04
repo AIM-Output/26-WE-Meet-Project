@@ -50,11 +50,11 @@ def status() -> dict:
 def problem(need_login_record: bool = True) -> str | None:
     """브라우저가 필요한 기능을 시작할 수 없는 이유 (없으면 None). C2·F2·F6 가 같은 문구를 쓴다."""
     if not PYTHON.exists():
-        return "C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent\\setup.cmd 를 먼저 실행하세요"
+        return f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {config.script('setup')} 를 먼저 실행하세요"
     if not BROWSERS.exists():
-        return "브라우저 엔진이 없습니다 — C3_Login_agent\\setup.cmd 를 다시 실행하세요"
+        return f"브라우저 엔진이 없습니다 — C3_Login_agent 의 {config.script('setup')} 를 다시 실행하세요"
     if need_login_record and not (STATE_FILE.exists() or CRED_FILE.exists()):
-        return "학교 로그인 기록이 없습니다 — '로그인 창 열기'로 한 번 로그인하세요 (C3_Login_agent\\login.cmd)"
+        return f"학교 로그인 기록이 없습니다 — '로그인 창 열기'로 한 번 로그인하세요 (C3_Login_agent 의 {config.script('login')})"
     return None
 
 
