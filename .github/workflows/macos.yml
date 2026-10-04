@@ -25,15 +25,15 @@ jobs:
 
       - name: 런처 문법 · 실행 권한 · 줄바꿈
         run: |
-          set -e
-          files=$(git ls-files '*.command' C0_Platform_agent/univus.sh)
-          for f in $files; do
-            bash -n "$f"
-            if grep -q $'\r' "$f"; then echo "CRLF: $f"; exit 1; fi
-          done
-          for f in $(git ls-files '*.command'); do
-            [ -x "$f" ] || { echo "실행 권한 없음: $f"; exit 1; }
-          done
+          set -eo pipefail
+          # 파일 이름에 한글·공백이 있다("유니버스 열기.command") — NUL 구분으로 읽는다
+          git -c core.quotepath=off ls-files -z '*.command' C0_Platform_agent/univus.sh |
+            while IFS= read -r -d '' f; do
+              bash -n "$f"
+              if grep -q $'\r' "$f"; then echo "CRLF: $f"; exit 1; fi
+              case "$f" in *.command) [ -x "$f" ] || { echo "실행 권한 없음: $f"; exit 1; } ;; esac
+              echo "ok: $f"
+            done
 
       - name: 테스트 패키지
         run: python -m pip install --disable-pip-version-check -q -r F1_Bachelor_agent/requirements.txt
