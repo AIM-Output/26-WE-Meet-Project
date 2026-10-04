@@ -9,6 +9,7 @@
   - .venv                  playwright · beautifulsoup4 + Chromium(.venv/pw-browsers). 브라우저가 필요한 기능은 이 python 으로 돈다
   - state/storage_state.json  SSO 쿠키 + 신뢰 기기 쿠키(RathonSSO_TrustDevice_*, 약 1년 → 2차 인증 면제)
   - state/cred.bin         DPAPI(이 Windows 계정 전용)로 암호화한 아이디·비밀번호 — 완전 무인 재로그인용(선택)
+                           맥은 비밀을 로그인 키체인에 두고 state/cred.keychain.json(항목 이름만)을 표시로 남긴다 (auth.py)
   - login.reauthenticate(p)  세션이 죽었을 때: 조용한 쿠키 복구 → (저장돼 있으면) 무인 로그인
 비밀번호는 이 폴더 코드만 다룬다. 빌려 쓰는 쪽은 세션 파일 경로와 reauthenticate() 만 안다.
 
@@ -18,19 +19,27 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent            # C3_Login_agent/
 PROJECT_ROOT = ROOT.parent
 
+# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
+if str(C0_AGENT_DIR) not in sys.path:
+    sys.path.append(str(C0_AGENT_DIR))
+from osenv import IS_WINDOWS, script, venv_python  # noqa: E402,F401 — script 는 안내 문구(setup.cmd / setup.command)
+
 STATE_DIR = Path(os.environ.get("C3_STATE_DIR") or ROOT / "state")
 STATE_FILE = STATE_DIR / "storage_state.json"   # 세션 (쿠키 전부 — 신뢰 기기 쿠키를 골라내면 신뢰 인식이 깨진다)
-CRED_FILE = STATE_DIR / "cred.bin"              # DPAPI 로 암호화된 자격증명 (완전 무인용, 없으면 반자동)
+# 자격증명 (완전 무인용, 없으면 반자동) — Windows: DPAPI 로 암호화한 파일 / 맥: 키체인에 저장됐다는 표시(비밀 없음)
+CRED_FILE = STATE_DIR / ("cred.bin" if IS_WINDOWS else "cred.keychain.json")
 DEBUG_SHOT = STATE_DIR / "login_debug.png"      # 무인 로그인이 실패했을 때의 화면
 
 # 브라우저가 필요한 기능이 쓰는 python 과 Chromium (setup.cmd 가 만든다)
 VENV_DIR = ROOT / ".venv"
-PYTHON = VENV_DIR / "Scripts" / "python.exe"
+PYTHON = venv_python(VENV_DIR)
 BROWSERS = VENV_DIR / "pw-browsers"
 
 # ── 전남대 SSO ──

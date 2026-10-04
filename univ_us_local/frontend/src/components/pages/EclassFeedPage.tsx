@@ -136,7 +136,7 @@ function FeedDetail({ id, items, onRead, load }: { id: string; items: FeedItem[]
           <div className="thin-scroll max-h-[50vh] overflow-auto rounded-xl bg-surface-2 p-3 text-[14px] leading-relaxed whitespace-pre-wrap">{it.body || "(본문 없음)"}</div>
         ))}
       <p className="text-[12px] text-faint">
-        {it.kind === "material" ? "파일" : it.attachments.length ? "글과 첨부" : "글"}은 이 PC 의 F6_Eclass_agent\data 에 받아 두었습니다 (공유 금지). 강의자료 요약은 강의자료 화면에서.
+        {it.kind === "material" ? "파일" : it.attachments.length ? "글과 첨부" : "글"}은 이 PC 의 F6_Eclass_agent/data 에 받아 두었습니다 (공유 금지). 강의자료 요약은 강의자료 화면에서.
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => onRead([it.id], !it.read)}>

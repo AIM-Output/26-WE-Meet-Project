@@ -15,10 +15,17 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent            # F6_Eclass_agent/
 PROJECT_ROOT = ROOT.parent
+
+# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
+if str(C0_AGENT_DIR) not in sys.path:
+    sys.path.append(str(C0_AGENT_DIR))
+from osenv import pid_alive, script, venv_python  # noqa: E402,F401 — pid_alive 는 runs, script 는 안내 문구
 
 # data/ 아래 경로는 manifest·assignments 에 'data\\<과목>\\…' 처럼 ROOT 기준 상대경로로 적힌다 (F3 공지 휴강이 같은 규칙으로 읽는다).
 DATA_DIR = Path(os.environ.get("F6_DATA_DIR") or ROOT / "data")
@@ -39,7 +46,7 @@ RUNS_KEEP = 300
 
 # ── C3 포털 자동 로그인 (세션 · 재인증 · 브라우저 · python) ──
 C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or PROJECT_ROOT / "C3_Login_agent")
-C3_PYTHON = C3_AGENT_DIR / ".venv" / "Scripts" / "python.exe"
+C3_PYTHON = venv_python(C3_AGENT_DIR / ".venv")
 C3_BROWSERS = C3_AGENT_DIR / ".venv" / "pw-browsers"
 
 # ── e클래스 (sel.jnu.ac.kr, Moodle/유비온) ──
@@ -103,7 +110,8 @@ INTERVAL_CHOICES = (2, 4, 6, 12)
 RETRY_WAITS_MIN = (5, 15, 45)   # 네트워크 오류 뒤 재시도 간격 (최대 3회)
 CATCHUP_AFTER_MIN = 10          # 정각에서 이만큼 넘게 지나 돌면 '놓친 주기 따라잡기'(catchup)로 기록한다
 FAILURE_STREAK_WARN = 3         # 연속 실패가 이 횟수면 빨강 띠 + 알림 1건 (F6-R15)
-TASK_NAME = "UnivUs-F6-Eclass-Sync"
+TASK_NAME = "UnivUs-F6-Eclass-Sync"                # Windows 작업 스케줄러 (register-task.ps1)
+LAUNCHD_LABEL = "kr.univus.f6-eclass-sync"         # 맥 launchd 사용자 에이전트 (~/Library/LaunchAgents/<이름>.plist)
 LEGACY_TASK_NAMES = ("eClass-Agent-Sync",)          # 예전 eclass_agent 가 등록한 작업 — 새로 등록할 때 지운다
 
 # ── 알림 (F6-D2 · R40~R44) ──

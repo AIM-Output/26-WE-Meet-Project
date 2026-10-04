@@ -198,10 +198,38 @@ def start_login(then_sync: bool = True) -> dict:
     return login_state()
 
 
-# ---------------------------------------------------------------- 작업 스케줄러 (F6-R10 · R18)
+# ---------------------------------------------------------------- 예약 실행 (F6-R10 · R18)
+# Windows 작업 스케줄러(register-task.ps1) / 맥 launchd(C0 osenv.launchd). 둘 다 정각 N시간마다 + 로그인 시 `-m eclass tick`.
 
 def tasks_enabled() -> bool:
-    return sys.platform == "win32" and os.environ.get("F6_TASKS", "").lower() not in ("off", "0", "false", "no")
+    return sys.platform in ("win32", "darwin") and os.environ.get("F6_TASKS", "").lower() not in ("off", "0", "false", "no")
+
+
+# launchd plist 에 넘길 환경변수 — 격리 서버·테스트가 바꾼 폴더를 예약 실행도 그대로 쓰게 (전체 환경을 plist 에 적지는 않는다)
+_PASS_ENV = ("C0_AGENT_DIR", "C3_AGENT_DIR", "C3_STATE_DIR", "F6_DATA_DIR", "F6_STATE_DIR")
+
+
+def _launchd_info() -> dict:
+    from osenv import launchd                       # C0 — config 가 sys.path 에 붙여 두었다
+    from . import schedule
+    info = {**launchd.info(C.LAUNCHD_LABEL, C.ROOT), "legacy": []}
+    if info.get("registered"):
+        info["nextRun"] = schedule.next_slot(datetime.now(), R.settings()["intervalHours"]).isoformat(timespec="seconds")
+        last = next((r for r in R.list_runs(50) if r.get("source") in ("schedule", "catchup", "retry")), None)
+        info["lastRun"] = last.get("started_at") if last else None
+    return info
+
+
+def _launchd_register(interval: int) -> dict:
+    from osenv import launchd
+    if not C.C3_PYTHON.exists():
+        return {"ok": False, "error": f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {C.script('setup')} 를 먼저 실행하세요"}
+    env = {k: os.environ[k] for k in _PASS_ENV if os.environ.get(k)}
+    env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or str(C.C3_BROWSERS)
+    C.ensure_dirs()
+    return launchd.register(C.LAUNCHD_LABEL, [str(C.C3_PYTHON), "-X", "utf8", "-m", "eclass", "tick", "--log", str(C.LOG_FILE)],
+                            workdir=C.ROOT, times=[(h, 0) for h in range(0, 24, interval)], env=env,
+                            log=C.STATE_DIR / "launchd.log")
 
 
 def task_info(force: bool = False) -> dict:
@@ -211,6 +239,10 @@ def task_info(force: bool = False) -> dict:
         return {"available": False, "registered": False}
     if not force and _task_cache["value"] is not None and time.time() - _task_cache["at"] < 60:
         return _task_cache["value"]
+    if sys.platform != "win32":
+        info = _launchd_info()
+        _task_cache.update(at=time.time(), value=info)
+        return info
     names = [C.TASK_NAME, *C.LEGACY_TASK_NAMES]
     script = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
               "$out = @(); foreach ($n in @(" + ",".join(f"'{n}'" for n in names) + ")) { "
@@ -244,7 +276,11 @@ def task_info(force: bool = False) -> dict:
 def register_task(interval: int) -> dict:
     """register-task.ps1 로 (다시) 등록 — 주기를 바꾸면 부른다. 예전 eclass_agent 작업이 있으면 스크립트가 지운다."""
     if not tasks_enabled():
-        return {"ok": False, "error": "이 서버에서는 작업 스케줄러를 쓰지 않습니다 (F6_TASKS=off)"}
+        return {"ok": False, "error": "이 서버에서는 예약 실행을 쓰지 않습니다 (F6_TASKS=off)"}
+    if sys.platform != "win32":
+        res = _launchd_register(interval)
+        _task_cache.update(at=0.0, value=None)
+        return res
     script = C.ROOT / "register-task.ps1"
     cmd = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script),
            "-IntervalHours", str(interval)]
@@ -260,7 +296,12 @@ def register_task(interval: int) -> dict:
 
 def unregister_task() -> dict:
     if not tasks_enabled():
-        return {"ok": False, "error": "이 서버에서는 작업 스케줄러를 쓰지 않습니다 (F6_TASKS=off)"}
+        return {"ok": False, "error": "이 서버에서는 예약 실행을 쓰지 않습니다 (F6_TASKS=off)"}
+    if sys.platform != "win32":
+        from osenv import launchd
+        res = launchd.unregister(C.LAUNCHD_LABEL)
+        _task_cache.update(at=0.0, value=None)
+        return res
     script = C.ROOT / "register-task.ps1"
     cmd = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script), "-Remove"]
     try:

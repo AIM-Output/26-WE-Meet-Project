@@ -1,2 +1,4 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
+# 학교 사이트 HTTPS 를 OS 신뢰 저장소로 검증 (맥 python.org 설치판의 인증서 문제 — C2 학과 목록·F2 교육과정·F3 시간표)
+truststore>=0.9,<1

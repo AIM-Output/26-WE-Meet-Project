@@ -751,7 +751,7 @@ def run(dry_run: bool = False, courses_only: list[str] | None = None, only: set[
     from playwright.sync_api import sync_playwright
 
     if not login.STATE_FILE.exists() and not login.CRED_FILE.exists():
-        print("학교 로그인 기록이 없습니다. C3_Login_agent 의 login.cmd(또는 화면의 '로그인 창 열기')를 먼저 실행하세요.")
+        print(f"학교 로그인 기록이 없습니다. C3_Login_agent 의 {C.script('login')}(또는 화면의 '로그인 창 열기')를 먼저 실행하세요.")
         return Result(C.EXIT_LOGIN, error="로그인 기록 없음")
     C.ensure_dirs()
     s = None
@@ -772,7 +772,7 @@ def run(dry_run: bool = False, courses_only: list[str] | None = None, only: set[
                 print("e클래스 세션 만료 → 재인증 시도 (C3_Login_agent)...")
                 if not login.reauthenticate(p):
                     _probe(p)        # 재인증 도중 네트워크가 끊긴 것이면 로그인 문제로 알리지 않는다
-                    print("자동 재인증 실패. '로그인 창 열기'(C3_Login_agent\\login.cmd)로 한 번 로그인하세요.")
+                    print(f"자동 재인증 실패. '로그인 창 열기'(C3_Login_agent 의 {C.script('login')})로 한 번 로그인하세요.")
                     return Result(C.EXIT_LOGIN, error="세션 만료 — 자동 재인증 실패 (로그인 필요)")
                 req = new_req()
             c = Client(req)

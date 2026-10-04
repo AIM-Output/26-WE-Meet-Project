@@ -84,7 +84,7 @@ export function academicResultMessage(code: number | null): { text: string; ok: 
     case 4:
       return { text: "학사일정 수집 실패 — 인터넷 연결을 확인하세요", ok: false };
     default:
-      return { text: `학사일정 수집이 끝나지 않았습니다 (코드 ${code}) — F1_Bachelor_agent\\state\\sync.log 확인`, ok: false };
+      return { text: `학사일정 수집이 끝나지 않았습니다 (코드 ${code}) — F1_Bachelor_agent/state/sync.log 확인`, ok: false };
   }
 }
 

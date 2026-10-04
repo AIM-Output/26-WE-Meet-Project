@@ -1,0 +1,65 @@
+# 맥에서도 도는지 — 실제 macOS 러너에서 단위 테스트 + 맥 런처로 대시보드 서버 띄우기.
+# 팀에 맥이 없어도 맥 지원이 깨지지 않게 지킨다 (WE-Meet_데스크톱앱_맥지원_계획.md 3단계).
+# 학교 사이트에는 접속하지 않는다 — 테스트는 가짜 데이터, 서버는 /api/status 만 본다.
+name: macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 런처 문법 · 실행 권한 · 줄바꿈
+        run: |
+          set -eo pipefail
+          # 파일 이름에 한글·공백이 있다("유니버스 열기.command") — NUL 구분으로 읽는다
+          git -c core.quotepath=off ls-files -z '*.command' C0_Platform_agent/univus.sh |
+            while IFS= read -r -d '' f; do
+              bash -n "$f"
+              if grep -q $'\r' "$f"; then echo "CRLF: $f"; exit 1; fi
+              case "$f" in *.command) [ -x "$f" ] || { echo "실행 권한 없음: $f"; exit 1; } ;; esac
+              echo "ok: $f"
+            done
+
+      - name: 테스트 패키지
+        run: python -m pip install --disable-pip-version-check -q -r F1_Bachelor_agent/requirements.txt
+
+      - name: 단위 테스트 (C0 · C2 · C3 · F1~F6)
+        run: |
+          set -e
+          python -m pytest C0_Platform_agent/tests -q
+          for d in C3_Login_agent C2_Profile_agent F1_Bachelor_agent F2_Graduation_agent F3_Attendance_agent \
+                   F4_Textbook_agent F5_Test_agent F6_Eclass_agent; do
+            echo "== $d"
+            (cd "$d" && python -m pytest tests -q)
+          done
+
+      - name: 맥 런처로 대시보드 서버 띄우기 (univus.sh → osenv venv → uvicorn)
+        env:
+          F1_TASKS: "off"
+          F6_TASKS: "off"
+        run: |
+          set -e
+          ./univ_us_local/backend/run.command > server.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -sf -o /dev/null http://127.0.0.1:8000/api/status; then echo "서버 응답 (${i}초)"; break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/api/status > /dev/null || { cat server.log; exit 1; }
+          test -x univ_us_local/backend/.venv/bin/python
+          ./C1_Calendar_agent/run.command count
+          lsof -ti tcp:8000 -sTCP:LISTEN | xargs kill

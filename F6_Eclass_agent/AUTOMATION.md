@@ -50,6 +50,17 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove           #
 > 폴더를 옮기거나 이름을 바꾸면 작업이 옛 경로를 가리켜 실패한다(`0x8007010B`). 수집 원천 화면에 '경로 확인'이 뜨면 `다시 등록`
 > (또는 새 위치에서 `register-task.ps1` 을 다시 실행).
 
+### 맥 — launchd (2026-10-04)
+
+대시보드의 같은 `켜기` 버튼이 맥에서는 **launchd 사용자 에이전트** `~/Library/LaunchAgents/kr.univus.f6-eclass-sync.plist` 를 쓰고 올린다(C0 `osenv.launchd`).
+
+- **정각** 00·04·08·12·16·20시(`StartCalendarInterval`) — 그 시각에 잠자기였으면 깨어나는 대로 한 번(launchd 가 묶어 한 번만)
+- **로그인할 때 · 켠 직후** 한 번(`RunAtLoad`) — 아래 tick 이 '이번 주기에 이미 돌았으면 건너뜀'이라 겹쳐도 한 번
+- 부르는 것: `C3_Login_agent/.venv/bin/python -m eclass tick --log state/sync.log` (재시도·잠금·이력은 Windows 와 같은 tick)
+- 이 맥 사용자가 로그인해 있을 때만 돈다. 시작 자체가 실패한 출력은 `state/launchd.log`
+- 상태: `launchctl print gui/$(id -u)/kr.univus.f6-eclass-sync` · 즉시 한 번: `launchctl kickstart gui/$(id -u)/kr.univus.f6-eclass-sync`
+- 무인 재로그인용 자격증명은 `C3_Login_agent/setup-creds.command` → 맥 로그인 키체인. 처음 읽을 때 키체인 허용 창이 뜨면 **항상 허용**(안 그러면 예약 실행 때마다 묻는다)
+
 ### 작업 스케줄러가 부르는 것 — `run-scheduled.cmd` → `python -m eclass tick`
 
 1. **이번 주기를 이미 돌았나** — 가장 최근 정각(예: 12:00) 이후에 시작한 실행이 있으면 아무것도 하지 않는다.

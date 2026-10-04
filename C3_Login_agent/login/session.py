@@ -182,7 +182,7 @@ def auto_login(p, uid: str, pw: str, timeout_s: int = C.AUTO_TIMEOUT) -> bool:
         # 여기까지 왔으면 실패. 화면을 남긴다.
         if submitted and _mfa_blocking(page):
             print("  로그인 후 2차 인증(휴대폰) 대기 상태입니다. 신뢰 기기가 만료된 듯합니다.")
-            print("  → C3_Login_agent 의 login.cmd(또는 화면의 '로그인 창 열기')로 한 번 휴대폰 인증을 통과하면 다시 무인 가능합니다.")
+            print(f"  → C3_Login_agent 의 {C.script('login')}(또는 화면의 '로그인 창 열기')로 한 번 휴대폰 인증을 통과하면 다시 무인 가능합니다.")
         else:
             print("  자동 로그인 시간 초과. 아이디/비밀번호 또는 로그인 흐름을 확인하세요.")
         _debug_shot(page)
@@ -277,7 +277,7 @@ def interactive_login(wait_s: int = C.WAIT_SECONDS) -> int:
 def auto_login_cli() -> int:
     creds = auth.load()
     if not creds:
-        print("저장된 자격증명이 없습니다. 먼저 `setup-creds.cmd` 를 실행하세요.")
+        print(f"저장된 자격증명이 없습니다. 먼저 `{C.script('setup-creds')}` 를 실행하세요.")
         return 1
     print("무인 로그인 시도 중...")
     with sync_playwright() as p:

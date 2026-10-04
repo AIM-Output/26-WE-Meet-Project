@@ -121,7 +121,7 @@ export function EclassSourceSection() {
           onChange={(e) =>
             void patch(
               { intervalHours: Number(e.target.value) },
-              task?.registered ? "주기를 바꾸고 작업 스케줄러에 다시 등록했습니다" : "주기를 저장했습니다 — 예약 실행을 켜면 이 주기로 돕니다",
+              task?.registered ? "주기를 바꾸고 예약 실행을 다시 등록했습니다" : "주기를 저장했습니다 — 예약 실행을 켜면 이 주기로 돕니다",
             )
           }
         >
@@ -137,14 +137,14 @@ export function EclassSourceSection() {
         label={
           <span className="inline-flex items-center gap-1.5">
             <CalendarClock className="size-4 text-faint" aria-hidden />
-            예약 실행 (작업 스케줄러)
+            예약 실행
           </span>
         }
         hint={
           !task
             ? "확인 중"
             : !task.available
-              ? task.error ?? "이 서버에서는 작업 스케줄러를 쓰지 않습니다"
+              ? task.error ?? "이 서버에서는 예약 실행을 쓰지 않습니다"
               : task.registered
                 ? `${task.pathOk === false ? "옛 폴더를 가리킵니다 — 다시 등록하세요 · " : ""}다음 실행 ${task.nextRun ? fmtShortStamp(task.nextRun) : "-"}${task.lastRun ? ` · 마지막 ${fmtShortStamp(task.lastRun)}` : ""}`
                 : `등록되지 않았습니다 — 켜면 PC 가 켜져 있는 동안 창 없이 주기마다 수집합니다${task.legacy?.length ? ` · 예전 작업(${task.legacy.map((l) => l.name).join(", ")})은 등록할 때 지웁니다` : ""}`
@@ -155,7 +155,7 @@ export function EclassSourceSection() {
             <>
               <StatusBadge tone={task.pathOk === false ? "warn" : "ok"}>{task.pathOk === false ? "경로 확인" : "켜짐"}</StatusBadge>
               {task.pathOk === false && (
-                <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void patch({ scheduled: true }, "작업 스케줄러에 다시 등록했습니다")}>
+                <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void patch({ scheduled: true }, "예약 실행을 다시 등록했습니다")}>
                   다시 등록
                 </button>
               )}
@@ -164,7 +164,7 @@ export function EclassSourceSection() {
               </button>
             </>
           ) : (
-            <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void patch({ scheduled: true }, "작업 스케줄러에 등록했습니다")}>
+            <button type="button" className="btn btn-sm" disabled={saving} onClick={() => void patch({ scheduled: true }, "예약 실행을 켰습니다")}>
               켜기
             </button>
           ))}

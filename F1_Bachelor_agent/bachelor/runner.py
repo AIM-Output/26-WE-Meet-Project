@@ -8,6 +8,7 @@ univ_us_local/backend/app/eclass_data.py 의 e클래스 동기화와 같은 방�
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -27,22 +28,7 @@ def _read_json(path) -> Any:
         return None
 
 
-def _pid_alive(pid: int) -> bool:
-    if sys.platform == "win32":
-        try:
-            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
-                                 capture_output=True, text=True, errors="replace", timeout=10).stdout
-        except Exception:
-            return False
-        return f'"{pid}"' in out and "python" in out.lower()
-    import os
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
+_pid_alive = C.pid_alive         # C0 osenv (Windows tasklist · 그 외 os.kill)
 
 
 def sync_state() -> dict:
@@ -73,17 +59,29 @@ def _command(keys: Optional[list[str]]) -> list[str]:
         extra += ["--source", k]
     if sys.platform == "win32":
         return ["cmd", "/c", str(C.RUN_SYNC_CMD), *extra]
-    py = C.ROOT / ".venv" / "bin" / "python"
+    py = C.venv_python(C.ROOT / ".venv")
     return [str(py if py.exists() else sys.executable), "-m", "bachelor", "sync", "--log", str(C.LOG_FILE), *extra]
+
+
+def _prepare() -> None:
+    """수집용 .venv(requests·bs4) 준비. Windows 는 run-sync.cmd 가 하고, 그 외 OS 는 여기서 한다
+    (C0 osenv — 처음엔 1분쯤, requirements.txt 가 바뀌면 다시 설치. pip 출력은 sync.log 로)."""
+    if sys.platform == "win32":
+        return
+    from osenv.venv import ensure                    # C0 — config 가 sys.path 에 붙여 두었다
+    C.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(C.LOG_FILE, "a", encoding="utf-8") as log:
+        ensure(C.ROOT / ".venv", C.ROOT / "requirements.txt", log=log)
 
 
 def _run(keys: Optional[list[str]]) -> None:
     try:
+        _prepare()
         proc = subprocess.run(_command(keys), cwd=str(C.ROOT), capture_output=True, timeout=20 * 60)
         code = proc.returncode
     except subprocess.TimeoutExpired:
         code = -1
-    except Exception:
+    except Exception:                                # .venv 를 못 만든 경우 포함 — 이유는 sync.log 에
         code = -2
     with _lock:
         _state.update(running=False, finished_at=datetime.now().isoformat(timespec="seconds"), exit_code=code)
@@ -119,6 +117,10 @@ def task_info(force: bool = False) -> dict:
         return {"available": False, "registered": False, "at": C.SCHEDULE_AT}
     if not force and _task_cache["value"] is not None and _t.time() - _task_cache["at"] < 60:
         return _task_cache["value"]
+    if sys.platform != "win32":
+        info = _launchd_info()
+        _task_cache.update(at=_t.time(), value=info)
+        return info
     n = C.TASK_NAME
     script = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
               f"$t = Get-ScheduledTask -TaskName '{n}' -ErrorAction SilentlyContinue; if ($t) {{ "
@@ -146,9 +148,38 @@ def task_info(force: bool = False) -> dict:
     return info
 
 
+# ── 맥 launchd (C0 osenv.launchd) — 매일 SCHEDULE_AT + 로그인 시 `-m bachelor tick`, 재시도는 tick 이 직접 ──
+
+_PASS_ENV = ("C0_AGENT_DIR", "C2_AGENT_DIR", "F1_DATA_DIR", "F1_STATE_DIR", "F1_SCHEDULE_AT")
+
+
+def _launchd_info() -> dict:
+    from osenv import launchd                        # C0 — config 가 sys.path 에 붙여 두었다
+    from .schedule import next_slot
+    info = {**launchd.info(C.LAUNCHD_LABEL, C.ROOT), "at": C.SCHEDULE_AT, "scheduled": True}
+    if info.get("registered"):
+        info["nextRun"] = next_slot(datetime.now()).isoformat(timespec="seconds")
+        last = _read_json(C.LAST_RUN_FILE)
+        if isinstance(last, dict) and last.get("by") in ("schedule", "catchup", "retry"):
+            info["lastRun"] = last.get("started_at")
+    return info
+
+
+def _launchd_register() -> dict:
+    from osenv import launchd
+    from .schedule import _at
+    try:
+        _prepare()                                   # 예약 실행이 쓸 .venv 를 지금 만들어 둔다 (처음 1분쯤)
+    except Exception as e:                           # noqa: BLE001
+        return {"ok": False, "output": str(e)[-800:], "error": "수집용 .venv 를 만들지 못했습니다 — sync.log 확인"}
+    env = {k: os.environ[k] for k in _PASS_ENV if os.environ.get(k)}
+    return launchd.register(C.LAUNCHD_LABEL, [str(C.venv_python(C.ROOT / ".venv")), "-m", "bachelor", "tick", "--log", str(C.LOG_FILE)],
+                            workdir=C.ROOT, times=[_at()], env=env, log=C.STATE_DIR / "launchd.log")
+
+
 def _task_script(*extra: str) -> dict:
     if not C.tasks_enabled():
-        return {"ok": False, "error": "이 서버에서는 작업 스케줄러를 쓰지 않습니다 (F1_TASKS=off)"}
+        return {"ok": False, "error": "이 서버에서는 예약 실행을 쓰지 않습니다 (F1_TASKS=off)"}
     cmd = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
            str(C.ROOT / "register-task.ps1"), *extra]
     try:
@@ -161,11 +192,20 @@ def _task_script(*extra: str) -> dict:
 
 
 def register_task() -> dict:
-    """매일 SCHEDULE_AT + 로그인 시 예약 수집 (register-task.ps1)."""
+    """매일 SCHEDULE_AT + 로그인 시 예약 수집 (Windows register-task.ps1 · 맥 launchd)."""
+    if sys.platform != "win32" and C.tasks_enabled():
+        res = _launchd_register()
+        _task_cache.update(at=0.0, value=None)
+        return res
     return _task_script("-At", C.SCHEDULE_AT)
 
 
 def unregister_task() -> dict:
+    if sys.platform != "win32" and C.tasks_enabled():
+        from osenv import launchd
+        res = launchd.unregister(C.LAUNCHD_LABEL)
+        _task_cache.update(at=0.0, value=None)
+        return res
     return _task_script("-Remove")
 
 

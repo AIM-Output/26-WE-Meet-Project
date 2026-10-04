@@ -24,6 +24,14 @@ from typing import Any, Callable, Iterable, Optional
 
 from . import config as C
 
+# 맥 python.org 설치판은 인증서 묶음이 없어 urllib 이 CERTIFICATE_VERIFY_FAILED 로 실패한다.
+# truststore 가 있으면 검증을 끄지 않고 OS 신뢰 저장소(맥 키체인·Windows 인증서 저장소)를 쓴다 (F1·notice_agent 와 같은 처리).
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 _TOKEN = re.compile(r"([월화수목금토일])\s*(\d{1,2})")
 _JUNK = re.compile(r"[\s,/·]+")
 

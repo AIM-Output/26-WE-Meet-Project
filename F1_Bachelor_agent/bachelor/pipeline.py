@@ -14,7 +14,6 @@ from __future__ import annotations
 import io
 import json
 import os
-import subprocess
 import sys
 import time
 from datetime import date, datetime, timedelta
@@ -31,21 +30,7 @@ from .textutil import parse_board_url, short_hash
 
 # ── 잠금 (F6_Eclass_agent/eclass/runs.py 와 같은 방식) ─────────────────
 
-def pid_alive(pid: int) -> bool:
-    if sys.platform == "win32":
-        try:
-            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
-                                 capture_output=True, text=True, errors="replace", timeout=10).stdout
-        except Exception:
-            return False
-        return f'"{pid}"' in out and "python" in out.lower()
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
+pid_alive = C.pid_alive          # C0 osenv (Windows tasklist · 그 외 os.kill)
 
 
 def read_lock() -> dict:
