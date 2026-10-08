@@ -185,7 +185,7 @@ server/                    얇은 서버 (나중에)
 - [ ] 코드 서명(Windows SmartScreen · 맥 공증) — 인증서·Apple 개발자 계정이 필요해 사용자 결정
 - [ ] 자동 업데이트(tauri-plugin-updater) — 서명 키·배포 위치(GitHub Releases) 결정 필요
 - [x] `frontend/out` 커밋 중단 — 사이드카 빌드(`build.py`)가 `npm run build` 부터 한다 (2026-10-08)
-- [ ] CI 에서 설치 파일 빌드(Windows·맥) — 지금 CI 는 맥에서 테스트 + 사이드카 빌드·실행까지
+- [x] CI 에서 설치 파일 빌드 — `release.yml`: 태그 `v*` → Windows nsis·맥 dmg(Apple Silicon, ad-hoc 서명) → Releases 초안 (2026-10-09)
 
 ### 5단계 — 얇은 서버 + 데스크톱 클라이언트
 - [ ] `shared/schema` 업로드 형식, `server/` 별도 앱(FastAPI + Postgres)
@@ -247,3 +247,4 @@ server/                    얇은 서버 (나중에)
   - (같은 날) 설치본 e클래스 수집이 세션 만료 → 재로그인 단계에서 `ImportError: cannot import name 'creds' from 'osenv'` — spec 이 osenv 만 PYZ 에 넣어 진입점이 import 한 모듈만 묶였다. osenv 도 원본으로(excludes), `desktop.py --self-check`(모든 모듈 import)를 build.py 마지막에. 설치본에서 재로그인 → 수집 성공 확인.
   - (같은 날) 마지막 점검: 묶인 사이드카 ↔ 소스 백엔드 API 135개 일치, 기능별 available 9개 참, 화면 20개·공부 캘린더 200, F1 학사일정 동기화(자식 프로세스) 성공, 데이터가 있는 상태에서 기능마다 실제 응답·F4 원문 열기/내려받기 확인. 앱 창 차이로 F4 '파일 끌어다 추가'가 Windows 에서 막히던 것 → `disable_drag_drop_handler()`.
   - (같은 날) 앱 창에서 '원문 보기'(target="_blank" 링크 — e클래스·학사일정·강의자료 원문)가 열리지 않던 것: tauri-plugin-opener 가 넣는 스크립트가 그 클릭을 막고 IPC 로 열려 했는데 대시보드에는 Tauri API 가 없어 조용히 실패. `open_js_links_on_click(false)` 로 끄고 on_new_window 가 받게 — 바깥 주소는 기본 브라우저, 로컬 주소는 새 앱 창. WebView2 원격 디버깅(CDP)으로 개발 모드·설치본 둘 다 확인.
+- 2026-10-09 — 배포: `.github/workflows/release.yml`(태그 → tauri-action → Releases 초안, 태그=tauri.conf 버전 검사), 맥 `signingIdentity: "-"`(ad-hoc). README 를 사용 안내로, 개발 내용은 `DEVELOPMENT.md` 로 나눔.

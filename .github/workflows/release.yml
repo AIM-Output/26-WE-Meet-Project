@@ -1,0 +1,90 @@
+# 설치 파일 만들기 — 버전 태그(v0.1.0 …)를 push 하면 Windows·macOS 설치 파일을 만들어 GitHub Releases 의 **초안**에 올린다.
+# 초안을 확인한 뒤 Releases 화면에서 '게시(Publish)' 해야 팀원이 받을 수 있다. 만드는 법은 DEVELOPMENT.md '릴리스'.
+#   - 태그는 desktop/src-tauri/tauri.conf.json 의 version 과 같아야 한다 (v + version). 다르면 실패한다.
+#   - 코드 서명은 아직 없다 — Windows 는 SmartScreen 경고, 맥은 ad-hoc 서명이라 첫 실행 때 '그래도 열기'가 필요하다.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "올릴 태그 (예: v0.1.0) — 이미 있는 태그"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            bundles: nsis
+          - os: macos-latest            # Apple Silicon(arm64) — 인텔 맥은 아직 없다
+            bundles: dmg
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: 태그와 앱 버전이 같은지
+        shell: bash
+        run: |
+          v=$(python3 -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])" 2>/dev/null || python -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+          echo "tauri.conf.json version=$v · tag=$TAG"
+          test "v$v" = "$TAG" || { echo "태그($TAG)와 tauri.conf.json 의 version(v$v)이 다릅니다"; exit 1; }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            univ_us_local/frontend/package-lock.json
+            desktop/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: 사이드카 (화면 npm run build → PyInstaller → self-check)
+        shell: bash
+        run: python desktop/sidecar/build.py
+
+      - name: Tauri CLI
+        working-directory: desktop
+        run: npm ci
+
+      - name: 설치 파일 → Releases 초안
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          args: --bundles ${{ matrix.bundles }}
+          tagName: ${{ env.TAG }}
+          releaseName: "유니버스 ${{ env.TAG }}"
+          releaseDraft: true
+          prerelease: false
+          releaseBody: |
+            ## 설치
+            - **Windows 10/11**: 아래 `UnivUs_…_x64-setup.exe` 를 받아 실행 (관리자 권한 필요 없음).
+              "Windows의 PC 보호" 경고가 뜨면 **추가 정보 → 실행** (아직 코드 서명 전이라 뜨는 경고).
+            - **macOS (Apple Silicon)**: `UnivUs_…_aarch64.dmg` 를 열어 UnivUs 를 응용 프로그램으로 끌어 넣기.
+              처음 열 때 막히면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**.
+            - 처음 실행하면 학교 로그인용 브라우저 엔진(약 150MB)을 자동으로 받습니다 — 몇 분 기다렸다가 로그인하세요.
+
+            사용법은 저장소 [README](https://github.com/AIM-Output/26-WE-Meet-Project#readme).

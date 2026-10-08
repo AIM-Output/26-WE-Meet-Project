@@ -103,4 +103,6 @@ tauri dev ─ beforeDevCommand ─▶ next dev 127.0.0.1:3000 (univ_us_local/fro
 
 - 코드 서명(Windows SmartScreen 경고 · 맥 공증) — 인증서·Apple 개발자 계정 필요
 - 자동 업데이트(tauri-plugin-updater) — 서명 키·배포 위치(GitHub Releases) 결정 필요
-- CI 에서 설치 파일 만들기 (지금 CI 는 맥에서 테스트 + 사이드카 빌드·실행까지)
+- 인텔 맥용 설치 파일 (CI 는 Apple Silicon 만 만든다)
+
+설치 파일·릴리스는 `.github/workflows/release.yml` — 버전 태그(`v*`)를 push 하면 Windows `.exe`·맥 `.dmg` 를 만들어 Releases 초안에 올린다. 순서는 [DEVELOPMENT.md](../DEVELOPMENT.md) 6절.
