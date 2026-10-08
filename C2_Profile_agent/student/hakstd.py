@@ -187,7 +187,7 @@ def hakstd_page(interactive: bool = False):
     with sync_playwright() as p:
         state = {"browser": None, "ctx": None, "page": None}
 
-        def open_(storage: str | None, headed: bool = False) -> bool:
+        def open_(storage: str | dict | None, headed: bool = False) -> bool:
             state["browser"] = p.chromium.launch(headless=not headed)
             kw = {"user_agent": C.USER_AGENT}
             if storage:
@@ -220,8 +220,11 @@ def hakstd_page(interactive: bool = False):
         if not ok and interactive:
             print("  로그인 창을 엽니다 — 직접 로그인하세요 (학사정보시스템 화면이 뜨면 자동으로 이어집니다)")
             close()
-            # C3 세션에서 시작한다 — 신뢰 기기 쿠키가 있으면 아이디·비밀번호만으로 끝난다(빈 창이면 휴대폰 인증부터 다시)
-            ok = open_(str(C.C3_STATE) if C.C3_STATE.exists() else None, headed=True)
+            # C3 세션에서 시작한다 — 신뢰 기기 쿠키가 있으면 아이디·비밀번호만으로 끝난다(빈 창이면 휴대폰 인증부터 다시).
+            # 끝났을 수 있는 SSO 세션 쿠키는 뺀 것(fresh_state)으로 — 남기면 SSO 가 로그인 화면으로 되돌려 보내는 고리가 된다
+            lm = _c3_login()
+            fresh = lm.fresh_state() if lm is not None and hasattr(lm, "fresh_state") else None
+            ok = open_(fresh, headed=True)
             deadline = time.time() + 600
             while not ok and time.time() < deadline and state["browser"].is_connected():
                 url = state["page"].url

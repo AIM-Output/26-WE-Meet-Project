@@ -125,6 +125,8 @@ def refresh_via_sso(p, timeout_s: int = 40) -> bool:
                 return True
             if "sso.jnu.ac.kr" in page.url or page.query_selector("#userPwd"):
                 return False                 # 로그인 폼이 떴다 = 쿠키만으론 불가
+            if "sel.jnu.ac.kr/login" in page.url:
+                return False                 # e클래스 첫 화면으로 튕겼다 = SSO 쿠키가 끝난 세션 (fresh_state 참고)
             time.sleep(2)
         return False
     except Exception:
@@ -133,15 +135,34 @@ def refresh_via_sso(p, timeout_s: int = 40) -> bool:
         browser.close()
 
 
+def fresh_state() -> dict | None:
+    """로그인을 **새로 할 때** 실을 세션 — 저장된 쿠키에서 SSO 쪽 세션 쿠키(만료 없는 .jnu.ac.kr·sso.jnu.ac.kr 쿠키)를 뺀다.
+    신뢰 기기 쿠키(idpm RathonSSO_TrustDevice_*, 약 1년)·WMONID 처럼 만료가 있는 쿠키와 e클래스 쿠키는 남긴다.
+
+    storage_state 는 브라우저라면 닫을 때 버렸을 세션 쿠키까지 계속 저장한다. 그 SSO 세션이 서버에서 끝나면(다른 곳에서 같은
+    계정으로 로그인 등) SSO 는 쿠키를 보고 '이미 로그인됨'이라 e클래스로 돌려보내고, e클래스는 거부해 첫 화면으로 — 'SSO 로그인'을
+    눌러도 넘어가지 않는 고리였다(2026-10-09, 로그인 창·무인 로그인 둘 다). 이 쿠키를 빼면 SSO 로그인 폼이 정상으로 뜬다."""
+    import json
+    try:
+        st = json.loads(C.STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    st["cookies"] = [c for c in st.get("cookies", [])
+                     if (c.get("expires") or -1) > 0 or c.get("domain", "").lstrip(".") == "sel.jnu.ac.kr"]
+    return st
+
+
 def auto_login(p, uid: str, pw: str, timeout_s: int = C.AUTO_TIMEOUT) -> bool:
     """headless 에서 저장된 자격증명으로 자동 로그인. 신뢰 기기 쿠키가 있으면 2차 인증 생략."""
     browser = p.chromium.launch()
     try:
-        # 전체 세션(신뢰 기기 쿠키 포함)을 그대로 로드해 실제 사용자와 같은 흐름으로 진행한다.
+        # 신뢰 기기 쿠키 등 오래 가는 쿠키는 그대로 싣고, 끝났을 수 있는 SSO 세션 쿠키만 뺀다(fresh_state) — 무인 로그인은
+        # 쿠키 복구(refresh_via_sso)가 실패한 뒤에만 오므로 그 세션 쿠키는 쓸모가 없고, 남겨 두면 로그인 폼까지 못 간다.
         # SSO_START → (선택 페이지면) 'SSO 로그인' 클릭 → idpm 경유(신뢰 기기 확인) → 폼 채움.
         kw = {"user_agent": C.USER_AGENT}
-        if C.STATE_FILE.exists():
-            kw["storage_state"] = str(C.STATE_FILE)
+        st = fresh_state()
+        if st is not None:
+            kw["storage_state"] = st
         context = browser.new_context(**kw)
         page = context.new_page()
         page.goto(C.SSO_START_URL, wait_until="load", timeout=timeout_s * 1000)
@@ -258,9 +279,10 @@ def interactive_login(wait_s: int = C.WAIT_SECONDS) -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         kw = {"user_agent": C.USER_AGENT}
-        if C.STATE_FILE.exists():
-            kw["storage_state"] = str(C.STATE_FILE)
-            print("이전 세션 쿠키를 이어서 사용합니다 (SSO 세션이 살아있으면 로그인 화면 없이 끝납니다).")
+        st = fresh_state()                   # 끝났을 수 있는 SSO 세션 쿠키는 뺀다 — 남기면 'SSO 로그인'이 첫 화면으로 되돌아온다
+        if st is not None:
+            kw["storage_state"] = st
+            print("이전 세션(e클래스·신뢰 기기 쿠키)을 이어서 사용합니다 (e클래스 세션이 살아있으면 로그인 화면 없이 끝납니다).")
         context = browser.new_context(**kw)
         page = context.new_page()
         page.goto(C.SSO_START_URL)

@@ -18,7 +18,8 @@ from typing import Any
 from . import config
 from .config import BROWSERS, CRED_FILE, ROOT, STATE_DIR, STATE_FILE, USER_AGENT, browser_env
 
-_LAZY = {"session_ok", "refresh_via_sso", "auto_login", "reauthenticate", "interactive_login", "sso_continue"}
+_LAZY = {"session_ok", "refresh_via_sso", "auto_login", "reauthenticate", "interactive_login", "sso_continue",
+         "fresh_state"}
 
 
 def __getattr__(name: str) -> Any:
