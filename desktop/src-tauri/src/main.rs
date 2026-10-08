@@ -158,7 +158,10 @@ fn is_local(url: &Url) -> bool {
 
 fn open_outside(app: &AppHandle, url: &Url) {
     if matches!(url.scheme(), "http" | "https" | "mailto") {
-        let _ = app.opener().open_url(url.as_str(), None::<&str>);
+        let res = app.opener().open_url(url.as_str(), None::<&str>);
+        #[cfg(debug_assertions)]
+        eprintln!("desktop: 바깥 링크 → 기본 브라우저 {url} ({res:?})"); // 개발 모드(tauri dev) 터미널에만
+        let _ = res;
     }
 }
 
@@ -202,7 +205,10 @@ fn main() {
         // 두 번째로 실행하면 새로 띄우지 않고 떠 있는 창을 앞으로 (사이드카가 둘이 되지 않게) — 맨 먼저 등록해야 한다
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![HIDDEN_ARG])))
-        .plugin(tauri_plugin_opener::init())
+        // 링크 클릭 가로채기(open_js_links_on_click)는 끈다 — 그 스크립트는 target="_blank" 클릭을 막고 Tauri API(IPC)로 열려고 하는데,
+        // 대시보드(127.0.0.1)에는 Tauri API 를 열지 않으므로 아무것도 열리지 않았다(e클래스·학사일정 '원문 보기', 2026-10-08).
+        // 새 창 요청은 아래 on_new_window 가 받는다 — 바깥 주소는 기본 브라우저, 로컬 주소는 앱 창.
+        .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())
         .manage(Sidecar(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
@@ -229,6 +235,8 @@ fn main() {
                 .on_new_window(move |url, _features| {
                     // target="_blank" — 로컬 서버(강의자료 원문 등)는 앱 창으로(세션 쿠키 공유), 바깥 주소는 기본 브라우저로
                     if is_local(&url) {
+                        #[cfg(debug_assertions)]
+                        eprintln!("desktop: 새 앱 창 {url}");
                         NewWindowResponse::Allow
                     } else {
                         open_outside(&popup, &url);
