@@ -216,6 +216,9 @@ fn main() {
                 // 창 바탕 = 디자인 v3 종이색 — 시작 화면 → 대시보드로 넘어갈 때 흰색이 번쩍이지 않게
                 .background_color(PAPER)
                 .visible(!hidden)
+                // Tauri 의 파일 끌어놓기 처리를 끈다 — 켜 두면 Windows(WebView2)에서 화면의 HTML5 끌어놓기가 막혀
+                // 강의자료(F4) '파일 끌어다 추가'가 브라우저와 달리 동작하지 않는다. Tauri 의 DragDropEvent 는 쓰지 않는다.
+                .disable_drag_drop_handler()
                 .on_navigation(move |url| {
                     if is_local(url) {
                         return true;
