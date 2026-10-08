@@ -121,11 +121,50 @@ def test_vod_period_takes_attendance_deadline_only():
 
 
 def test_vod_progress_watched_rule():
-    p = collect.parse_vod_progress(BeautifulSoup(PROGRESS, "html.parser"))
-    assert set(p) == {"수업 동영상 (Orientation - 9월 15일까지)", "동영상 강의 (9월 8일 수업_9월 14일까지)", "9월 10일 동영상 수업 (9월 14일까지)"}
+    rows = collect.parse_vod_progress(BeautifulSoup(PROGRESS, "html.parser"))
+    p = {r["name"]: r for r in rows}
+    assert list(p) == ["수업 동영상 (Orientation - 9월 15일까지)", "동영상 강의 (9월 8일 수업_9월 14일까지)", "9월 10일 동영상 수업 (9월 14일까지)"]
     assert p["수업 동영상 (Orientation - 9월 15일까지)"]["watched"] is True
-    assert p["동영상 강의 (9월 8일 수업_9월 14일까지)"] == {"length": "56:13", "required": "50:35", "progress": 36.0, "watched": False}
+    assert p["동영상 강의 (9월 8일 수업_9월 14일까지)"] == {"name": "동영상 강의 (9월 8일 수업_9월 14일까지)", "length": "56:13",
+                                                     "required": "50:35", "progress": 36.0, "watched": False}
     assert p["9월 10일 동영상 수업 (9월 14일까지)"]["watched"] is True     # 요구시간 42:44/47:29 = 89.99% → 90% 면 인정
+
+
+def _progress_table(rows: list[tuple[str, str, str, str]], heads=("주", "강의 자료", "콘텐츠 길이", "출석인정 요구시간",
+                                                                  "최대 학습위치", "진도율")) -> BeautifulSoup:
+    trs = "".join(f'<tr><td class="vmiddle text-center">{i + 1}</td><td class="text-left">{n}</td><td>{ln}</td><td>{rq}</td>'
+                  f'<td>{ln}</td><td>{pg}</td></tr>' for i, (n, ln, rq, pg) in enumerate(rows))
+    th = "".join(f"<th>{h}</th>" for h in heads)
+    return BeautifulSoup(f'<table class="user_progress"><tr>{th}</tr>{trs}</table>', "html.parser")
+
+
+def test_vod_progress_same_name_each_week_matches_in_order():
+    """주차마다 '강의 동영상' 처럼 같은 이름 — 예전엔 첫 주 진도율을 모든 주에 썼다 (본 동영상이 미시청으로 보임)."""
+    rows = collect.parse_vod_progress(_progress_table([("강의 동영상", "10:00", "09:00", "20%"),
+                                                       ("강의 동영상", "10:00", "09:00", "100%")]))
+    vods = [{"cmid": "11", "name": "강의 동영상"}, {"cmid": "12", "name": "강의 동영상"}]
+    m = collect.match_vod_progress(vods, rows)
+    assert (m["11"]["watched"], m["12"]["watched"]) == (False, True)
+
+
+def test_vod_progress_shortened_or_respaced_name():
+    rows = collect.parse_vod_progress(_progress_table([("3주차 운영체제 프로세스 스케줄링 (1)...", "30:00", "27:00", "100%"),
+                                                       ("4주차  동기화", "30:00", "27:00", "95%")]))
+    vods = [{"cmid": "1", "name": "3주차 운영체제 프로세스 스케줄링 (1) 다중 큐와 우선순위"}, {"cmid": "2", "name": "4주차 동기화"}]
+    m = collect.match_vod_progress(vods, rows)
+    assert m["1"]["watched"] and m["2"]["watched"]
+
+
+def test_vod_progress_columns_by_header_and_attendance_mark():
+    """칸 순서가 달라도 머리글로 찾고, 출석(O/X) 칸이 있으면 그것을 믿는다."""
+    soup = BeautifulSoup('<table class="user_progress"><tr><th>강의 자료</th><th>출석인정 요구시간</th><th>콘텐츠 길이</th>'
+                         '<th>진도율</th><th>출석</th></tr>'
+                         '<tr><td class="text-left">1강</td><td>45:00</td><td>50:00</td><td>89%</td><td>O</td></tr>'
+                         '<tr><td class="text-left">2강</td><td>45:00</td><td>50:00</td><td>40%</td><td>X</td></tr></table>',
+                         "html.parser")
+    rows = collect.parse_vod_progress(soup)
+    assert [(r["length"], r["required"], r["progress"], r["watched"]) for r in rows] == [
+        ("50:00", "45:00", 89.0, True), ("50:00", "45:00", 40.0, False)]
 
 
 def test_videos_replace_calendar_period():

@@ -193,13 +193,17 @@ def test_is_new_flag(db):
 
 
 def test_midnight_deadline_drawn_on_previous_day(db):
-    """'10월 4일 자정까지'(= 10/5 00:00) 는 캘린더에서 10/4 칸 — 23:30~24:00 로 그린다. 실제 마감 값은 그대로."""
-    write_data([assign(1, "2026-10-05 00:00"), assign(2, "2026-10-05 23:59")])
+    """'10월 4일 자정까지'(= 10/5 00:00) 는 캘린더에서 10/4 칸 — 23:30~24:00 로 그린다. 실제 마감 값은 그대로.
+    23:59 마감도 끝을 정해 준다 — 끝이 없으면 FullCalendar 가 1시간을 붙여 다음 날 00:59 까지 막대가 걸쳤다(2026-10-08)."""
+    write_data([assign(1, "2026-10-05 00:00"), assign(2, "2026-10-05 23:59"), assign(3, "2026-10-06 00:10")])
     reconcile.apply(db, now=NOW)
     ev = {e["id"]: e for e in service.calendar_events(db, NOW)}
     assert (ev["dl:1"]["start"], ev["dl:1"]["end"]) == ("2026-10-04T23:30:00", "2026-10-05T00:00:00")
     assert ev["dl:1"]["extendedProps"]["due"] == "2026-10-05T00:00:00"
-    assert (ev["dl:2"]["start"], ev["dl:2"]["end"]) == ("2026-10-05T23:59:00", None)
+    assert (ev["dl:2"]["start"], ev["dl:2"]["end"]) == ("2026-10-05T23:29:00", "2026-10-05T23:59:00")
+    assert (ev["dl:3"]["start"], ev["dl:3"]["end"]) == ("2026-10-06T00:00:00", "2026-10-06T00:10:00")   # 전날 칸에 걸치지 않게
+    for e in ev.values():                                   # 어떤 마감도 끝이 비거나 다음 날로 넘어가지 않는다
+        assert e["end"] and e["end"][:10] in (e["start"][:10], e["extendedProps"]["due"][:10])
 
 
 def test_video_deadline_and_watched(db):
@@ -210,7 +214,7 @@ def test_video_deadline_and_watched(db):
     reconcile.apply(db, now=NOW)
     ev = {e["id"]: e for e in service.calendar_events(db, NOW)}["dl:1445823"]
     assert (ev["start"], ev["end"], ev["extendedProps"]["type"], ev["extendedProps"]["submitted"]) == (
-        "2026-10-04T23:59:00", None, "동영상", False)
+        "2026-10-04T23:29:00", "2026-10-04T23:59:00", "동영상", False)
     assert "요구시간" in ev["extendedProps"]["description"]
     write_data([], deadlines=[{**v, "status": "시청 완료"}], stamp="b")
     assert reconcile.apply(db, now=NOW)["submitted"] == 1

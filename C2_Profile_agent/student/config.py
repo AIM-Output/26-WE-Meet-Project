@@ -63,7 +63,7 @@ SSO_HOSTS = ("sso.jnu.ac.kr", "idpm.jnu.ac.kr")
 HAKSTD_STATE = STATE_DIR / "hakstd_state.json"              # 갱신된 쿠키는 여기에 (C3_Login_agent 파일은 덮어쓰지 않는다)
 IMPORT_OUT = STATE_DIR / "import.json"
 IMPORT_LOG = STATE_DIR / "import.log"
-IMPORT_TIMEOUT = 5 * 60
+IMPORT_TIMEOUT = 8 * 60          # 세션 두 개 시도 + 쿠키 복구 + 무인 로그인이 다 돌면 5분을 넘길 수 있다
 INTERACTIVE_TIMEOUT = 12 * 60                               # 직접 로그인 창을 띄운 경우
 
 

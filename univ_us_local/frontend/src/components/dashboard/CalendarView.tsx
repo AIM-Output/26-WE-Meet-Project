@@ -177,9 +177,12 @@ function EventContent({ info }: { info: EventDisplayInfo }) {
   if (p.kind === "deadline") {
     const d = daysUntil(deadlineDay(parseLocal(p.due)));
     const tag = p.submitted || p.userDone ? "✓" : d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`;
-    // 자정 마감은 전날 23:59~24:00 칸으로 온다(F6 to_event) — 시각은 '24:00' 으로
+    // 기간이 없는 마감은 '마감 시각에서 끝나는 30분 칸'으로 온다(F6 to_event) — 칸의 시작이 아니라 마감 시각을 적는다.
+    // 자정 마감은 전날 23:30~24:00 칸이라 '24:00' 으로
     const midnight = !info.event.allDay && /T00:00(:00)?$/.test(p.due) && info.event.startStr.slice(0, 10) !== p.due.slice(0, 10);
-    const timeText = info.timeText && midnight ? "24:00" : info.timeText;
+    const { start, end } = info.event;
+    const point = !!start && !!end && end.getTime() - start.getTime() <= 30 * 60_000;
+    const timeText = !info.timeText ? info.timeText : midnight ? "24:00" : point ? p.due.slice(11, 16) : info.timeText;
     return (
       <div className="fc-ev" title={`${p.courseShort} · ${info.event.title}${p.status ? ` · ${p.status}` : ""}`}>
         {timeText && <span className="fc-ev-time">{timeText}</span>}

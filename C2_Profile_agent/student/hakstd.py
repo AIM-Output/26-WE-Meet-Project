@@ -132,7 +132,9 @@ def _settle(page, timeout_s: int = 25) -> bool:
 
 
 def _enter(page, timeout_s: int = 30) -> bool:
-    """대시보드로 가서 로그인 화면이면 '내 학사행정 로그인'을 눌러 SSO 세션으로 들어간다."""
+    """대시보드로 가서 로그인 화면이면 '내 학사행정 로그인'을 눌러 SSO 세션으로 들어간다.
+    SSO 세션이 끝나 SSO 로그인 폼이 뜨면 C3 의 sso_continue(저장된 자격증명)로 그 자리에서 넘긴다 — e클래스 세션만 살아 있으면
+    C3 reauthenticate 가 '성공'이라 답해도 여기는 계속 로그인 화면이었다(2026-10-08 팀원 PC)."""
     page.goto(C.HAKSTD_DASHBOARD, wait_until="load", timeout=60_000)
     if _settle(page):
         return True
@@ -142,7 +144,28 @@ def _enter(page, timeout_s: int = 30) -> bool:
             page.wait_for_load_state("load", timeout=30_000)
         if _settle(page, timeout_s):
             return True
+    lm = _c3_login()
+    if lm is not None and hasattr(lm, "sso_continue") and _on_sso(page.url):
+        try:
+            passed = lm.sso_continue(page)
+        except Exception:                                   # noqa: BLE001 — 여기서 실패해도 아래 재인증·로그인 창으로 이어진다
+            passed = False
+        if passed:
+            print("  SSO 로그인 화면 → 저장된 자격증명으로 통과")
+            if _on_hakstd_login(page.url):                   # SSO 가 학사정보시스템 로그인 화면으로 돌려보낸 경우
+                with contextlib.suppress(Exception):
+                    page.click("#btnLogin", timeout=10_000)
+                    page.wait_for_load_state("load", timeout=30_000)
+            if _settle(page, timeout_s):
+                return True
+    print(f"  학사정보시스템에 들어가지 못함 — 멈춘 곳: {_where(page.url)}")
     return False
+
+
+def _where(url: str) -> str:
+    """로그에 남길 위치 — 호스트와 경로만 (쿼리에는 세션 값이 들어 있을 수 있다)."""
+    u = urlparse(url or "")
+    return f"{u.netloc}{u.path}" or "(빈 화면)"
 
 
 def _c3_login():
@@ -197,7 +220,8 @@ def hakstd_page(interactive: bool = False):
         if not ok and interactive:
             print("  로그인 창을 엽니다 — 직접 로그인하세요 (학사정보시스템 화면이 뜨면 자동으로 이어집니다)")
             close()
-            ok = open_(None, headed=True)
+            # C3 세션에서 시작한다 — 신뢰 기기 쿠키가 있으면 아이디·비밀번호만으로 끝난다(빈 창이면 휴대폰 인증부터 다시)
+            ok = open_(str(C.C3_STATE) if C.C3_STATE.exists() else None, headed=True)
             deadline = time.time() + 600
             while not ok and time.time() < deadline and state["browser"].is_connected():
                 url = state["page"].url

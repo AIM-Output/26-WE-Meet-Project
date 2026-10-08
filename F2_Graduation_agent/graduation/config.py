@@ -63,7 +63,7 @@ HAKSTD_DASHBOARD = f"{HAKSTD_BASE}/Home/DashBoard"
 HAKSTD_GRADES = f"{HAKSTD_BASE}/web/Sung/Sung010"          # 기이수성적
 IMPORT_OUT = STATE_DIR / "import.json"
 IMPORT_LOG = STATE_DIR / "import.log"
-IMPORT_TIMEOUT = 5 * 60
+IMPORT_TIMEOUT = 8 * 60          # 세션 두 개 시도 + 쿠키 복구 + 무인 로그인이 다 돌면 5분을 넘길 수 있다
 INTERACTIVE_TIMEOUT = 12 * 60                               # 직접 로그인 창을 띄운 경우
 
 # ── 성적 규칙 (5절 ①) ──

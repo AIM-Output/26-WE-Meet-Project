@@ -314,31 +314,87 @@ def _clock_seconds(s: str) -> int:
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
 
 
-def parse_vod_progress(soup: BeautifulSoup) -> dict[str, dict]:
-    """진도 현황(report/ubcompletion/user_progress.php)의 동영상 표 → {이름: {length, required, progress, watched}}.
+# 진도 현황 표의 칸 — 강의 자료(이름) 칸에서 몇 칸 뒤인지를 머리글로 찾는다. 머리글을 못 읽으면 2026-10-02 실측 순서
+# (콘텐츠 길이 · 출석인정 요구시간 · 최대 학습위치 · 진도율)
+PROGRESS_HEADS = {"name": ("강의자료", "학습자료", "콘텐츠명", "자료명"), "length": ("콘텐츠길이", "동영상길이", "길이"),
+                  "required": ("출석인정요구시간", "인정요구시간", "요구시간"), "progress": ("진도율", "진행률"),
+                  "attend": ("출석", "출석여부", "출석인정", "인정여부")}
+PROGRESS_FALLBACK = {"length": 1, "required": 2, "progress": 4}
+ATTEND_OK = ("O", "○", "◯", "출석", "인정", "완료")
+
+
+def _progress_offsets(table) -> dict[str, int]:
+    heads = [re.sub(r"\s+", "", th.get_text(" ", strip=True)) for th in table.find_all("th")]
+    pos = {}
+    for key, names in PROGRESS_HEADS.items():
+        i = next((i for i, h in enumerate(heads) if h in names), None)
+        if i is not None:
+            pos[key] = i
+    if "name" not in pos or "progress" not in pos:
+        return dict(PROGRESS_FALLBACK)
+    return {k: i - pos["name"] for k, i in pos.items() if k != "name" and i > pos["name"]}
+
+
+def vod_key(name: str) -> str:
+    """이름 대조용 — 공백·문장부호·말줄임을 지운다 (진도 현황이 긴 이름을 '…' 로 줄이거나 띄어쓰기가 달라도 맞게)."""
+    return re.sub(r"[\W_]+", "", re.sub(r"(\.\.\.|…)\s*$", "", name or "")).lower()
+
+
+def parse_vod_progress(soup: BeautifulSoup) -> list[dict]:
+    """진도 현황(report/ubcompletion/user_progress.php)의 동영상 표 → 표 순서대로 [{name, length, required, progress, watched}].
+    같은 이름의 동영상이 여러 주차에 있을 수 있어 목록으로 둔다 (짝짓기는 match_vod_progress).
     이 화면 위쪽의 학번·이름·전화 표는 읽지 않는다 — 'user_progress' 표만 본다.
-    출석 인정 = 학습 인정 시간 ≥ 출석인정 요구시간(콘텐츠 길이의 90% 안팎) → 진도율이 요구시간/길이 이상이면 시청 완료로 본다."""
-    out: dict[str, dict] = {}
+    출석 인정 = 학습 인정 시간 ≥ 출석인정 요구시간(콘텐츠 길이의 90% 안팎) → 진도율이 요구시간/길이 이상이면 시청 완료로 본다.
+    표에 출석(O/X) 칸이 있으면 그것이 우선이다."""
+    out: list[dict] = []
     table = soup.select_one("table.user_progress")
     if table is None:
         return out
+    off = _progress_offsets(table)
     for tr in table.find_all("tr"):
         cells = tr.find_all("td", recursive=False)
         name_td = next((td for td in cells if "text-left" in (td.get("class") or [])), None)
         if name_td is None:
             continue
         i = cells.index(name_td)
-        rest = cells[i + 1:]
-        if len(rest) < 4:
+
+        def cell(key: str) -> str:
+            j = i + off.get(key, 0)
+            return text_of(cells[j]) if key in off and j < len(cells) else ""
+
+        if "progress" not in off or i + off["progress"] >= len(cells):
             continue
         name = " ".join(name_td.get_text(" ", strip=True).split())
-        length, required = text_of(rest[0]), text_of(rest[1])
-        pm = re.search(r"(\d+(?:\.\d+)?)\s*%", text_of(rest[3]))
+        length, required = cell("length"), cell("required")
+        pm = re.search(r"(\d+(?:\.\d+)?)\s*%", cell("progress"))
         progress = float(pm.group(1)) if pm else 0.0
         total = _clock_seconds(length)
         need = 100.0 * _clock_seconds(required) / total if total and _clock_seconds(required) else C.VOD_DONE_PERCENT
-        out.setdefault(name, {"length": length, "required": required, "progress": progress,
-                              "watched": progress >= int(need)})       # 화면의 진도율은 반올림돼 있다 → 요구 비율은 내림
+        watched = progress >= min(int(need), 100)       # 화면의 진도율은 반올림돼 있다 → 요구 비율은 내림
+        attend = cell("attend").strip()
+        if attend:
+            watched = watched or any(attend.startswith(w) for w in ATTEND_OK)
+        out.append({"name": name, "length": length, "required": required, "progress": progress, "watched": watched})
+    return out
+
+
+def match_vod_progress(vods: list[dict], rows: list[dict]) -> dict[str, dict]:
+    """과목 화면의 동영상(표시 순서) ↔ 진도 현황 행(표 순서) → {cmid: 행}. 진도 표에는 활동 번호가 없어 이름으로 짝짓는다.
+    ① 이름이 같으면 순서대로 하나씩 (주차마다 '강의 동영상' 처럼 같은 이름이 반복돼도 첫 행만 쓰지 않게)
+    ② 남은 것은 공백·문장부호를 뺀 이름이 같거나, 진도 표 쪽이 줄인 이름(앞부분)이면."""
+    left = list(range(len(rows)))
+    out: dict[str, dict] = {}
+    for exact in (True, False):
+        for v in vods:
+            if v["cmid"] in out:
+                continue
+            name, key = " ".join(v["name"].split()), vod_key(v["name"])
+            for j in left:
+                rk = vod_key(rows[j]["name"])
+                if (rows[j]["name"] == name) if exact else (rk == key or (len(rk) >= 6 and key.startswith(rk))):
+                    out[v["cmid"]] = rows[j]
+                    left.remove(j)
+                    break
     return out
 
 
@@ -617,21 +673,24 @@ class Sync:
         vods = [a for a in acts if a["mod"] in C.VIDEO_MODULES]
         if not vods:
             return
-        progress: dict[str, dict] = {}
+        rows: list[dict] = []
         try:
             soup = self.c.page(C.VOD_PROGRESS_URL.format(course_id=course["id"]))
             if soup is not None:
-                progress = parse_vod_progress(soup)
+                rows = parse_vod_progress(soup)
         except Exception as e:
             self._soft(f"{course['name']} 진도 현황", e)
+        progress = match_vod_progress(vods, rows)
         for a in vods:
-            p = progress.get(a["name"])
+            p = progress.get(a["cmid"])
             if p:
                 status = "시청 완료" if p["watched"] else f"미시청 · 진도율 {p['progress']:g}%"
                 desc = f"출석인정 요구시간 {p['required']} / 콘텐츠 길이 {p['length']} · 진도율 {p['progress']:g}%"
             else:
-                status = "미시청" if progress else ""
-                desc = f"콘텐츠 길이 {a.get('length') or '?'}" + ("" if progress else " · 진도 현황을 읽지 못했습니다")
+                # 진도 현황에서 이 동영상을 못 찾았다 — '미시청'이라고 단정하지 않는다 (이름이 달라 짝을 못 지은 경우가 있었다)
+                status = "시청 확인 불가"
+                desc = f"콘텐츠 길이 {a.get('length') or '?'}" + (" · 진도 현황에서 이 동영상을 찾지 못했습니다" if rows
+                                                                  else " · 진도 현황을 읽지 못했습니다")
             if a.get("vodStart"):
                 desc += f"\n출석인정 기간 {a['vodStart']} ~ {a['vodEnd']} (마감만 캘린더에 올린다)"
             self.videos.append({"course_id": course["id"], "course": course["name"], "cmid": a["cmid"], "name": a["name"],

@@ -41,7 +41,7 @@ HEADERS = {
     "grade": ("성적", "등급", "평어"),
     "credits": ("학점",),
     "status": ("교과목상태", "상태"),
-    "retake": ("재이수", "재수강"),
+    "retake": ("재이수", "재수강", "재이수학년도/학기/교과목"),          # 2026-10-08 실측 머리글은 마지막 것
     "geArea": ("교양영역", "영역"),
 }
 NEED = ("year", "semester", "name", "credits")
@@ -158,7 +158,22 @@ def fetch(interactive: bool = False) -> dict:
             html = page.content()
             out["courses"] = parse_courses(html)
             out["profile"].update(c2h.parse_grades(html))
+            if not out["courses"]:
+                print("  " + describe_grid(html))
+        else:
+            print(f"  기이수성적 화면에 들어가지 못함 — 멈춘 곳: {urlparse(page.url).netloc}{urlparse(page.url).path}")
     return out
+
+
+def describe_grid(html: str) -> str:
+    """과목을 못 읽었을 때 로그에 남길 표 모양 — 머리글과 행 수만 (성적·과목명 같은 값은 남기지 않는다)."""
+    g = _Grid()
+    g.feed(html)
+    if not g.heads and not g.rows:
+        return "기이수성적 표(gvData)가 없음 — 조회 결과가 비었거나 화면 구조가 바뀜"
+    years = sum(1 for r in g.rows if r and re.fullmatch(r"\d{4}", r[0].strip()))
+    missing = [k for k in NEED if k not in _index(g.heads)]
+    return f"표 머리글 {g.heads} · 행 {len(g.rows)}개(연도 행 {years}) · 못 찾은 칸 {missing or '없음'}"
 
 
 def main(argv=None) -> int:

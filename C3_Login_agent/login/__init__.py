@@ -7,6 +7,7 @@
     login.STATE_FILE                 # 세션 파일 (storage_state) — 여기서 시작한다
     login.reauthenticate(p)          # 죽었으면: 쿠키 복구 → 저장된 자격증명으로 무인 로그인. 성공하면 STATE_FILE 갱신
     login.session_ok(ctx)            # e클래스 세션이 살아 있는가
+    login.sso_continue(page)         # 내 화면에서 SSO 로그인 폼을 만났으면 저장된 자격증명으로 통과 (학사정보시스템)
 
 playwright 가 없는 곳(대시보드 백엔드)에서도 import 할 수 있다 — status() 는 파일만 보고, 브라우저 함수는 처음 쓸 때 불러온다.
 """
@@ -17,7 +18,7 @@ from typing import Any
 from . import config
 from .config import BROWSERS, CRED_FILE, ROOT, STATE_DIR, STATE_FILE, USER_AGENT, browser_env
 
-_LAZY = {"session_ok", "refresh_via_sso", "auto_login", "reauthenticate", "interactive_login"}
+_LAZY = {"session_ok", "refresh_via_sso", "auto_login", "reauthenticate", "interactive_login", "sso_continue"}
 
 
 def __getattr__(name: str) -> Any:

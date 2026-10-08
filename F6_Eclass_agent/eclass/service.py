@@ -130,16 +130,26 @@ def _rows(con: sqlite3.Connection, include_removed: bool = False) -> list[sqlite
     return con.execute(sql).fetchall()
 
 
+DEADLINE_BLOCK = timedelta(minutes=30)
+
+
 def to_event(a: dict) -> dict:
     """과제 → FullCalendar 이벤트 (/api/events 의 kind='deadline'). 마감이 없으면 None 을 돌려주지 않게 호출 쪽에서 거른다.
-    00:00 마감은 전날 밤(24:00)으로 본다 — '10월 4일 자정까지'(= 10/5 00:00)가 캘린더에서 10/5 칸에 들어가지 않게
-    10/4 23:30 ~ 10/5 00:00 으로 그린다(끝은 배타적이라 10/5 칸에는 안 걸친다. 1분짜리면 주 보기에서 격자 밖으로 삐져나와
-    30분 칸으로). 화면의 시각 표시는 '24:00'. 실제 마감은 extendedProps.due 그대로."""
-    start, end = a["start"] or a["due"], a["due"] if a["start"] else None
-    due = parse_due(a["due"])
-    if not a["start"] and due and (due.hour, due.minute) == (0, 0):
-        start = (due - timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%S")
-        end = a["due"]
+    시작~마감 기간이 있으면 그 기간, 아니면 **마감 시각에서 끝나는 30분 칸**으로 그린다. 끝을 비워 두면 FullCalendar 가
+    기본 1시간을 붙여 23:59 마감이 다음 날 00:59 까지 → 월 보기에서 다음 날 칸까지 막대가 걸쳤다(2026-10-08 팀 점검).
+    00:00 마감은 전날 밤(24:00)으로 본다 — '10월 4일 자정까지'(= 10/5 00:00)를 10/4 23:30 ~ 10/5 00:00 으로(끝은 배타적이라
+    10/5 칸에는 안 걸친다). 그 밖의 새벽 마감은 그날 0시보다 앞당기지 않는다(전날 칸에 걸치지 않게).
+    화면의 시각 표시는 마감 시각('24:00' 포함, CalendarView). 실제 마감은 extendedProps.due 그대로."""
+    due, begin = parse_due(a["due"]), parse_due(a["start"])
+    if due and begin and begin < due:
+        start, end = a["start"], a["due"]
+    elif due:
+        b = due - DEADLINE_BLOCK
+        if (due.hour, due.minute) != (0, 0):
+            b = max(b, due.replace(hour=0, minute=0, second=0, microsecond=0))
+        start, end = b.strftime("%Y-%m-%dT%H:%M:%S"), a["due"]
+    else:
+        start, end = a["start"] or a["due"], None
     return {
         "id": a["id"], "title": a["title"], "start": start, "end": end,
         "allDay": False, "editable": False,

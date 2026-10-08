@@ -203,6 +203,30 @@ def _debug_shot(page):
         pass
 
 
+def sso_continue(page, timeout_s: int = 60) -> bool:
+    """빌려 쓰는 기능이 **자기 화면에서** SSO 로그인 폼을 만났을 때(학사정보시스템 '내 학사행정 로그인' → sso.jnu.ac.kr):
+    저장된 자격증명으로 채워 SSO 를 통과시킨다. 통과해 SSO 밖(원래 사이트)으로 돌아오면 True.
+
+    reauthenticate() 는 e클래스(/my/)만 보고 판단해서, e클래스 세션은 살아 있는데 SSO 세션만 끝난 경우 '성공'이라 답하고도
+    학사정보시스템은 여전히 로그인 화면이다(팀원 PC 에서 F2 가져오기가 실패한 경로, 2026-10-08). 그때 이 함수가 그 화면에서 직접 넘긴다.
+    자격증명이 없거나 폼이 없거나 2차 인증(휴대폰)이 막으면 False. 비밀번호는 여기서만 다룬다."""
+    creds = auth.load()
+    if not creds or not _has_sso_form(page):
+        return False
+    if not _fill_sso_form(page, creds["username"], creds["password"]):
+        return False
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        _click_if_visible(page, "#btnFirstAuthEndConfirm")
+        if not any(h in page.url for h in C.SSO_HOSTS) and not _has_sso_form(page):
+            return True
+        if _mfa_blocking(page):
+            print("  SSO 2차 인증(휴대폰) 대기 — 신뢰 기기가 만료된 듯합니다. '로그인 창 열기'로 한 번 인증하세요.")
+            return False
+        time.sleep(1)
+    return False
+
+
 def reauthenticate(p) -> bool:
     """빌려 쓰는 기능용 오케스트레이터: 조용한 쿠키 복구 → (자격증명 있으면) 무인 로그인."""
     if refresh_via_sso(p):

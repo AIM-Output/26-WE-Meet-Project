@@ -89,7 +89,7 @@ def _run_import(interactive: bool) -> None:
             code = subprocess.run(cmd, cwd=str(C.ROOT), env=env, stdout=log, stderr=subprocess.STDOUT,
                                   timeout=C.INTERACTIVE_TIMEOUT if interactive else C.IMPORT_TIMEOUT).returncode
     except subprocess.TimeoutExpired:
-        _finish("import", ok=False, error="시간이 초과되었습니다")
+        _finish("import", ok=False, error=f"시간이 초과되었습니다 (기록: {C.IMPORT_LOG})")
         return
     except Exception as e:                              # noqa: BLE001
         _finish("import", ok=False, error=f"실행하지 못했습니다: {e}"[:300])
@@ -98,8 +98,8 @@ def _run_import(interactive: bool) -> None:
         _finish("import", ok=False, needLogin=True, error="학사정보시스템 로그인이 필요합니다")
         return
     if code != 0:
-        _finish("import", ok=False, error="기이수성적 표를 읽지 못했습니다 (형식 변경 의심 — 이전 이수 내역은 그대로 둡니다. "
-                                          "F2_Graduation_agent\\state\\import.log 확인)")
+        _finish("import", ok=False, error="기이수성적 표를 읽지 못했습니다 (형식 변경 또는 오류 — 이전 이수 내역은 그대로 둡니다. "
+                                          f"기록: {C.IMPORT_LOG})")
         return
     try:
         doc = json.loads(C.IMPORT_OUT.read_text(encoding="utf-8"))
