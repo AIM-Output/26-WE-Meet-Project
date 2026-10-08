@@ -3,33 +3,43 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CircleCheck, ClipboardList, RefreshCw, Sparkles, SquareCheck } from "lucide-react";
+import { CircleCheck, ClipboardList, ExternalLink, RefreshCw, SlidersHorizontal, Sparkles, SquareCheck } from "lucide-react";
 import { Page, PageHeader, Group } from "@/components/ui/Layout";
 import { Tabs } from "@/components/ui/Tabs";
-import { EmptyState, SkeletonList } from "@/components/ui/Feedback";
+import { Banner, EmptyState, SkeletonList } from "@/components/ui/Feedback";
 import { Chip, CourseChip, DdayChip, StatusBadge } from "@/components/ui/Chip";
 import { ProgressBar } from "@/components/ui/Progress";
 import { EventDetailHost } from "@/components/events/EventDetailHost";
 import { EclassSyncBanner, useEclassSyncTone } from "@/components/assignments/EclassSyncBanner";
 import { EclassNav } from "@/components/assignments/EclassNav";
+import { PrioritySettingsModal } from "@/components/assignments/PrioritySettingsModal";
 import { useAppData } from "@/components/app/AppData";
 import { useAssignments } from "@/lib/useAssignments";
-import { navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
-import { ESTIMATE_OPTIONS, GROUP_META, hoursLeftToday, isOpen, isStaleOverdue, sortByPriority, type Assignment, type PriorityGroup } from "@/lib/priority";
+import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
+import { ESTIMATE_OPTIONS, GROUP_META, GROUP_ORDER, isOpen, isOverdue, sortByPriority, type Assignment, type PriorityGroup, type TodayBudget } from "@/lib/priority";
 import { daysUntil, deadlineDay, fmtDeadline, fmtHours, fmtRelative, parseLocal } from "@/lib/dates";
 
 // /assignments — 과제·동영상 (F6) + 우선순위 그룹 (F7). Frontend-Route 11-3 · 12-1.
+// 그룹·순서·이유 한 줄·오늘 남은 시간은 서버(F7, GET /api/priority)가 계산한 값을 그대로 그린다.
 
 const TABS = ["open", "done", "past"] as const;
 const SORTS = ["priority", "due", "course"] as const;
 type Tab = (typeof TABS)[number];
 type Sort = (typeof SORTS)[number];
 
-const GROUP_DOT: Record<PriorityGroup, string> = { overdue: "var(--danger)", now: "var(--accent)", week: "var(--border-strong)", later: "var(--border-strong)" };
+const GROUP_DOT: Record<PriorityGroup, string> = {
+  overdue: "var(--danger)",
+  now: "var(--accent)",
+  week: "var(--border-strong)",
+  later: "var(--border-strong)",
+  nodue: "var(--border)",
+};
+
+const byDue = (a: Assignment, b: Assignment) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity);
 
 function EstimatePicker({ a, onChange }: { a: Assignment; onChange: (h: number | null) => void }) {
   const [custom, setCustom] = useState(false);
-  const preset = (ESTIMATE_OPTIONS as readonly number[]).includes(a.estimate);
+  const preset = a.estimate !== null && (ESTIMATE_OPTIONS as readonly number[]).includes(a.estimate);
   const commit = (v: string) => {
     setCustom(false);
     const n = Number(v);
@@ -47,7 +57,7 @@ function EstimatePicker({ a, onChange }: { a: Assignment; onChange: (h: number |
           min={0.25}
           step={0.25}
           autoFocus
-          defaultValue={a.estimate}
+          defaultValue={a.estimate ?? undefined}
           className="field field-sm w-[92px]"
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
@@ -66,7 +76,7 @@ function EstimatePicker({ a, onChange }: { a: Assignment; onChange: (h: number |
             else if (e.target.value !== "current") onChange(Number(e.target.value));
           }}
         >
-          {!preset && <option value="current">{fmtHours(a.estimate)}</option>}
+          {!preset && <option value="current">{a.estimate === null ? "기본" : fmtHours(a.estimate)}</option>}
           {ESTIMATE_OPTIONS.map((h) => (
             <option key={h} value={h}>
               {fmtHours(h)}
@@ -98,37 +108,58 @@ function AssignmentRow({
   setUserDone: (id: string, v: boolean) => void;
   setEstimate: (id: string, h: number | null) => void;
 }) {
+  const dueText = a.due ? fmtDeadline(a.due, now) : "마감 없음";
+  const title = (
+    <>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="truncate text-[15px] font-semibold">{a.title}</span>
+        <Chip square className="flex-none">
+          {a.kindLabel}
+        </Chip>
+        {a.p.changed && isOpen(a) && (
+          <Chip tone="accent" square className="flex-none" title={a.p.changed.before ? `이전 마감 ${fmtDeadline(parseLocal(a.p.changed.before), now)}` : undefined}>
+            변경됨
+          </Chip>
+        )}
+        {a.p.isNew && isOpen(a) && (
+          <Chip tone="primary" square className="flex-none">
+            새 과제
+          </Chip>
+        )}
+      </span>
+      <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-[13px]">
+        <CourseChip name={a.p.courseShort} color={color ?? a.p.courseColor} />
+        <span className="text-faint">·</span>
+        {/* 이유 한 줄 — 왜 이 자리에 있는지를 항상 적는다 (F7-S03) */}
+        {isOpen(a) && a.reason ? <span className="text-muted">{a.reason}</span> : <span className="num text-muted">{dueText}</span>}
+      </span>
+    </>
+  );
   return (
     <motion.li layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-surface-2 md:flex-nowrap md:px-4">
         <span className="w-12 flex-none">
-          <DdayChip date={deadlineDay(a.due)} done={!isOpen(a)} now={now} />
-        </span>
-        <button type="button" className="min-w-0 flex-1 basis-[60%] text-left" onClick={() => navigateQuery({ event: a.id }, "push")}>
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-[15px] font-semibold">{a.title}</span>
-            <Chip square className="flex-none">
-              {a.kindLabel}
+          {a.due ? (
+            <DdayChip date={deadlineDay(a.due)} done={!isOpen(a)} now={now} />
+          ) : (
+            <Chip square title="마감이 없는 과제 — 순위 계산에서 빠집니다">
+              없음
             </Chip>
-            {a.p.changed && isOpen(a) && (
-              <Chip tone="accent" square className="flex-none" title={a.p.changed.before ? `이전 마감 ${fmtDeadline(parseLocal(a.p.changed.before), now)}` : undefined}>
-                변경됨
-              </Chip>
-            )}
-            {a.p.isNew && isOpen(a) && (
-              <Chip tone="primary" square className="flex-none">
-                새 과제
-              </Chip>
-            )}
-          </span>
-          <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-[13px]">
-            <CourseChip name={a.p.courseShort} color={color ?? a.p.courseColor} />
-            <span className="text-faint">·</span>
-            {isOpen(a) ? <span className="text-muted">{a.reason}</span> : <span className="num text-muted">{fmtDeadline(a.due, now)}</span>}
-          </span>
-        </button>
+          )}
+        </span>
+        {a.due ? (
+          <button type="button" className="min-w-0 flex-1 basis-[60%] text-left" onClick={() => navigateQuery({ event: a.id }, "push")}>
+            {title}
+          </button>
+        ) : (
+          // 마감 없는 과제는 캘린더에 없어 상세 모달이 없다 — e클래스로 바로 간다
+          <a href={a.p.url || undefined} target="_blank" rel="noreferrer" className="min-w-0 flex-1 basis-[60%] text-left">
+            {title}
+          </a>
+        )}
         <span className="flex flex-none items-center gap-2 max-md:w-full max-md:justify-end">
-          <span className="num hidden text-[13px] text-muted lg:inline">{fmtDeadline(a.due, now)}</span>
+          <span className="num hidden text-[13px] text-muted lg:inline">{dueText}</span>
+          {!a.due && a.p.url && <ExternalLink className="size-3.5 text-faint" aria-hidden />}
           {a.submitted ? (
             <StatusBadge tone="ok">{a.p.status || (a.kindLabel === "동영상" ? "시청 완료" : "제출 완료")}</StatusBadge>
           ) : a.userDone ? (
@@ -146,18 +177,48 @@ function AssignmentRow({
   );
 }
 
+/** 오늘 남은 시간 막대 (F7-S05) — 필요 시간이 넘치면 빨강 */
+function TodayBar({ today, need }: { today: TodayBudget; need: number }) {
+  const left = today.leftHours;
+  const over = need > left;
+  const detail = [
+    `취침 ${today.bedTime}까지 ${fmtHours(today.untilBedHours)}`,
+    today.busyHours ? `수업·일정 ${fmtHours(today.busyHours)}` : null,
+    today.studyHours ? `공부 ${fmtHours(today.studyHours)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" − ");
+  return (
+    <div className="mb-3 rounded-xl border border-border bg-surface px-4 py-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+        <span className={over ? "font-semibold text-danger-text" : "text-muted"}>
+          오늘 남은 <b className="num">{fmtHours(left)}</b> 중 <b className="num">{fmtHours(need)}</b> 필요
+          {over && " — 오늘 다 하기는 빠듯합니다"}
+        </span>
+        <Link href="/?place=preview" className="btn btn-ghost btn-sm ml-auto text-study">
+          <Sparkles aria-hidden />
+          공강에 넣기
+        </Link>
+      </div>
+      <ProgressBar value={need} max={Math.max(left, need, 0.01)} tone={over ? "danger" : "accent"} label="오늘 남은 시간 대비 필요 시간" />
+      <p className="num mt-1.5 text-[12px] text-faint">{detail}</p>
+    </div>
+  );
+}
+
 export default function AssignmentsPage() {
   const { status, syncing, loading, startSync, courses, courseColor } = useAppData();
-  const { list, setEstimate, setUserDone, now } = useAssignments();
+  const { list, setEstimate, setUserDone, now, priority, priorityError, reloadPriority } = useAssignments();
   const syncState = useEclassSyncTone();
   const [tab, setTab] = useQueryParam<Tab>("tab", "open", TABS);
   const [sort, setSort] = useQueryParam<Sort>("sort", "priority", SORTS);
   const course = useQueryValue("course");
+  const setup = useQueryValue("setup");
 
-  const filtered = useMemo(() => (course ? list.filter((a) => a.ev.extendedProps.kind === "deadline" && a.p.courseShort === course) : list), [list, course]);
-  const openList = filtered.filter((a) => isOpen(a) && a.group !== "overdue");
-  const doneList = filtered.filter((a) => !isOpen(a)).sort((a, b) => b.due.getTime() - a.due.getTime());
-  const pastList = filtered.filter((a) => isOpen(a) && a.group === "overdue").sort((a, b) => b.due.getTime() - a.due.getTime());
+  const filtered = useMemo(() => (course ? list.filter((a) => a.p.courseShort === course) : list), [list, course]);
+  const openList = filtered.filter((a) => isOpen(a) && !isOverdue(a, now));
+  const doneList = filtered.filter((a) => !isOpen(a)).sort((a, b) => byDue(b, a));
+  const pastList = filtered.filter((a) => isOverdue(a, now)).sort((a, b) => byDue(b, a));
 
   const renderList = (items: Assignment[]) => (
     <ul className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -169,62 +230,76 @@ export default function AssignmentsPage() {
     </ul>
   );
 
-  const grouped = () => {
-    const sorted = sortByPriority(filtered.filter(isOpen));
-    const groups: PriorityGroup[] = ["overdue", "now", "week", "later"];
-    const left = hoursLeftToday(now);
-    return groups.map((g) => {
-      let items = sorted.filter((a) => a.group === g);
-      const stale = g === "overdue" ? items.filter((a) => isStaleOverdue(a, now)) : [];
-      if (g === "overdue") items = items.filter((a) => !isStaleOverdue(a, now));
-      if (items.length === 0 && g !== "now") return null;
-      const need = items.reduce((s, a) => s + a.estimate, 0);
-      if (g === "now" && items.length === 0)
-        return (
-          <p key={g} className="mb-5 rounded-xl border border-dashed border-border-strong px-4 py-3 text-[14px] text-muted">
-            지금 해야 할 과제가 없습니다
-          </p>
-        );
-      return (
-        <Group
-          key={g}
-          title={GROUP_META[g].label}
-          count={items.length}
-          dot={GROUP_DOT[g]}
-          collapsible={g === "later"}
-          defaultOpen={g !== "later"}
-          extra={g === "now" ? `합계 ${fmtHours(need)}` : stale.length ? `2주 넘게 지난 ${stale.length}건 접음` : undefined}
-        >
-          {g === "now" && (
-            <div className="mb-3 rounded-xl border border-border bg-surface px-4 py-3">
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
-                <span className={need > left ? "font-semibold text-danger-text" : "text-muted"}>
-                  오늘 남은 <b className="num">{fmtHours(left)}</b> 중 <b className="num">{fmtHours(need)}</b> 필요
-                  {need > left && " — 오늘 다 하기는 빠듯합니다"}
-                </span>
-                <Link href="/?place=preview" className="btn btn-ghost btn-sm ml-auto text-study">
-                  <Sparkles aria-hidden />
-                  공강에 넣기
-                </Link>
-              </div>
-              <ProgressBar value={need} max={Math.max(left, need)} tone={need > left ? "danger" : "accent"} label="오늘 남은 시간 대비 필요 시간" />
-            </div>
-          )}
-          {renderList(items)}
-        </Group>
-      );
-    });
-  };
-
   const flat = (items: Assignment[]) => {
     const s = [...items];
-    if (sort === "due") s.sort((a, b) => a.due.getTime() - b.due.getTime());
-    else if (sort === "course") s.sort((a, b) => a.p.courseShort.localeCompare(b.p.courseShort, "ko") || a.due.getTime() - b.due.getTime());
+    if (sort === "course") s.sort((a, b) => a.p.courseShort.localeCompare(b.p.courseShort, "ko") || byDue(a, b));
+    else s.sort(byDue);
     return renderList(s);
+  };
+
+  const grouped = () => {
+    // 서버 순위를 아직 못 받았거나(F7 이 꺼짐) 실패했으면 마감 순으로라도 보여 준다 — 순위를 화면에서 따로 계산하지 않는다
+    if (!priority)
+      return (
+        <>
+          {priorityError && (
+            <Banner tone="warn" className="mb-3">
+              우선순위를 계산하지 못해 마감 순으로 보여 줍니다 ({priorityError})
+            </Banner>
+          )}
+          {flat(filtered.filter(isOpen))}
+        </>
+      );
+    const sorted = sortByPriority(filtered.filter((a) => isOpen(a) && a.group));
+    const unranked = filtered.filter((a) => isOpen(a) && !a.group); // 방금 생긴 과제 — 다음 계산 때 들어간다
+    return (
+      <>
+        {GROUP_ORDER.map((g) => {
+          let items = sorted.filter((a) => a.group === g);
+          const stale = g === "overdue" ? items.filter((a) => a.stale) : [];
+          if (g === "overdue") items = items.filter((a) => !a.stale);
+          if (g === "now" && items.length === 0)
+            return (
+              <p key={g} className="mb-5 rounded-xl border border-dashed border-border-strong px-4 py-3 text-[14px] text-muted">
+                지금 해야 할 과제가 없습니다
+              </p>
+            );
+          if (items.length === 0) return null;
+          const need = items.reduce((s, a) => s + (a.estimate ?? 0), 0);
+          const extra = [
+            g !== "overdue" && g !== "nodue" ? `합계 ${fmtHours(need)}` : null,
+            stale.length ? `2주 넘게 지난 ${stale.length}건 접음` : null,
+            g === "nodue" ? "순위 계산에서 빠집니다" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            <Group
+              key={g}
+              title={GROUP_META[g].label}
+              count={items.length}
+              dot={GROUP_DOT[g]}
+              collapsible={g === "later"}
+              defaultOpen={g !== "later"}
+              extra={extra || undefined}
+            >
+              {g === "now" && <TodayBar today={priority.today} need={need} />}
+              {renderList(items)}
+            </Group>
+          );
+        })}
+        {unranked.length > 0 && (
+          <Group title="계산 중" count={unranked.length} dot="var(--border)">
+            {renderList(unranked)}
+          </Group>
+        )}
+      </>
+    );
   };
 
   const courseNames = [...new Set(list.map((a) => a.p.courseShort))].sort((a, b) => a.localeCompare(b, "ko"));
   const syncedAt = status?.eclass?.lastOkAt ?? status?.updated_at;
+  const oldest = pastList[pastList.length - 1]?.due;
 
   return (
     <Page>
@@ -263,6 +338,10 @@ export default function AssignmentsPage() {
                 </option>
               ))}
             </select>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigateQuery({ setup: "priority" }, "push")} title="안전계수 · 유형별 기본 시간 · 취침 시각">
+              <SlidersHorizontal aria-hidden />
+              <span className="max-sm:sr-only">우선순위 설정</span>
+            </button>
           </>
         }
       />
@@ -302,7 +381,7 @@ export default function AssignmentsPage() {
         openList.length === 0 && pastList.length === 0 ? (
           <EmptyState icon={<CircleCheck />} title="마감이 남은 과제가 없습니다" />
         ) : sort === "priority" ? (
-          <>{grouped()}</>
+          grouped()
         ) : (
           flat(filtered.filter(isOpen))
         )
@@ -316,10 +395,11 @@ export default function AssignmentsPage() {
             마감이 지났지만 제출이 확인되지 않은 과제입니다. e클래스 밖에서 냈다면 &lsquo;내가 체크함&rsquo;으로 옮기세요.
           </p>
           {renderList(pastList)}
-          <p className="mt-2 text-right text-[12px] text-faint">가장 오래된 것: {daysUntil(now, pastList[pastList.length - 1].due)}일 전</p>
+          {oldest && <p className="mt-2 text-right text-[12px] text-faint">가장 오래된 것: {daysUntil(now, oldest)}일 전</p>}
         </>
       )}
 
+      <PrioritySettingsModal open={setup === "priority"} onClose={() => closeQuery(["setup"])} onSaved={() => void reloadPriority()} />
       <EventDetailHost />
     </Page>
   );

@@ -1,0 +1,6 @@
+# 내 우선순위 설정 — 공유하지 않는다
+data/
+
+__pycache__/
+*.pyc
+.pytest_cache/

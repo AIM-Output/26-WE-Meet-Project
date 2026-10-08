@@ -53,6 +53,13 @@ def router(sources: Sequence[Source] = ()):
     return c1.build_router(sources) if c1 else None
 
 
+def collect(sources: Sequence[Source], start: Optional[str], end: Optional[str]) -> list[dict]:
+    """/api/events 와 같은 합치기를 서버 안에서 — F7 '오늘 남은 시간'이 오늘 수업·일정을 읽는다."""
+    if not c1:
+        return []
+    return c1.service.collect(sources, start, end)
+
+
 def summary() -> dict:
     """available · DB 자리 · 건수 · 분류표 — /api/status 가 한 번만 부른다."""
     if not c1:

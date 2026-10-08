@@ -140,7 +140,7 @@ export default function ChatPage() {
 
 function Message({ m, onResolve }: { m: ChatMsg; onResolve: (s: "confirmed" | "canceled") => void }) {
   if (m.role === "user")
-    return <p className="ml-auto w-fit max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2 text-[14px] text-white">{m.text}</p>;
+    return <p className="ml-auto w-fit max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2 text-[14px] text-on-primary">{m.text}</p>;
   if (m.role === "system")
     return (
       <p className="flex items-center justify-center gap-1.5 text-[12px] text-faint">

@@ -651,7 +651,7 @@ function AskTab() {
       <div className="space-y-4 p-4">
         {demoAskThread.map((m, i) =>
           m.role === "user" ? (
-            <p key={i} className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2 text-[14px] text-white">
+            <p key={i} className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2 text-[14px] text-on-primary">
               {m.text}
             </p>
           ) : (

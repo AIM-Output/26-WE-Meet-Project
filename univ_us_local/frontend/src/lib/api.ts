@@ -38,14 +38,18 @@ import type {
   ExamPeriods,
   ExamDetail,
   ExamInput,
+  ExamSettings,
   ExamsOverview,
   PlanDay,
   PlanOptionsInput,
   PlanPreview,
+  StudyMaterials,
   StudyPlan,
   SyncNotices,
   TodayBlock,
 } from "./exams";
+import type { PriorityOverview, PrioritySettingsPatch, PrioritySettingsView } from "./priority";
+import type { AvailabilitySettings, AvailabilityView, PlacementPreview, RegisterResult, SavedBlock } from "./placement";
 import type { MaterialDetail, MaterialItem, MaterialKind, MaterialsOverview, MaterialsStatus, MaterialScan } from "./materials";
 import type { DeptEntry, ImportState, JobState, MasterSummary, ProfileDoc, ProfilePatch } from "./profile";
 import type { AcademicSchedule, AcademicSync, CalEvent, Course, NotificationList, SourceRowApi, SourcesResponse, Status, SyncState, UserEventInput } from "./types";
@@ -280,7 +284,11 @@ export const api = {
   examsToday: () => req<TodayBlock>("/exams/today"),
   /** 난이도 시간 설정 (2026-10-02) — 쪽당 분. 값이 null 이면 기본값으로 */
   putExamSettings: (difficulty: Partial<Record<Difficulty, number | null>>) =>
-    req<{ difficulties: ExamsOverview["difficulties"]; updatedAt: string | null }>("/exams/settings", json("PUT", { difficulty })),
+    req<ExamSettings>("/exams/settings", json("PUT", { difficulty })),
+  /** 난이도 시간 + 저녁 시간대(시험 공부 계획 전용, 기본 19:00~24:00) */
+  examSettings: () => req<ExamSettings>("/exams/settings"),
+  putEvening: (evening: { start?: string | null; end?: string | null } | null) =>
+    req<ExamSettings>("/exams/settings", json("PUT", { evening })),
   /** 과목별 시험 유무 — 모든 과목은 중간·기말을 본다고 둔다. 안 보는 과목은 끈다 */
   examCourses: () => req<{ courses: CourseExamSetting[]; periods: ExamPeriods; hints: string[]; updatedAt: string | null }>("/exams/courses"),
   patchExamCourse: (courseId: string, body: { midterm?: boolean; final?: boolean }) =>
@@ -297,6 +305,14 @@ export const api = {
   /** 승인·수정 — 손대면 재수집이 덮어쓰지 않는다 (F5-R03) */
   patchExam: (id: string, body: Partial<ExamInput> & { status?: "confirmed" | "review" }) =>
     req<{ exam: Exam; updatedAt: string | null }>(`/exams/${enc(id)}`, json("PATCH", body)),
+  /** 발표 준비 완료 체크·해제 (2026-10-06) — 발표는 공부 계획 없이 이것만 */
+  setExamReady: (id: string, ready: boolean) =>
+    req<{ exam: Exam; updatedAt: string | null }>(`/exams/${enc(id)}/ready`, json("PATCH", { ready })),
+  /** 범위 강의자료 + 공부 완료 체크 (2026-10-06) */
+  examMaterials: (id: string) => req<StudyMaterials>(`/exams/${enc(id)}/materials`),
+  /** 서비스 밖에서 공부한 자료 체크·해제 — 과목 단위, 등록된 계획은 바꾸지 않는다(planStale 로 알린다) */
+  patchExamMaterials: (id: string, ids: string[], done: boolean) =>
+    req<StudyMaterials>(`/exams/${enc(id)}/materials`, json("PATCH", { ids, done })),
   deleteExam: (id: string) =>
     req<{ deleted: string; plansRemoved: number; note: string; updatedAt: string | null }>(`/exams/${enc(id)}`, { method: "DELETE" }),
   /** 계획 계산만 — 저장하지 않는다 (F5-R30). 조정안은 `apply` 를 그대로 넘겨 다시 부른다 */
@@ -325,6 +341,34 @@ export const api = {
       `/study-plans/${enc(planId)}`,
       { method: "DELETE" },
     ),
+
+  // F7 과제 우선순위 (Frontend-Route 12-4) — 그룹·여유·이유·오늘 남은 시간은 전부 서버 계산. 과제별 소요시간은 patchAssignment(F6).
+  priority: (course?: string | null) => req<PriorityOverview>(`/priority${course ? `?course=${enc(course)}` : ""}`),
+  prioritySettings: () => req<PrioritySettingsView>("/settings/priority"),
+  /** null 은 그 칸을 기본값으로, reset 은 전부 기본값으로 */
+  patchPrioritySettings: (body: PrioritySettingsPatch) =>
+    req<PrioritySettingsView>("/settings/priority", json("PATCH", body)),
+
+  // F8 공강 학습 플랜 (Frontend-Route 13-6) — 미리보기는 저장하지 않는다. 캘린더를 바꾸는 것은 registerPlacement 뿐.
+  placementPreview: (body: { range?: number; exclude?: string[] } = {}) => req<PlacementPreview>("/placement/preview", json("POST", body)),
+  /** 미리보기 시각(at)으로 다시 계산해 signature 가 같을 때만 등록한다 — 그 사이 데이터가 바뀌면 409 */
+  registerPlacement: (body: { signature: string; at: string; range?: number; exclude?: string[] }) =>
+    req<RegisterResult>("/placement", json("POST", body)),
+  /** {start, end} ISO 로 옮기면 고정(placedBy=user) · {done} 완료 체크 · {fixed: false} 고정 풀기 */
+  patchStudyBlock: (id: string, body: { start?: string; end?: string; done?: boolean; fixed?: boolean }) =>
+    req<{ block: SavedBlock; event: CalEvent; fixed: boolean; moved: boolean }>(`/placement/blocks/${enc(id)}`, json("PATCH", body)),
+  deleteStudyBlock: (id: string) => req<{ deleted: number }>(`/placement/blocks/${enc(id)}`, { method: "DELETE" }),
+  /** 기간 안의 자동 배치 블록만 지운다 — 고정·완료·이미 시작한 블록은 남긴다 */
+  clearPlacement: (from?: string, to?: string) => {
+    const q = new URLSearchParams();
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    return req<{ deleted: number; kept: number }>(`/placement${q.size ? `?${q}` : ""}`, { method: "DELETE" });
+  },
+  availability: () => req<AvailabilityView>("/settings/availability"),
+  /** null 은 그 칸을 기본값으로, reset 은 전부 기본값으로 */
+  patchAvailability: (body: { [K in keyof AvailabilitySettings]?: AvailabilitySettings[K] | null } & { reset?: boolean }) =>
+    req<AvailabilityView>("/settings/availability", json("PATCH", body)),
 
   departments: () => req<MasterSummary & { entries: DeptEntry[] }>("/master/departments"),
   syncDepartments: () => req<JobState>("/master/departments/sync", { method: "POST" }),

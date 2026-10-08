@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import IO, Optional
 
-from . import NO_WINDOW, venv_python
+from . import NO_WINDOW, browsers_dir, venv_python
 
 STAMP = ".univus-requirements"
 
@@ -23,12 +23,8 @@ class VenvError(RuntimeError):
     """사람이 읽을 이유를 담는다 (화면·로그에 그대로 쓴다)."""
 
 
-def browsers_dir(venv_dir: str | os.PathLike) -> Path:
-    """Playwright Chromium 자리 — C3 config.BROWSERS 와 같은 규칙(.venv/pw-browsers)."""
-    return Path(venv_dir) / "pw-browsers"
-
-
 def has_chromium(venv_dir: str | os.PathLike) -> bool:
+    """Chromium 이 실제로 받아져 있는가 (chromium-* 폴더). 자리는 osenv.browsers_dir — C3 config.BROWSERS 와 같은 규칙."""
     d = browsers_dir(venv_dir)
     return d.is_dir() and any(p.name.startswith("chromium") for p in d.iterdir())
 

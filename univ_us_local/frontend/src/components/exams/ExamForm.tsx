@@ -107,8 +107,8 @@ function FormBody({
       date: v.date,
       time: v.time,
       place: v.place.trim(),
-      scopeWeeks: parseWeeks(v.weeks),
-      scopeNote: v.note.trim(),
+      scopeWeeks: v.type === "presentation" ? [] : parseWeeks(v.weeks),
+      scopeNote: v.type === "presentation" ? "" : v.note.trim(),
     };
     if (editing) delete (body as Partial<ExamInput>).courseId; // 과목은 바꿀 수 없다
     if (await onSubmit(body, exam?.id)) onClose();
@@ -177,27 +177,30 @@ function FormBody({
           </label>
           <input id="ex-place" className="field" placeholder="공7-223" value={v.place} onChange={(ev) => set("place", ev.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label" htmlFor="ex-weeks">
-              범위 주차 <span className="font-normal text-faint">(선택)</span>
-            </label>
-            <input id="ex-weeks" className="field" placeholder="3-7" value={v.weeks} onChange={(ev) => set("weeks", ev.target.value)} />
-            <p className="mt-1 text-[12px] text-faint">주차를 넣으면 그 주 강의자료의 쪽수를 자동으로 셉니다.</p>
+        {/* 발표는 범위가 없다 — 준비 완료만 체크한다 (2026-10-06) */}
+        {v.type !== "presentation" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="ex-weeks">
+                범위 주차 <span className="font-normal text-faint">(선택)</span>
+              </label>
+              <input id="ex-weeks" className="field" placeholder="3-7" value={v.weeks} onChange={(ev) => set("weeks", ev.target.value)} />
+              <p className="mt-1 text-[12px] text-faint">주차를 넣으면 그 주 강의자료의 쪽수를 자동으로 셉니다.</p>
+            </div>
+            <div>
+              <label className="label" htmlFor="ex-note">
+                범위 메모 <span className="font-normal text-faint">(선택)</span>
+              </label>
+              <input
+                id="ex-note"
+                className="field"
+                placeholder="10월 15일까지 강의한 내용"
+                value={v.note}
+                onChange={(ev) => set("note", ev.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label className="label" htmlFor="ex-note">
-              범위 메모 <span className="font-normal text-faint">(선택)</span>
-            </label>
-            <input
-              id="ex-note"
-              className="field"
-              placeholder="10월 15일까지 강의한 내용"
-              value={v.note}
-              onChange={(ev) => set("note", ev.target.value)}
-            />
-          </div>
-        </div>
+        )}
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <button type="button" className="btn" onClick={onClose} disabled={busy}>

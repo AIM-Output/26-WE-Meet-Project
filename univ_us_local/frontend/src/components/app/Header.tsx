@@ -46,14 +46,22 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex h-[var(--header-h)] max-w-[1600px] items-center gap-3 px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2.5 rounded-lg pr-2" aria-label="유니버스 대시보드로">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-[15px] font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>
+      {/* 떠 있는 섬 헤더 — 화면 위에 붙지 않고 종이 위에 한 장 떠 있다. 흐림(blur)은 이 고정 층에만 */}
+      <header className="sticky top-0 z-40 px-3 pt-3 pb-2 md:px-5">
+        <div
+          className="mx-auto flex h-[var(--header-island)] max-w-[1560px] items-center gap-3 rounded-2xl border border-border bg-surface/80 px-3 backdrop-blur-xl md:px-4"
+          style={{ boxShadow: "var(--shadow-lift), var(--inner-hi)" }}
+        >
+          <Link href="/" className="flex items-center gap-2.5 rounded-xl pr-2" aria-label="유니버스 대시보드로">
+            <span
+              className="grid size-8 place-items-center rounded-[10px] bg-brand-green text-[15px] font-extrabold text-brand-sand"
+              style={{ fontFamily: "var(--font-display)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.16)" }}
+              aria-hidden
+            >
               U
             </span>
             <span className="text-[17px] font-extrabold tracking-tight">유니버스</span>
-            <span className="hidden text-[12px] font-semibold tracking-wide text-faint sm:inline" style={{ fontFamily: "var(--font-display)" }}>
+            <span translate="no" className="hidden text-[12px] font-semibold tracking-wide text-sand-text sm:inline" style={{ fontFamily: "var(--font-display)" }}>
               Univ-Us
             </span>
           </Link>
@@ -90,9 +98,13 @@ export default function Header() {
           </div>
         </div>
         {error && (
-          <div role="alert" className="flex items-center justify-center gap-2 bg-danger px-4 py-2 text-center text-[13px] font-semibold text-white">
+          <div
+            role="alert"
+            className="mx-auto mt-2 flex max-w-[1560px] items-center justify-center gap-2 rounded-xl border px-4 py-2 text-center text-[13px] font-semibold text-danger-text"
+            style={{ background: "var(--danger-soft)", borderColor: "color-mix(in oklab, var(--danger) 35%, transparent)" }}
+          >
             <WifiOff className="size-4 flex-none" aria-hidden />
-            백엔드에 연결할 수 없습니다. <code className="rounded bg-white/15 px-1">유니버스 열기</code> 로 로컬 서버를 켰는지 확인하세요.
+            백엔드에 연결할 수 없습니다. <code className="rounded bg-surface px-1">유니버스 열기</code> 로 로컬 서버를 켰는지 확인하세요.
           </div>
         )}
         {!error && <EclassFailureStrip />}
@@ -103,7 +115,7 @@ export default function Header() {
         type="button"
         onClick={() => openNew("event")}
         whileTap={{ scale: 0.94 }}
-        className="fixed right-4 bottom-5 z-40 grid size-14 place-items-center rounded-2xl bg-primary text-white md:hidden"
+        className="fixed right-4 bottom-5 z-40 grid size-14 place-items-center rounded-2xl bg-primary text-on-primary md:hidden"
         style={{ boxShadow: "var(--shadow-pop)" }}
         aria-label="일정 추가"
       >
@@ -261,7 +273,7 @@ function NotificationButton() {
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.5, opacity: 0 }}
-                className="num absolute top-1 right-1 grid min-w-[18px] place-items-center rounded-full bg-accent-text px-1 text-[11px] leading-[18px] font-bold text-white"
+                className="num absolute top-1 right-1 grid min-w-[18px] place-items-center rounded-full bg-accent-text px-1 text-[11px] leading-[18px] font-bold text-on-accent"
               >
                 {unread}
               </motion.span>

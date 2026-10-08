@@ -20,11 +20,11 @@ const label = (b: Briefing) => {
 };
 
 export default function BriefingPage() {
-  const { events } = useAppData();
+  const { events, status } = useAppData();
   const date = useQueryValue("date");
   const wide = useMediaQuery("(min-width: 768px)");
   const [regenerating, setRegenerating] = useState(false);
-  const today = useMemo(() => composeBriefing(events), [events]);
+  const today = useMemo(() => composeBriefing(events, status?.priority?.top), [events, status?.priority?.top]);
   const all = useMemo(() => [today, ...demoPastBriefings.filter((b) => b.date !== today.date)], [today]);
   const current = all.find((b) => b.date === date) ?? (wide ? all[0] : null);
   const select = (d: string) => navigateQuery({ date: d === today.date ? null : d }, wide ? "replace" : "push");

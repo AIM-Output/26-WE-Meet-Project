@@ -29,7 +29,7 @@ export function EclassNav() {
           >
             {it.label}
             {it.badge && (
-              <span className={`num rounded-full px-1.5 text-[11px] font-bold ${it.alert ? "bg-accent text-white" : "bg-surface-3 text-muted"}`}>{it.badge}</span>
+              <span className={`num rounded-full px-1.5 text-[11px] font-bold ${it.alert ? "bg-accent-text text-on-accent" : "bg-surface-3 text-muted"}`}>{it.badge}</span>
             )}
             {on && <motion.span layoutId="eclass-tab" className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
           </Link>

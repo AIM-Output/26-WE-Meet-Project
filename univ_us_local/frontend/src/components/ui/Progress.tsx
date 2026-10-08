@@ -82,3 +82,49 @@ export function Donut({ value, max, size = 132, stroke = 12, children }: { value
     </div>
   );
 }
+
+/** 여러 갈래로 쌓는 진행 막대 — 예: 공부 진도 = 직접 체크한 자료 + 계획에서 완료한 분량 (2026-10-06) */
+export function StackedBar({
+  segments,
+  max,
+  height = 8,
+  label,
+}: {
+  segments: { value: number; tone: BarTone }[];
+  max: number;
+  height?: number;
+  label?: string;
+}) {
+  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
+  // 갈래마다 [시작, 너비] (0~1) — 앞 갈래가 끝난 자리에서 이어 그린다
+  const spans = segments.reduce<[number, number][]>((acc, s) => {
+    const start = acc.length ? acc[acc.length - 1][0] + acc[acc.length - 1][1] : 0;
+    const w = max > 0 ? Math.min(1 - start, Math.max(0, s.value) / max) : 0;
+    return [...acc, [start, w]];
+  }, []);
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-full bg-surface-3"
+      style={{ height }}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={Math.min(total, max)}
+      aria-label={label}
+    >
+      {segments.map((s, i) => {
+        const [start, w] = spans[i];
+        return (
+          <motion.div
+            key={i}
+            className="absolute top-0 h-full origin-left"
+            style={{ background: FILL[s.tone], left: `${start * 100}%`, width: `${w * 100}%` }}
+            initial={{ transform: "scaleX(0)" }}
+            animate={{ transform: "scaleX(1)" }}
+            transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+          />
+        );
+      })}
+    </div>
+  );
+}

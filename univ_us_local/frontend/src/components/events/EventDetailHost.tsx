@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarCheck, CalendarDays, CalendarMinus, CalendarPlus, Check, ExternalLink, Eye, EyeOff, Paperclip, Pencil, SquareCheck, Target, Trash2 } from "lucide-react";
+import { BookOpen, CalendarCheck, CalendarDays, CalendarMinus, CalendarPlus, Check, ExternalLink, Eye, EyeOff, Lock, LockOpen, Paperclip, Pencil, RefreshCw, SquareCheck, Target, Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Chip, CourseChip, DdayChip, StatusBadge } from "@/components/ui/Chip";
 import { Banner } from "@/components/ui/Feedback";
@@ -14,11 +14,12 @@ import { useAcademic } from "@/lib/useAcademic";
 import { useAssignments } from "@/lib/useAssignments";
 import { api } from "@/lib/api";
 import { academicPeriod, audienceText, lastDay, typeMeta, type AcademicEvent } from "@/lib/academic";
-import type { CalEvent, ExamProps, UserEventInput } from "@/lib/types";
+import type { CalEvent, ExamProps, StudyProps, UserEventInput } from "@/lib/types";
 import { autoCancelText, num, type SessionPatch } from "@/lib/attendance";
 import { AttendanceChips, LevelBadge } from "@/components/attendance/AttendanceChips";
 import { addDays, daysUntil, deadlineDay, fmtDateTime, fmtDeadlineLong, fmtHours, fmtRelative, fmtTime, parseLocal } from "@/lib/dates";
 import { ESTIMATE_OPTIONS } from "@/lib/priority";
+import { TASK_LABEL } from "@/lib/placement";
 import { EventForm, DEFAULT_CATEGORIES, type EventDraft } from "./EventForm";
 
 // 일정 상세 — `?event=` 가 붙으면 열리고, 뒤로가기·ESC 로 닫힌다. 소스 5종이 같은 자리를 쓴다(Frontend-Route 4-4).
@@ -48,6 +49,12 @@ export function EventDetailHost() {
     if (ev?.extendedProps.kind === "exam") {
       title = ev.title;
       body = <ExamDetailBody ev={ev} />;
+    }
+  } else if (shown?.startsWith("pb:")) {
+    const ev = events.find((e) => e.id === shown);
+    if (ev?.extendedProps.kind === "study") {
+      title = ev.title;
+      body = <StudyDetail ev={ev} onClose={close} />;
     }
   } else if (shown?.startsWith("cl:")) {
     const ev = events.find((e) => e.id === shown);
@@ -162,17 +169,25 @@ function DeadlineDetail({ ev }: { ev: CalEvent }) {
                     <select
                       className="field field-sm w-auto"
                       aria-label="예상 소요시간"
-                      value={ESTIMATE_OPTIONS.includes(a.estimate as (typeof ESTIMATE_OPTIONS)[number]) ? a.estimate : ""}
-                      onChange={(e) => setEstimate(ev.id, Number(e.target.value))}
+                      value={ESTIMATE_OPTIONS.includes(a.estimate as (typeof ESTIMATE_OPTIONS)[number]) ? String(a.estimate) : ""}
+                      onChange={(e) => setEstimate(ev.id, e.target.value === "default" ? null : Number(e.target.value))}
                     >
-                      {!ESTIMATE_OPTIONS.includes(a.estimate as (typeof ESTIMATE_OPTIONS)[number]) && <option value="">{fmtHours(a.estimate)}</option>}
+                      {!ESTIMATE_OPTIONS.includes(a.estimate as (typeof ESTIMATE_OPTIONS)[number]) && (
+                        <option value="">{a.estimate === null ? "기본값" : fmtHours(a.estimate)}</option>
+                      )}
                       {ESTIMATE_OPTIONS.map((h) => (
                         <option key={h} value={h}>
                           {fmtHours(h)}
                         </option>
                       ))}
+                      {a.estimateSource === "user" && <option value="default">기본값으로</option>}
                     </select>
-                    <span className="text-[13px] text-muted">{a.reason}</span>
+                    {a.estimateSource === "user" && (
+                      <Chip tone="primary" square>
+                        직접 입력
+                      </Chip>
+                    )}
+                    {a.reason && <span className="text-[13px] text-muted">{a.reason}</span>}
                   </span>,
                 ] as [string, React.ReactNode],
               ]
@@ -538,6 +553,104 @@ function ExamDetailBody({ ev }: { ev: CalEvent }) {
           <Target aria-hidden />
           {p.needsReview ? "확인하기" : "공부 계획"}
         </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- F8 학습 블록 */
+
+/** 학습 블록 상세 (F8-S03·S07·S08) — 무엇을 왜 여기에, 자동/고정, 충돌. 옮기기는 캘린더에서 끌어서(옮기면 고정된다). */
+function StudyDetail({ ev, onClose }: { ev: CalEvent; onClose: () => void }) {
+  const toast = useToast();
+  const { refresh } = useAppData();
+  const [busy, setBusy] = useState(false);
+  const p = ev.extendedProps as StudyProps;
+  const start = parseLocal(ev.start);
+  const end = ev.end ? parseLocal(ev.end) : null;
+
+  const act = async (fn: () => Promise<unknown>, ok: string, closeAfter = false) => {
+    setBusy(true);
+    try {
+      await fn();
+      await refresh();
+      toast(ok, { tone: "success" });
+      if (closeAfter) onClose();
+    } catch (e) {
+      toast(`저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        {p.course && <CourseChip name={p.course} color={p.color} />}
+        <Chip tone="study" square icon={<BookOpen aria-hidden />}>
+          {TASK_LABEL[p.taskType] ?? "학습"}
+        </Chip>
+        {p.auto ? (
+          <Chip tone="primary" square>
+            자동
+          </Chip>
+        ) : (
+          <Chip square icon={<Lock aria-hidden />}>
+            고정
+          </Chip>
+        )}
+        {p.done && <StatusBadge tone="ok">완료</StatusBadge>}
+      </div>
+      {p.conflict && !p.done && <Banner tone="warn">{p.conflict}</Banner>}
+      <KV
+        rows={[
+          [
+            "시간",
+            <span key="t" className="num font-semibold">
+              {fmtDateTime(start)} ~ {end ? (end.getHours() === 0 && end.getMinutes() === 0 ? "24:00" : fmtTime(end)) : ""} ({fmtHours(p.minutes / 60)})
+            </span>,
+          ],
+          ["근거", p.reason],
+          ["배치", p.auto ? "자동 배치 — 다시 배치하면 바뀔 수 있습니다" : "고정 — 다시 배치해도 이 자리에 있습니다"],
+        ]}
+      />
+      <p className="hint">캘린더에서 끌어 옮기면 그 자리에 고정됩니다.</p>
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
+        <button
+          type="button"
+          className="btn btn-ghost mr-auto text-danger"
+          disabled={busy}
+          onClick={() => act(() => api.deleteStudyBlock(ev.id), "학습 블록을 지웠습니다", true)}
+        >
+          <Trash2 aria-hidden />
+          지우기
+        </button>
+        {p.conflict && !p.done && (
+          <Link href="/?place=preview" className="btn">
+            <RefreshCw aria-hidden />
+            재배치 제안 보기
+          </Link>
+        )}
+        {!p.auto && !p.done && (
+          <button type="button" className="btn" disabled={busy} onClick={() => act(() => api.patchStudyBlock(ev.id, { fixed: false }), "고정을 풀었습니다 — 다시 배치하면 바뀔 수 있습니다")}>
+            <LockOpen aria-hidden />
+            고정 풀기
+          </button>
+        )}
+        {p.href && (
+          <Link href={p.href} className="btn">
+            {p.taskType === "assignment" ? "과제 보기" : p.taskType === "todo" ? "할 일 보기" : "시험 계획"}
+          </Link>
+        )}
+        <button
+          type="button"
+          className={p.done ? "btn" : "btn btn-primary"}
+          disabled={busy}
+          onClick={() => act(() => api.patchStudyBlock(ev.id, { done: !p.done }), p.done ? "완료를 풀었습니다" : "완료로 표시했습니다")}
+        >
+          <Check aria-hidden />
+          {p.done ? "완료 풀기" : "완료"}
+        </button>
       </div>
     </div>
   );

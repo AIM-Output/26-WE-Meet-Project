@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent            # F1_Bachelor_agent/
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or ROOT.parent / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import pid_alive, venv_python  # noqa: E402,F401 — runner·pipeline 이 쓴다
+from osenv import FROZEN, module_cmd, pid_alive, venv_python  # noqa: E402,F401 — runner·pipeline 이 쓴다
 
 
 def _load_env(path: Path) -> None:

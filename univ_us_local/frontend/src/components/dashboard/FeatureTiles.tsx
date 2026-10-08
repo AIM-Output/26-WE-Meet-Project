@@ -35,7 +35,8 @@ export default function FeatureTiles() {
 
   const data = useMemo<Record<string, TileData>>(() => {
     const openList = list.filter(isOpen);
-    const soon = openList.filter((a) => a.remainingHours >= 0 && a.remainingHours <= 72).length;
+    const soon = openList.filter((a) => a.remainingHours !== null && a.remainingHours >= 0 && a.remainingHours <= 72).length;
+    const urgent = openList.filter((a) => a.group === "now").length; // F7 '지금 해야 함' (서버 계산)
     const risky = attd?.risky ?? [];
     const eligible = demoOpportunities.filter((o) => o.verdict === "해당").length;
     return {
@@ -46,8 +47,10 @@ export default function FeatureTiles() {
           : { value: "—", sub: "학사일정 수집 전" },
       assignments: {
         value: `과제 ${openList.length}건`,
-        sub: [soon ? `3일 안 마감 ${soon}건` : "진행 중인 과제", feedUnread ? `새 공지·자료 ${feedUnread}건` : null].filter(Boolean).join(" · "),
-        tone: soon ? "warn" : "default",
+        sub: [urgent ? `지금 해야 함 ${urgent}건` : soon ? `3일 안 마감 ${soon}건` : "진행 중인 과제", feedUnread ? `새 공지·자료 ${feedUnread}건` : null]
+          .filter(Boolean)
+          .join(" · "),
+        tone: urgent || soon ? "warn" : "default",
       },
       graduation: !grad?.available
         ? { value: "—", sub: "졸업요건 계산 전" }
@@ -126,7 +129,7 @@ export default function FeatureTiles() {
                 aria-label={`${f.label} — ${d.value}, ${d.sub}`}
               >
                 <span className="flex items-center gap-2">
-                  <span className="grid size-8 flex-none place-items-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                  <span className="grid size-8 flex-none place-items-center rounded-lg bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-on-primary">
                     <Icon className="size-4" aria-hidden />
                   </span>
                   <span className="text-[14px] font-bold">{f.label}</span>

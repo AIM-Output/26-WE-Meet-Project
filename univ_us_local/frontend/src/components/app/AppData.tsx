@@ -117,6 +117,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const lastAcademic = useRef<string | null | undefined>(undefined);
   const lastAttendance = useRef<string | null | undefined>(undefined); // F3 — 수업 회차(캘린더 class)가 바뀌었는지
   const lastEclass = useRef<string | null | undefined>(undefined); // F6 — 과제 원장(신규·변경·내가 체크함)이 바뀌었는지
+  const lastPlacement = useRef<string | null | undefined>(undefined); // F8 — 학습 블록(배치·옮김·완료)이 바뀌었는지
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -150,6 +151,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastUpdated.current = st.updated_at;
       lastAttendance.current = st.attendance?.updatedAt;
       lastEclass.current = st.eclass?.updatedAt;
+      lastPlacement.current = st.placement?.updatedAt;
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -191,9 +193,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           } else if (
             st.updated_at !== lastUpdated.current ||
             (st.attendance?.updatedAt ?? null) !== (lastAttendance.current ?? null) ||
-            (st.eclass?.updatedAt ?? null) !== (lastEclass.current ?? null)
+            (st.eclass?.updatedAt ?? null) !== (lastEclass.current ?? null) ||
+            (st.placement?.updatedAt ?? null) !== (lastPlacement.current ?? null)
           ) {
-            await refresh(); // e클래스 수집 결과·과제 원장(다른 창에서 체크) 또는 출결(수업 회차·휴강·출결 칩)이 바뀌었다
+            await refresh(); // e클래스 수집 결과·과제 원장(다른 창에서 체크) · 출결(수업 회차·휴강·출결 칩) · 학습 블록이 바뀌었다
           }
           if (was.academicRunning && !acRunning) {
             await Promise.all([refresh(), refreshAcademic()]);

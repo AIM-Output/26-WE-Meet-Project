@@ -371,6 +371,10 @@ def exam_view(row: Any, courses: dict[str, dict], today: date,
         "changed": store.jload(row["changed"], {}) or None,
         "canDelete": True,
         "addedAt": row["added_at"],
+        # 발표는 준비 완료만 체크한다 (2026-10-06) — 공부 계획·자료 체크·진도 그래프가 없다
+        "prepOnly": row["type"] in C.PREP_ONLY_TYPES,
+        "ready": bool(_ready_at(row)),
+        "readyAt": _ready_at(row),
     }
     if scope_info is not None:
         # note = 공지·사용자가 말한 **범위 문구**, autoNote = F4 자료를 세어 본 결과. 섞지 않는다.
@@ -379,9 +383,43 @@ def exam_view(row: Any, courses: dict[str, dict], today: date,
         out["scope"]["files"] = scope_info["files"]
         out["scope"]["noPages"] = scope_info["noPages"]
         out["scope"]["autoNote"] = scope_info["note"]
+        out["scope"]["scopePages"] = scope_info.get("scopePages", scope_info["pages"])
+        out["scope"]["donePages"] = scope_info.get("donePages", 0)
+        out["scope"]["doneFiles"] = scope_info.get("doneFiles", 0)
+        out["scope"]["basis"] = scope_info.get("basis", "all")
+        out["scope"]["label"] = scope_info.get("label", "")
     out["plan"] = plan_view(plan_row, days or [], row, today) if plan_row is not None else None
     out["planState"] = out["plan"]["state"] if out["plan"] else "none"
+    if scope_info is not None:
+        out["study"] = study_progress(scope_info, out["plan"])
     return out
+
+
+def study_progress(info: dict, plan: Optional[dict]) -> dict:
+    """과목 카드의 공부 진도 그래프 (2026-10-06) — 범위 자료 중 얼마나 공부했나.
+
+    checked  = 서비스 밖에서 공부했다고 **체크한 자료**의 쪽수
+    planned  = 진행 중 계획에서 **완료한 블록**의 쪽수 — 계획은 체크하고 남은 분량으로 만들어지므로 둘을 더한다
+    쪽수를 못 센 자료가 **절반 이상**이면(.ppt 가 대부분인 과목 — 실측: 컴퓨터그래픽스 7개 중 6개) **자료 개수**로 잰다.
+    쪽수로 재면 그 자료들을 체크해도 그래프가 움직이지 않는다.
+    """
+    planned = plan["progress"]["donePages"] if plan and plan.get("unit") == "pages" else 0
+    total = info.get("scopePages", info["pages"])
+    if total and info.get("noPages", 0) * 2 < info["files"]:
+        checked = info.get("donePages", 0)
+        done = min(total, checked + planned)
+        return {"unit": "pages", "total": total, "checked": checked, "planned": done - checked,
+                "done": done, "remaining": total - done, "percent": _pct(done, total),
+                "files": info["files"], "doneFiles": info.get("doneFiles", 0)}
+    files = info["files"]
+    checked = info.get("doneFiles", 0)
+    return {"unit": "files", "total": files, "checked": checked, "planned": 0, "done": checked,
+            "remaining": files - checked, "percent": _pct(checked, files),
+            "files": files, "doneFiles": checked}
+
+
+def _ready_at(row: Any) -> Optional[str]:
+    return row["ready_at"] if "ready_at" in row.keys() else None
 
 
 def _dday(n: int) -> str:
@@ -421,10 +459,11 @@ def plan_view(row: Any, days: list[Any], exam_row: Any, today: date) -> dict:
         "pageMinutes": row["page_minutes"], "difficulty": row["difficulty"],
         "difficultyLabel": C.DIFFICULTY.get(row["difficulty"], {}).get("label", row["difficulty"]),
         "reviewDays": row["review_days"], "excludedDates": store.jload(row["excluded"], []),
-        "capMinutes": row["cap_minutes"], "includeQuiz": bool(row["include_quiz"]), "quizCount": row["quiz_count"],
+        "includeQuiz": bool(row["include_quiz"]), "quizCount": row["quiz_count"],
         "scopeWeeks": store.jload(row["scope_weeks"], []), "scopeMaterialIds": store.jload(row["scope_ids"], []),
         "sourcePages": row["source_pages"],
-        "days": [day_view(d) for d in days],
+        "dayMinutes": _pins(row),
+        "days": [{**day_view(d), "pinned": d["date"] in _pins(row) and d["kind"] == "study"} for d in days],
         "progress": {
             "plannedPages": total_pages, "donePages": done_pages, "behindPages": behind_pages,
             "totalUnits": total_units,
@@ -485,7 +524,7 @@ def overview(con: sqlite3.Connection, get_courses: Optional[CoursesGetter] = Non
     items = []
     for r in rows:
         p = plans.get(r["id"])
-        info = _scope_info(r) if with_scope else None
+        info = _scope_info(con, r) if with_scope and r["type"] not in C.PREP_ONLY_TYPES else None
         items.append(exam_view(r, courses, today, p, store.days(con, p["id"]) if p else None, info))
     upcoming = [e for e in items if not e["past"]]
     past = [e for e in items if e["past"]]
@@ -504,7 +543,6 @@ def overview(con: sqlite3.Connection, get_courses: Optional[CoursesGetter] = Non
         "source": source_block(con),
         "types": [{"key": k, "label": v["label"], "reviewDays": v["reviewDays"]} for k, v in C.TYPES.items()],
         "difficulties": difficulty_view(con),
-        "capChoices": list(C.CAP_CHOICES),
         "courseSettings": course_settings_view(con, courses, today),
         "defaults": {"periods": defaults.period_view(academic.periods(semester_of(today))),
                      "hints": made.get("hints", []),
@@ -557,6 +595,60 @@ def set_difficulty_minutes(con: sqlite3.Connection, body: dict) -> dict:
     return {"difficulties": difficulty_view(con), "updatedAt": store.updated_at(con)}
 
 
+# ---------------------------------------------------------------- 저녁 시간대 (2026-10-07)
+
+def _hm_ok(v: Any, what: str, allow_24: bool = False) -> int:
+    s = str(v or "").strip()
+    h, _, m = s.partition(":")
+    if not (h.isdigit() and m.isdigit() and len(m) == 2):
+        raise Invalid(f"{what}은 HH:MM 모양이어야 합니다: {v}")
+    hh, mm = int(h), int(m)
+    if mm >= 60 or hh > 24 or (hh == 24 and (mm or not allow_24)):
+        raise Invalid(f"{what}이 올바르지 않습니다: {v}")
+    return hh * 60 + mm
+
+
+def evening(con: sqlite3.Connection) -> dict:
+    """시험 공부 계획이 놓이는 저녁 시간대 {start, end} — 사용자가 바꾼 값(meta.evening), 없으면 19:00~24:00."""
+    out = {"start": C.EVENING_START, "end": C.EVENING_END}
+    saved = store.jload(store.get_meta(con, "evening"), {})
+    try:
+        cand = {**out, **{k: saved[k] for k in ("start", "end") if k in saved}}
+        s, e = _hm_ok(cand["start"], "저녁 시작"), _hm_ok(cand["end"], "저녁 끝", allow_24=True)
+        if s >= _hhmm_to_min(C.EVENING_EARLIEST) and e - s >= 30:
+            out = cand
+    except Invalid:
+        pass                                             # 깨진 값이면 기본값으로 — 화면이 죽지 않게
+    return out
+
+
+def evening_view(con: sqlite3.Connection) -> dict:
+    cur = evening(con)
+    return {**cur, "defaults": {"start": C.EVENING_START, "end": C.EVENING_END},
+            "changed": cur != {"start": C.EVENING_START, "end": C.EVENING_END}, "earliest": C.EVENING_EARLIEST}
+
+
+def set_evening(con: sqlite3.Connection, body: Any) -> dict:
+    """{start?, end?} — null 이면 그 칸 기본값. 기본값과 같으면 저장하지 않는다(F5 난이도 설정과 같은 방식)."""
+    if body is None:
+        body = {"start": None, "end": None}
+    if not isinstance(body, dict) or set(body) - {"start", "end"}:
+        raise Invalid("저녁 시간대는 {start, end} 모양이어야 합니다")
+    cur = evening(con)
+    for k, v in body.items():
+        cur[k] = (C.EVENING_START if k == "start" else C.EVENING_END) if v is None else str(v).strip()
+    s, e = _hm_ok(cur["start"], "저녁 시작"), _hm_ok(cur["end"], "저녁 끝", allow_24=True)
+    if s < _hhmm_to_min(C.EVENING_EARLIEST):
+        raise Invalid(f"저녁 시작은 {C.EVENING_EARLIEST} 이후여야 합니다 — 낮은 공강 배치(F8) 몫입니다")
+    if e - s < 30:
+        raise Invalid("저녁 끝은 저녁 시작보다 30분 이상 늦어야 합니다")
+    cur = {"start": _min_to_hhmm(s), "end": "24:00" if e == 24 * 60 else _min_to_hhmm(e)}
+    saved = {k: v for k, v in cur.items() if v != {"start": C.EVENING_START, "end": C.EVENING_END}[k]}
+    store.set_meta(con, evening=store.jdump(saved))
+    store.touch(con)
+    return evening_view(con)
+
+
 def course_settings_view(con: sqlite3.Connection, courses: dict[str, dict], today: date) -> list[dict]:
     """과목별 시험 유무 + 그 과목의 중간·기말이 지금 어떤 상태인지 (화면 '과목별 시험')."""
     settings = store.course_settings(con)
@@ -594,8 +686,10 @@ def set_course_exams(con: sqlite3.Connection, course_id: str, body: dict,
             "updatedAt": store.updated_at(con)}
 
 
-def _scope_info(row: Any) -> dict:
-    return scope.measure(row["course_id"], store.jload(row["scope_weeks"], []), store.jload(row["scope_ids"], []))
+def _scope_info(con: sqlite3.Connection, row: Any) -> dict:
+    """시험 범위의 자료 — 공부 완료로 체크한 자료는 남은 분량(`pages`)에서 빠진다 (2026-10-06)."""
+    return scope.measure(row["course_id"], store.jload(row["scope_weeks"], []), store.jload(row["scope_ids"], []),
+                         store.material_done(con, row["course_id"]))
 
 
 def source_block(con: sqlite3.Connection) -> dict:
@@ -617,7 +711,7 @@ def detail(con: sqlite3.Connection, exam_id_: str, get_courses: Optional[Courses
     row = _exam(con, exam_id_)
     courses = course_map(get_courses)
     p = store.active_plan(con, exam_id_)
-    info = _scope_info(row)
+    info = _scope_info(con, row)
     out = exam_view(row, courses, today, p, store.days(con, p["id"]) if p else None, info)
     out["options"] = default_options(con, row, today, info)
     out["scopeChoices"] = {"weeks": scope.weeks(row["course_id"]),
@@ -630,27 +724,33 @@ def detail(con: sqlite3.Connection, exam_id_: str, get_courses: Optional[Courses
 def default_options(con: sqlite3.Connection, row: Any, today: date,
                     scope_info: Optional[dict] = None) -> dict:
     """계획 만들기 화면의 초기값 (F5-S04) — 진행 중 계획이 있으면 그 설정을 물려준다."""
-    info = scope_info if scope_info is not None else _scope_info(row)
+    info = scope_info if scope_info is not None else _scope_info(con, row)
     cur = store.active_plan(con, row["id"])
     if cur is not None:
-        return {"unit": cur["unit"], "totalPages": cur["total_pages"], "totalMinutes": cur["total_minutes"],
+        left_dates = [d["date"] for d in store.days(con, cur["id"])
+                      if d["kind"] == "study" and not d["done"] and d["date"] >= today.isoformat()]
+        # 자료에서 자동으로 채운 분량이었으면(= source_pages) 지금 남은 분량으로 — 그새 공부 완료 체크를 했을 수 있다
+        auto = cur["unit"] == "pages" and cur["source_pages"] is not None and cur["total_pages"] == cur["source_pages"]
+        return {"unit": cur["unit"], "totalPages": info["pages"] if auto else cur["total_pages"],
+                "totalMinutes": cur["total_minutes"],
                 "difficulty": cur["difficulty"], "pageMinutes": cur["page_minutes"],
                 "reviewDays": cur["review_days"], "excludedDates": store.jload(cur["excluded"], []),
-                "capMinutes": cur["cap_minutes"], "includeQuiz": bool(cur["include_quiz"]),
+                "includeQuiz": bool(cur["include_quiz"]),
                 "quizCount": cur["quiz_count"], "scopeWeeks": store.jload(cur["scope_weeks"], []),
                 "scopeMaterialIds": store.jload(cur["scope_ids"], []), "startDate": today.isoformat(),
                 # 등록한 계획의 남은 학습 날짜 — 그대로 다시 계산하면 같은 날에 나뉜다
                 "studyDays": None,
-                "studyDates": [d["date"] for d in store.days(con, cur["id"])
-                               if d["kind"] == "study" and not d["done"] and d["date"] >= today.isoformat()]}
+                "studyDates": left_dates,
+                # 그 날들에 직접 정해 둔 공부 시간 (2026-10-06 D11) — 완료했거나 지난 날의 값은 버린다
+                "dayMinutes": {d: m for d, m in _pins(cur).items() if d in set(left_dates)}}
     # 분량은 쪽수로만 받는다(2026-10-01 — 화면에서 '시간(분)' 단위를 뺐다). 자료가 없으면 0 → 화면이 직접 입력을 받는다
     # 학습일 기본 3일 — 마무리 복습 바로 앞 3일 (2026-10-02 사용자 요청). 남은 날이 3일보다 적으면 계산기가 줄인다
-    return {"studyDays": C.DEFAULT_STUDY_DAYS, "studyDates": [],
+    return {"studyDays": C.DEFAULT_STUDY_DAYS, "studyDates": [], "dayMinutes": {},
             "unit": "pages",
             "totalPages": info["pages"], "totalMinutes": 0,
             "difficulty": C.DEFAULT_DIFFICULTY, "pageMinutes": None,     # 비워 두면 계산할 때 난이도 시간 설정 값을 넣는다
             "reviewDays": C.review_days_for(row["type"]), "excludedDates": [],
-            "capMinutes": C.DEFAULT_CAP_MINUTES, "includeQuiz": False, "quizCount": 0,
+            "includeQuiz": False, "quizCount": 0,
             "scopeWeeks": store.jload(row["scope_weeks"], []),
             "scopeMaterialIds": store.jload(row["scope_ids"], []), "startDate": today.isoformat()}
 
@@ -744,7 +844,7 @@ def add_exam(con: sqlite3.Connection, body: dict, get_courses: Optional[CoursesG
     store.touch(con)
     saved = store.exam(con, eid)
     p = store.active_plan(con, eid)                            # 임의 일정에 등록해 둔 계획이 있었을 수 있다
-    out = exam_view(saved, courses, today, p, store.days(con, p["id"]) if p else None, _scope_info(saved))
+    out = exam_view(saved, courses, today, p, store.days(con, p["id"]) if p else None, _scope_info(con, saved))
     out["planStale"] = _plan_stale(con, saved, p)
     return out
 
@@ -786,7 +886,7 @@ def patch_exam(con: sqlite3.Connection, exam_id_: str, body: dict,
     store.touch(con)
     updated = _exam(con, exam_id_)
     p = store.active_plan(con, exam_id_)
-    out = exam_view(updated, courses, today, p, store.days(con, p["id"]) if p else None, _scope_info(updated))
+    out = exam_view(updated, courses, today, p, store.days(con, p["id"]) if p else None, _scope_info(con, updated))
     # 범위·날짜가 바뀌면 이미 등록된 계획의 전제가 달라진다 (F5 8절)
     out["planStale"] = _plan_stale(con, updated, p)
     return out
@@ -797,9 +897,9 @@ def _plan_stale(con: sqlite3.Connection, row: Any, plan_row: Optional[Any]) -> O
     if plan_row is None:
         return None
     reasons = []
-    info = _scope_info(row)
+    info = _scope_info(con, row)
     if plan_row["source_pages"] is not None and info["pages"] and info["pages"] != plan_row["source_pages"]:
-        reasons.append(f"범위 자료가 {plan_row['source_pages']}쪽 → {info['pages']}쪽으로 바뀌었습니다")
+        reasons.append(f"공부할 자료가 {plan_row['source_pages']}쪽 → {info['pages']}쪽으로 바뀌었습니다")
     if store.jload(row["scope_weeks"], []) != store.jload(plan_row["scope_weeks"], []):
         reasons.append("시험 범위가 바뀌었습니다")
     days = store.days(con, plan_row["id"])
@@ -832,6 +932,60 @@ def delete_exam(con: sqlite3.Connection, exam_id_: str) -> dict:
             "note": "공지에서 다시 찾아도 되살아나지 않습니다" if row["source"] != "manual" else ""}
 
 
+# ---------------------------------------------------------------- 공부 완료 체크 (2026-10-06)
+
+def study_materials(con: sqlite3.Connection, exam_id_: str, get_courses: Optional[CoursesGetter] = None,
+                    today: Optional[date] = None) -> dict:
+    """시험 범위의 강의자료 + 공부 완료 체크 — '자료 체크' 창.
+
+    체크는 **과목 단위**다(같은 자료를 중간·기말에서 따로 체크하지 않는다). 범위 밖이지만 과목에 있는
+    자료(`others`)도 같이 보여 준다 — 범위를 좁혀 둔 시험에서도 공부한 것을 적어 둘 수 있게.
+    """
+    today = today or date.today()
+    row = _exam(con, exam_id_)
+    _study_only(row)
+    courses = course_map(get_courses)
+    p = store.active_plan(con, exam_id_)
+    info = _scope_info(con, row)
+    done = store.material_done(con, row["course_id"])
+    in_scope = {m["id"] for m in info["materials"]}
+    others = [{"id": m["id"], "title": m["title"], "week": m["week"], "pages": m["pages"], "kind": m["kind"],
+               "ext": m["ext"], "done": m["id"] in done, "doneAt": done.get(m["id"])}
+              for m in scope.materials(row["course_id"]) if m["id"] not in in_scope]
+    exam = exam_view(row, courses, today, p, store.days(con, p["id"]) if p else None, info)
+    return {"exam": exam, "materials": info["materials"], "others": others,
+            "available": info["available"], "note": info["note"],
+            "planStale": _plan_stale(con, row, p), "updatedAt": store.updated_at(con)}
+
+
+def set_study_materials(con: sqlite3.Connection, exam_id_: str, body: dict,
+                        get_courses: Optional[CoursesGetter] = None, today: Optional[date] = None) -> dict:
+    """{ids: [...], done: true|false} — 서비스 밖에서 공부한 자료 체크·해제.
+
+    과목에 없는 자료 id 는 거절한다(엉뚱한 줄이 쌓이지 않게). 등록된 계획은 **바꾸지 않는다** —
+    남은 분량이 달라졌으면 `planStale` 로 다시 만들기를 권한다(자동 변경 없음, F5 8절).
+    """
+    row = _exam(con, exam_id_)
+    _study_only(row)
+    ids = body.get("ids")
+    if isinstance(ids, str):
+        ids = [ids]
+    if not isinstance(ids, list) or not ids or not all(isinstance(i, str) and i for i in ids):
+        raise Invalid("체크할 자료 id 를 ids 로 주세요")
+    if not isinstance(body.get("done"), bool):
+        raise Invalid("done 은 true 또는 false 입니다")
+    known = {m["id"] for m in scope.materials(row["course_id"])}
+    unknown = [i for i in ids if i not in known]
+    if unknown:
+        raise NotFound(f"이 과목의 강의자료가 아닙니다: {', '.join(unknown[:3])}")
+    changed = store.set_material_done(con, row["course_id"], ids, body["done"])
+    if changed:
+        store.touch(con)
+    out = study_materials(con, exam_id_, get_courses, today)
+    out["changed"] = changed
+    return out
+
+
 def _exam(con: sqlite3.Connection, exam_id_: str) -> Any:
     row = store.exam(con, exam_id_)
     if row is None:
@@ -858,7 +1012,8 @@ def _fill_scope(con: sqlite3.Connection, row: Any, options: dict) -> dict:
         o["scopeWeeks"] = store.jload(row["scope_weeks"], [])
     if "scopeMaterialIds" not in o:
         o["scopeMaterialIds"] = store.jload(row["scope_ids"], [])
-    info = scope.measure(row["course_id"], o.get("scopeWeeks"), o.get("scopeMaterialIds"))
+    info = scope.measure(row["course_id"], o.get("scopeWeeks"), o.get("scopeMaterialIds"),
+                         store.material_done(con, row["course_id"]))
     if (o.get("unit") or "pages") == "pages" and not o.get("totalPages"):
         o["totalPages"] = info["pages"]
         if not info["pages"] and o.get("totalMinutes"):
@@ -866,9 +1021,31 @@ def _fill_scope(con: sqlite3.Connection, row: Any, options: dict) -> dict:
     return {"options": o, "scope": info}
 
 
+def _study_only(row: Any) -> None:
+    """발표는 공부 계획·자료 체크가 없다 — '준비 완료'만 누른다 (2026-10-06 사용자 요청)."""
+    if row["type"] in C.PREP_ONLY_TYPES:
+        raise Invalid(f"{C.type_label(row['type'])}는 공부 계획을 만들지 않습니다 — '준비 완료'만 체크하세요")
+
+
+def set_ready(con: sqlite3.Connection, exam_id_: str, body: dict,
+              get_courses: Optional[CoursesGetter] = None, today: Optional[date] = None) -> dict:
+    """{ready: true|false} — 발표 준비 완료 체크·해제. 날짜·범위는 건드리지 않으므로 `edited` 를 세우지 않는다
+    (공지에서 날짜가 바뀌면 그대로 따라온다)."""
+    today = today or date.today()
+    row = _exam(con, exam_id_)
+    if row["type"] not in C.PREP_ONLY_TYPES:
+        raise Invalid(f"준비 완료는 발표에만 있습니다 — {C.type_label(row['type'])}는 공부 계획으로 진도를 봅니다")
+    ready = body.get("ready")
+    if not isinstance(ready, bool):
+        raise Invalid("ready 는 true 또는 false 입니다")
+    store.update_exam(con, exam_id_, {"ready_at": store.now() if ready else None})
+    store.touch(con)
+    return exam_view(_exam(con, exam_id_), course_map(get_courses), today)
+
+
 def preview(con: sqlite3.Connection, exam_id_: str, options: Optional[dict] = None,
             today: Optional[date] = None, get_courses: Optional[CoursesGetter] = None,
-            carry: Optional[dict] = None, exclude_plan: Optional[int] = None) -> dict:
+            carry: Optional[dict] = None) -> dict:
     """계획 계산만 — 저장하지 않는다 (F5-R30 · S05). 화면은 이 결과를 표로 그린다.
 
     **이미 등록된 계획이 있으면 완료한 분량을 빼고 계산한다** — 등록(`create_plan`)이 그렇게 하기 때문이다.
@@ -876,41 +1053,18 @@ def preview(con: sqlite3.Connection, exam_id_: str, options: Optional[dict] = No
     """
     today = today or date.today()
     row = _exam(con, exam_id_)
+    _study_only(row)
     courses = course_map(get_courses)
     current = store.active_plan(con, exam_id_)
     if carry is None and current is not None:
         carry = _carry(con, current)
-        if exclude_plan is None:
-            exclude_plan = current["id"]        # 자기 자신은 '다른 과목 부담'이 아니다
     filled = _fill_scope(con, row, options or {})
-    load = other_load(con, exclude_plan, courses)
     try:
-        out = P.compute(_exam_for_plan(row, courses), filled["options"], today, load, carry)
+        out = P.compute(_exam_for_plan(row, courses), filled["options"], today, carry)
     except P.Invalid as e:
         raise Invalid(str(e))
     out["scope"] = filled["scope"]
     out["exam"] = exam_view(row, courses, today, None, None, filled["scope"])
-    out["otherLoad"] = [{"date": k, **v} for k, v in sorted(load.items()) if v["minutes"]]
-    return out
-
-
-def other_load(con: sqlite3.Connection, exclude_plan: Optional[int] = None,
-               courses: Optional[dict[str, dict]] = None) -> dict[str, dict]:
-    """등록된 다른 계획의 날짜별 시간 — 여러 시험 합산 상한 검사 (F5-R23 · S06)."""
-    courses = courses or {}
-    out: dict[str, dict] = {}
-    for d in store.all_active_days(con):
-        if exclude_plan is not None and d["plan_id"] == exclude_plan:
-            continue
-        if d["done"]:
-            continue                                     # 이미 끝낸 블록은 앞으로의 부담이 아니다
-        slot = out.setdefault(d["date"], {"minutes": 0, "pages": 0, "courses": []})
-        slot["minutes"] += d["minutes"]
-        slot["pages"] += d["pages"]
-        name = courses.get(d["course_id"], {}).get("short") or _split_course(d["course"] or "")["short"] \
-            or d["course_id"]
-        if name not in slot["courses"]:
-            slot["courses"].append(name)
     return out
 
 
@@ -923,14 +1077,14 @@ def create_plan(con: sqlite3.Connection, exam_id_: str, options: Optional[dict] 
     """
     today = today or date.today()
     row = _exam(con, exam_id_)
+    _study_only(row)
     courses = course_map(get_courses)
     current = store.active_plan(con, exam_id_)
     carry = _carry(con, current) if (current is not None and keep_done) else None
 
     filled = _fill_scope(con, row, options or {})
-    load = other_load(con, current["id"] if current is not None else None, courses)
     try:
-        result = P.compute(_exam_for_plan(row, courses), filled["options"], today, load, carry)
+        result = P.compute(_exam_for_plan(row, courses), filled["options"], today, carry)
     except P.Invalid as e:
         raise Invalid(str(e))
     if not result["canRegister"]:
@@ -946,9 +1100,10 @@ def create_plan(con: sqlite3.Connection, exam_id_: str, options: Optional[dict] 
     plan_id = store.insert_plan(con, {
         "exam_id": exam_id_, "unit": o["unit"], "total_pages": o["totalPages"], "total_minutes": o["totalMinutes"],
         "page_minutes": o["pageMinutes"], "difficulty": o["difficulty"], "review_days": o["reviewDays"],
-        "excluded": store.jdump(o["excludedDates"]), "cap_minutes": o["capMinutes"],
+        "excluded": store.jdump(o["excludedDates"]),
         "include_quiz": int(o["includeQuiz"]), "quiz_count": o["quizCount"],
         "scope_weeks": store.jdump(o["scopeWeeks"]), "scope_ids": store.jdump(o["scopeMaterialIds"]),
+        "day_minutes": store.jdump(o["dayMinutes"]),
         "source_pages": filled["scope"]["pages"] or None,
         "state": "active", "created_at": stamp,
         "rebalanced_at": stamp if carry else None, "closed_at": None,
@@ -967,6 +1122,12 @@ def create_plan(con: sqlite3.Connection, exam_id_: str, options: Optional[dict] 
         "message": f"{len([d for d in days if not d['done']])}일치 학습 계획을 공부 캘린더에 넣었습니다",
         "updatedAt": store.updated_at(con),
     }
+
+
+def _pins(plan_row: Any) -> dict[str, int]:
+    """계획에 저장된 '날마다 직접 정한 공부 시간' {날짜: 분} (2026-10-06 D11). 옛 계획에는 없다."""
+    raw = plan_row["day_minutes"] if "day_minutes" in plan_row.keys() else None
+    return {k: int(v) for k, v in (store.jload(raw, {}) or {}).items()}
 
 
 def _carry(con: sqlite3.Connection, plan_row: Any) -> dict:
@@ -991,9 +1152,10 @@ def plan_detail(con: sqlite3.Connection, plan_id: int, today: Optional[date] = N
     courses = course_map(get_courses)
     days = store.days(con, plan_id)
     out = plan_view(p, days, row, today)
-    out["exam"] = exam_view(row, courses, today, None, None, _scope_info(row))
+    out["exam"] = exam_view(row, courses, today, None, None, _scope_info(con, row))
     out["materials"] = scope.measure(row["course_id"], store.jload(p["scope_weeks"], []),
-                                     store.jload(p["scope_ids"], []))["materials"]
+                                     store.jload(p["scope_ids"], []),
+                                     store.material_done(con, row["course_id"]))["materials"]
     return out
 
 
@@ -1006,7 +1168,8 @@ def day_detail(con: sqlite3.Connection, plan_id: int, when: str,
     d = store.day(con, plan_id, _date(when, "날짜"))
     if d is None:
         raise NotFound(f"그 날짜의 학습 블록이 없습니다: {when}")
-    info = scope.measure(row["course_id"], store.jload(p["scope_weeks"], []), store.jload(p["scope_ids"], []))
+    info = scope.measure(row["course_id"], store.jload(p["scope_weeks"], []), store.jload(p["scope_ids"], []),
+                         store.material_done(con, row["course_id"]))
     return {**day_view(d), "planId": plan_id, "examId": row["id"],
             "exam": exam_view(row, course_map(get_courses), today, None, None, info),
             "materials": info["materials"], "materialsNote": info["note"],
@@ -1066,7 +1229,7 @@ def patch_day(con: sqlite3.Connection, plan_id: int, when: str, body: dict,
         p = _plan(con, plan_id)
     out = plan_view(p, days, row, today)
     return {"plan": out, "day": next((x for x in out["days"] if x["date"] == when), None),
-            "exam": exam_view(row, course_map(get_courses), today, p, days, _scope_info(row)),
+            "exam": exam_view(row, course_map(get_courses), today, p, days, _scope_info(con, row)),
             "updatedAt": store.updated_at(con)}
 
 
@@ -1101,7 +1264,7 @@ def rebalance(con: sqlite3.Connection, plan_id: int, options: Optional[dict] = N
     base = default_options(con, row, today)
     merged = {**base, **(options or {})}
     merged["startDate"] = today.isoformat()
-    out = preview(con, row["id"], merged, today, get_courses, carry=_carry(con, p), exclude_plan=plan_id)
+    out = preview(con, row["id"], merged, today, get_courses, carry=_carry(con, p))
     days = store.days(con, plan_id)
     before = plan_view(p, days, row, today)
     out["rebalanceOf"] = {"planId": plan_id, "id": f"pl:{plan_id}", "progress": before["progress"],
@@ -1252,11 +1415,16 @@ def _min_to_hhmm(v: int) -> str:
 # ---------------------------------------------------------------- 공부 캘린더 (2026-10-01)
 
 def study_calendar(con: sqlite3.Connection, start: str, end: str,
-                   get_courses: Optional[CoursesGetter] = None, today: Optional[date] = None) -> dict:
+                   get_courses: Optional[CoursesGetter] = None, today: Optional[date] = None,
+                   extra: Optional[Callable[[str, str], list[dict]]] = None) -> dict:
     """시험 공부만 보는 캘린더 — 날짜마다 과목 · 시간 · 분량, 그리고 그날의 시험.
 
     전체 캘린더(/api/events)와 달리 **날짜가 확정되지 않은 시험도** '임의'·'확인 필요' 표시를 달아 보여 준다
     (그 시험에 맞춰 공부하고 있기 때문이다). 등록된 계획의 블록만 싣는다 — 끝난·취소된 계획은 완료한 블록만.
+
+    시각 (2026-10-07): 계획의 하루 분량은 **저녁 시간대(기본 19:00~24:00)에 시험이 가까운 과목부터 차례로** 놓인다.
+    저녁 끝을 넘는 분량은 24:00 에서 끊어 보이고, 자정 뒤에 시작할 몫은 시각 없이(`time: null`) 둔다 — 경고는 하지 않는다.
+    extra(start, end) = F8 공강 공부 블록(09:00~18:00) — 백엔드가 넘겨주면 같은 날 칸에 시각 순으로 섞는다(kind='gap').
     """
     today = today or date.today()
     s, e = _date(start, "시작"), _date(end, "끝")
@@ -1269,6 +1437,7 @@ def study_calendar(con: sqlite3.Connection, start: str, end: str,
     def slot(d: str) -> dict:
         return days.setdefault(d, {"date": d, "blocks": [], "exams": []})
 
+    ev = evening(con)
     for p in store.plan_rows(con):
         row = rows.get(p["exam_id"])
         if row is None:
@@ -1277,10 +1446,9 @@ def study_calendar(con: sqlite3.Connection, start: str, end: str,
         for d in store.days(con, p["id"]):
             if not s <= d["date"] <= e or (p["state"] != "active" and not d["done"]):
                 continue
-            start_min = _hhmm_to_min(C.DEFAULT_BLOCK_START)
             slot(d["date"])["blocks"].append({
-                "planId": p["id"], "examId": row["id"], "course": c["short"], "color": c["color"],
-                "time": C.DEFAULT_BLOCK_START, "endTime": _min_to_hhmm(min(start_min + max(d["minutes"], 10), 24 * 60 - 1)),
+                "source": "plan", "planId": p["id"], "examId": row["id"], "course": c["short"], "color": c["color"],
+                "time": None, "endTime": None,                 # 아래에서 저녁 시간대에 차례로 채운다
                 "pages": d["pages"], "minutes": d["minutes"], "quiz": d["quiz"], "kind": d["kind"],
                 "kindLabel": DAY_KIND_LABEL.get(d["kind"], d["kind"]), "done": bool(d["done"]),
                 "examType": C.type_label(row["type"]), "examDate": row["date"],
@@ -1299,15 +1467,69 @@ def study_calendar(con: sqlite3.Connection, start: str, end: str,
             "time": row["time"], "endTime": row["end_time"], "place": row["place"],
             "isAuto": row["source"] == "auto", "needsReview": row["status"] == "review",
             "confirmed": is_confirmed(row), "timeFromClass": bool(row["time_auto"]),
+            "prepOnly": row["type"] in C.PREP_ONLY_TYPES, "ready": bool(_ready_at(row)),
         })
+    ev_s, ev_e = _hhmm_to_min(ev["start"]), _hhmm_to_min(ev["end"])
     for d in days.values():
-        d["blocks"].sort(key=lambda b: (b["done"], b["course"]))
+        # 저녁 시간대에 차례로 — 시험이 가까운 과목부터. 완료 여부로 순서를 바꾸지 않는다(체크해도 시각이 움직이지 않게)
+        d["blocks"].sort(key=lambda b: (b["examDate"], b["course"], b["planId"]))
+        cursor = ev_s
+        for b in d["blocks"]:
+            stop = cursor + max(b["minutes"], 10)
+            b["time"] = _min_to_hhmm(cursor) if cursor < 24 * 60 else None
+            b["endTime"] = (_min_to_hhmm(stop) if stop < 24 * 60 else "24:00") if b["time"] else None
+            b["slot"] = "evening"
+            b["late"] = stop > ev_e                    # 저녁 끝을 넘었다 — 표시만 (하루 기준 경고는 없다, 2026-10-07)
+            cursor = stop
+    if extra is not None:
+        try:
+            gap = extra(s, e) or []
+        except Exception:                                # noqa: BLE001 — F8 을 못 읽어도 계획 블록은 보여 준다
+            gap = []
+        for g in gap:
+            if s <= g["date"] <= e:
+                slot(g["date"])["blocks"].append({**g, "source": "gap", "kind": "gap", "kindLabel": "공강 공부",
+                                                  "pages": 0, "quiz": 0, "slot": "gap"})
+    for d in days.values():
+        d["blocks"].sort(key=lambda b: (b["time"] or "99", b["course"]))
         d["exams"].sort(key=lambda x: (x["time"] or "99", x["course"]))
         d["totalMinutes"] = sum(b["minutes"] for b in d["blocks"])
         d["totalPages"] = sum(b["pages"] for b in d["blocks"])
-    return {"start": s, "end": e, "today": today.isoformat(),
+    return {"start": s, "end": e, "today": today.isoformat(), "evening": ev,
             "days": sorted(days.values(), key=lambda d: d["date"]),
             "todayBlock": today_block(con, today, courses), "updatedAt": store.updated_at(con)}
+
+
+# ---------------------------------------------------------------- 공강 공부 대상 (F8, 2026-10-07)
+
+def study_targets(con: sqlite3.Connection, get_courses: Optional[CoursesGetter] = None,
+                  today: Optional[date] = None, with_progress: bool = True) -> list[dict]:
+    """F8 이 남는 공강(09~18시)에 넣을 공부 과목 후보 — 다가오는 시험(발표 제외)과 **남은 진도율**.
+
+    진도율 = 과목 카드의 공부 진도(체크한 자료 + 계획에서 완료한 블록, D10). 계산 대상은 시험일이 오늘부터
+    STUDY_TARGET_DAYS 일 안인 것. with_progress=False 면 자료를 세지 않는다(충돌 확인처럼 id·날짜만 필요할 때).
+    고르는 규칙(남은 진도율 ÷ 남은 날수)은 F8 몫이다 — 여기서는 재료만 준다."""
+    today = today or date.today()
+    last = (today + timedelta(days=C.STUDY_TARGET_DAYS)).isoformat()
+    ov = overview(con, get_courses, None, today, with_scope=with_progress)
+    out = []
+    for x in ov["exams"]:
+        if x["prepOnly"] or not today.isoformat() <= x["date"] <= last:
+            continue
+        study = x.get("study") or {}
+        if with_progress:
+            pct = study.get("percent") if study.get("total") else (x["plan"]["progress"]["percent"] if x["plan"] else 0)
+        else:
+            pct = None
+        out.append({
+            "examId": x["id"], "course": x["course"], "courseName": x["courseName"], "color": x["color"],
+            "type": x["type"], "typeLabel": x["typeLabel"], "title": x["title"],
+            "date": x["date"], "time": x["time"] or "", "dday": x["dday"],
+            "isAuto": x["isAuto"], "needsReview": x["needsReview"], "confirmed": x["confirmed"],
+            "percent": pct, "planned": x["planState"] == "active",
+            "href": f"/exams?exam={x['id']}",
+        })
+    return out
 
 
 # ---------------------------------------------------------------- 브리핑 · 상태

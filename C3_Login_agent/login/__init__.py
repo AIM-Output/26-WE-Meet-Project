@@ -39,7 +39,7 @@ def status() -> dict:
 
     return {
         "installed": PYTHON.exists(),
-        "browsers": BROWSERS.exists(),
+        "browsers": config.chromium_state(BROWSERS) == "ready",
         "hasSession": STATE_FILE.exists(),
         "sessionSavedAt": mtime(STATE_FILE),
         "hasCreds": CRED_FILE.exists(),
@@ -51,6 +51,8 @@ def problem(need_login_record: bool = True) -> str | None:
     """브라우저가 필요한 기능을 시작할 수 없는 이유 (없으면 None). C2·F2·F6 가 같은 문구를 쓴다."""
     if not PYTHON.exists():
         return f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {config.script('setup')} 를 먼저 실행하세요"
+    if config.chromium_state(BROWSERS) == "installing":
+        return "브라우저 엔진을 내려받는 중입니다 — 몇 분 뒤 다시 시도하세요"
     if not BROWSERS.exists():
         return f"브라우저 엔진이 없습니다 — C3_Login_agent 의 {config.script('setup')} 를 다시 실행하세요"
     if need_login_record and not (STATE_FILE.exists() or CRED_FILE.exists()):

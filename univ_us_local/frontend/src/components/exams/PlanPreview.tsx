@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CalendarPlus, Check, Users } from "lucide-react";
+import { BookOpen, CalendarPlus, Check } from "lucide-react";
 import { Banner } from "@/components/ui/Feedback";
 import { Chip } from "@/components/ui/Chip";
 import { dayText, hm, type PlanAdjustment, type PlanOptionsInput, type PlanPreview as Preview } from "@/lib/exams";
@@ -26,6 +26,9 @@ export function PlanPreviewPanel({
 }) {
   const p = preview;
   const rebalancing = !!p.rebalanceOf;
+  // 날마다 시간을 직접 정했으면(2026-10-06) 하루 분량이 날마다 다르다 — 범위로 보여 준다
+  const r = p.dayRange;
+  const uneven = !!r && r.minMinutes !== r.maxMinutes;
 
   return (
     <div className="space-y-3">
@@ -53,8 +56,19 @@ export function PlanPreviewPanel({
 
       <dl className="grid grid-cols-2 gap-2 rounded-xl border border-border px-3 py-2 text-[13px] sm:grid-cols-4">
         <Stat label="학습일" value={`${p.studyDays}일`} />
-        <Stat label="하루 분량" value={p.unit === "pages" ? `${p.dailyPages}쪽` : hm(p.dailyMinutes)} />
-        <Stat label="하루 시간" value={hm(p.dailyMinutes)} />
+        <Stat
+          label="하루 분량"
+          value={
+            p.unit === "pages"
+              ? uneven && r
+                ? `${r.minPages}~${r.maxPages}쪽`
+                : `${p.dailyPages}쪽`
+              : uneven && r
+                ? `${hm(r.minMinutes)}~${hm(r.maxMinutes)}`
+                : hm(p.dailyMinutes)
+          }
+        />
+        <Stat label="하루 시간" value={uneven && r ? `${hm(r.minMinutes)}~${hm(r.maxMinutes)}` : hm(p.dailyMinutes)} />
         <Stat label="마무리 복습" value={p.reviewDays ? `${p.reviewDays}일` : "없음"} />
       </dl>
 
@@ -82,6 +96,11 @@ export function PlanPreviewPanel({
                   옮김
                 </Chip>
               )}
+              {d.pinned && (
+                <Chip tone="study" square title="이 날의 공부 시간을 직접 정했습니다">
+                  직접
+                </Chip>
+              )}
             </span>
             {d.kind !== "excluded" && <span className="num flex-none text-muted">{hm(d.minutes)}</span>}
           </li>
@@ -94,26 +113,6 @@ export function PlanPreviewPanel({
         {p.totals.quiz > 0 && ` · 문제 ${p.totals.quiz}개`}
       </p>
 
-      {p.overlap.length > 0 && (
-        <div className="rounded-xl border border-warn-soft bg-warn-soft/40 p-3">
-          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-warn-text">
-            <Users className="size-4" aria-hidden />
-            다른 과목 계획과 겹치는 날
-          </p>
-          <ul className="mt-1.5 space-y-1 text-[13px]">
-            {p.overlap.map((o) => (
-              <li key={o.date} className="num flex flex-wrap items-center gap-x-2">
-                <b className="font-semibold">{o.date.slice(5).replace("-", "/")}</b>
-                <span>
-                  이 계획 {hm(o.mine)} + {o.courses.join("·") || "다른 과목"} {hm(o.others)} = {hm(o.minutes)}
-                </span>
-                <span className="text-faint">(상한 {hm(o.cap)})</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" className="btn btn-sm" onClick={onBack}>
           다시 계산
@@ -123,8 +122,8 @@ export function PlanPreviewPanel({
           {registering ? "등록 중…" : rebalancing ? "재조정 적용" : "등록하기"}
         </button>
       </div>
-      {p.needsConfirm && p.canRegister && (
-        <p className="text-right text-[12px] text-faint">상한을 넘지만 등록할 수 있습니다 — 누르면 한 번 더 확인합니다.</p>
+      {p.canRegister && (
+        <p className="text-right text-[12px] text-faint">날마다의 분량은 저녁 시간대(기본 19:00~24:00)에 공부 캘린더로 놓입니다.</p>
       )}
     </div>
   );

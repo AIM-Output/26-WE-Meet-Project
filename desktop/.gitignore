@@ -1,0 +1,7 @@
+# 데스크톱 앱 빌드 산출물 — 저장소에 넣지 않는다
+sidecar/.venv/
+sidecar/build/
+sidecar/dist/
+node_modules/
+src-tauri/target/
+src-tauri/gen/

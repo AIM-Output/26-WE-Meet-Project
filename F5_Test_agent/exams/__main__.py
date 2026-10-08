@@ -5,8 +5,11 @@
     run.cmd notices                         공지에서 읽힌 것만 보기 (저장하지 않는다)
     run.cmd show ex:74261:...                시험 하나 — 범위·근거·계획 옵션 기본값
     run.cmd add 소프트웨어공학론 midterm 2026-10-22 --time 15:00 --place 박물관   시험 직접 추가
-    run.cmd scope 소프트웨어공학론 --weeks 1-5   범위 안 자료 쪽수 (F4)
-    run.cmd preview ex:74261:... --difficulty hard --cap 180 --exclude 2026-10-15
+    run.cmd scope 소프트웨어공학론 --weeks 1-5   범위 안 자료 쪽수 (F4) — ✔ = 공부 완료 체크
+    run.cmd ready ex:78570:... [--undo]       발표 준비 완료 (발표는 공부 계획 없이 이것만)
+    run.cmd studied ex:74261:... [자료id ...] [--undo]   서비스 밖에서 공부한 자료 체크 (id 없으면 목록)
+    run.cmd preview ex:74261:... --days 3 --day 2026-10-15=3h --day 2026-10-16=5h   날마다 공부 시간 정하기
+    run.cmd preview ex:74261:... --difficulty hard --exclude 2026-10-15
                                             계획 미리보기 (저장하지 않는다)
     run.cmd plan ex:74261:... [같은 옵션]     계획 등록 (캘린더에 학습 블록 생성)
     run.cmd progress                        진행 중 계획의 진도 · 밀림
@@ -93,8 +96,6 @@ def _options(a) -> dict:
         o["unit"] = "minutes"
     if getattr(a, "difficulty", None):
         o["difficulty"] = a.difficulty
-    if getattr(a, "cap", None):
-        o["capMinutes"] = a.cap
     if getattr(a, "review", None) is not None:
         o["reviewDays"] = a.review
     if getattr(a, "exclude", None):
@@ -104,7 +105,30 @@ def _options(a) -> dict:
         o["quizCount"] = a.quiz
     if weeks := _weeks(getattr(a, "weeks", None)):
         o["scopeWeeks"] = weeks
+    if getattr(a, "days", None):
+        o["studyDays"] = a.days
+    if getattr(a, "day", None):
+        o["dayMinutes"] = dict(_day_time(v) for v in a.day)
     return o
+
+
+def _day_time(v: str) -> tuple[str, int]:
+    """`2026-10-15=3h30m` · `=3시간 30분` · `=90m` · `=45분` · `=2.5`(시간) · `=3:30` → (날짜, 분)"""
+    when, _, t = v.partition("=")
+    t = t.replace(" ", "")
+    hours = re.search(r"(\d+(?:\.\d+)?)(?:h|시간)", t)
+    mins = re.search(r"(\d+)(?:m|분)", t)
+    if ":" in t and re.fullmatch(r"\d*:\d+", t):
+        h, m = t.split(":")
+        total = int(h or 0) * 60 + int(m)
+    elif hours or mins:
+        total = int(float(hours.group(1)) * 60 + 0.5) if hours else 0
+        total += int(mins.group(1)) if mins else 0
+    elif re.fullmatch(r"\d+(?:\.\d+)?", t):
+        total = int(float(t) * 60 + 0.5)                   # 단위 없는 숫자는 시간
+    else:
+        raise SystemExit(f"--day 형식: 2026-10-15=3h30m (받은 값: {v})")
+    return when.strip(), total
 
 
 def _hm(minutes: int) -> str:
@@ -210,10 +234,39 @@ def cmd_add(a) -> int:
 
 def cmd_scope(a) -> int:
     cid = _course_id(a.course)
-    info = scope.measure(cid, _weeks(a.weeks))
+    with store.connect() as con:
+        info = scope.measure(cid, _weeks(a.weeks), None, store.material_done(con, cid))
     print(f"{info['note']}  (자료 {info['files']}개 · 주차 {info['weeks']})")
     for m in info["materials"]:
-        print(f"  {m['week'] or '—':>2}주  {m['pages'] or '—':>4}쪽  {m['title']}")
+        print(f"  {'✔' if m['done'] else ' '} {m['week'] or '—':>2}주  {m['pages'] or '—':>4}쪽  {m['title']}  [{m['id']}]")
+    return 0
+
+
+def cmd_ready(a) -> int:
+    """발표 준비 완료 (2026-10-06) — 발표는 공부 계획 없이 이것만 체크한다."""
+    with store.connect() as con:
+        row = _find_exam(con, a.exam)
+        e = service.set_ready(con, row["id"], {"ready": not a.undo}, _courses)
+    print(f"{e['course']} {e['title']} {e['date']} — {'준비 완료' if e['ready'] else '준비 중'}")
+    return 0
+
+
+def cmd_studied(a) -> int:
+    """서비스 밖에서 공부한 강의자료 체크 (2026-10-06) — 자료 id 없이 부르면 목록만."""
+    with store.connect() as con:
+        row = _find_exam(con, a.exam)
+        if a.ids:
+            out = service.set_study_materials(con, row["id"], {"ids": a.ids, "done": not a.undo}, _courses)
+        else:
+            out = service.study_materials(con, row["id"], _courses)
+    st = out["exam"]["study"]
+    unit = "쪽" if st["unit"] == "pages" else "개"
+    print(f"{out['exam']['course']} {out['exam']['typeLabel']} — 공부 {st['done']}/{st['total']}{unit} ({st['percent']}%)"
+          f" · 체크 {st['checked']}{unit} · 계획 완료 {st['planned']}{unit}")
+    for m in out["materials"]:
+        print(f"  {'✔' if m['done'] else ' '} {m['week'] or '—':>2}주  {m['pages'] or '—':>4}쪽  {m['title']}  [{m['id']}]")
+    if out.get("planStale"):
+        print(f"  ⚠ {out['planStale']['message']}")
     return 0
 
 
@@ -227,7 +280,7 @@ def _print_days(days: list[dict], warnings=(), adjustments=(), verdict: str = ""
         label = f"{d['pages']}쪽" if d["kind"] == "study" else "전체 복습"
         quiz = f" + 문제 {d['quiz']}개" if d["quiz"] else ""
         print(f"  {d['date']}({d['weekday']})  {label}{quiz} · {_hm(d['minutes'])}"
-              f"{'  ✔' if d['done'] else ''}")
+              f"{' (직접 정한 시간)' if d.get('pinned') else ''}{'  ✔' if d['done'] else ''}")
     real = [d for d in days if d["kind"] != "excluded"]
     print(f"  ─ 합계 {sum(d['pages'] for d in real)}쪽 · {_hm(sum(d['minutes'] for d in real))}"
           + (f" · 문제 {sum(d['quiz'] for d in real)}개" if any(d["quiz"] for d in real) else "")
@@ -243,7 +296,11 @@ def cmd_preview(a) -> int:
     print(f"[미리보기 — 저장하지 않았습니다]  분량 원천: {out['scope']['note']}")
     print(f"{out['courseName']} {out['examTypeLabel']} {out['examDate']} — "
           f"학습일 {out['studyDays']}일 · 복습일 {out['reviewDays']}일 · 하루 {out['dailyPages']}쪽 "
-          f"({_hm(out['dailyMinutes'])}) · 상한 {_hm(out['capMinutes'])}")
+          f"({_hm(out['dailyMinutes'])})")
+    al = out["allocation"]
+    print(f"총 공부 시간 {_hm(al['needMinutes'])} · 배치 {_hm(al['assignedMinutes'])}"
+          + (f" · 남음 {_hm(al['unassignedMinutes'])}" if al["unassignedMinutes"] else "")
+          + (f" · 넘침 {_hm(al['overMinutes'])}" if al["overMinutes"] else ""))
     _print_days(out["days"], out["warnings"], out["adjustments"], out["verdictLabel"])
     return 0
 
@@ -254,8 +311,7 @@ def cmd_plan(a) -> int:
         out = service.create_plan(con, row["id"], _options(a), get_courses=_courses)
     v, e = out["plan"], out["exam"]
     print(f"{out['message']}  ({v['id']})")
-    print(f"{e['course']} {e['typeLabel']} {e['date']} — 하루 상한 {_hm(v['capMinutes'])} · "
-          f"난이도 {v['difficultyLabel']}({v['pageMinutes']:g}분/쪽)")
+    print(f"{e['course']} {e['typeLabel']} {e['date']} — 난이도 {v['difficultyLabel']}({v['pageMinutes']:g}분/쪽)")
     _print_days(v["days"], out["warnings"], (), out["verdictLabel"])
     return 0
 
@@ -397,11 +453,13 @@ def _plan_args(p) -> None:
     p.add_argument("--pages", type=int, help="총 쪽수 (자료가 없을 때 직접 입력, F5-R11)")
     p.add_argument("--minutes", type=int, help="총 학습 시간(분) — 쪽수 대신")
     p.add_argument("--difficulty", choices=list(C.DIFFICULTY), help="난이도 (쪽당 1.5/2.5/4분)")
-    p.add_argument("--cap", type=int, help="하루 상한(분, 기본 240)")
     p.add_argument("--review", type=int, help="마무리 복습일 (중간·기말 기본 2일)")
     p.add_argument("--exclude", action="append", metavar="YYYY-MM-DD", help="제외일 (여러 번)")
     p.add_argument("--quiz", type=int, metavar="N", help="마무리 복습일에 예상 문제 N개 풀이 포함")
     p.add_argument("--weeks", action="append", metavar="1-5", help="범위 주차 (`3-7` 또는 `3,4,5`)")
+    p.add_argument("--days", type=int, metavar="N", help="학습일 수 — 마무리 복습 바로 앞 N일")
+    p.add_argument("--day", action="append", metavar="날짜=시간",
+                   help="그 날 공부할 시간 (여러 번, 예: 2026-10-15=3h). 정하지 않은 날이 남은 분량을 나눈다")
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -446,6 +504,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("plan")
     _plan_args(p)
     p.set_defaults(fn=cmd_rebalance)
+
+    p = sub.add_parser("ready", help="발표 준비 완료 체크 (--undo 로 해제)")
+    p.add_argument("exam")
+    p.add_argument("--undo", action="store_true")
+    p.set_defaults(fn=cmd_ready)
+
+    p = sub.add_parser("studied", help="서비스 밖에서 공부한 강의자료 체크 (자료 id 없으면 목록)")
+    p.add_argument("exam")
+    p.add_argument("ids", nargs="*", metavar="자료id")
+    p.add_argument("--undo", action="store_true", help="체크 해제")
+    p.set_defaults(fn=cmd_studied)
 
     p = sub.add_parser("done", help="그날 블록 완료 체크")
     p.add_argument("plan")

@@ -18,6 +18,7 @@ param(
   [int]$IntervalHours = 0,
   [string]$TaskName = "UnivUs-F6-Eclass-Sync",
   [string[]]$LegacyTaskNames = @("eClass-Agent-Sync"),
+  [string]$Command = "",
   [switch]$Remove
 )
 
@@ -58,11 +59,16 @@ if (Test-Path $settingsFile) {
 $cur["intervalHours"] = $IntervalHours
 [IO.File]::WriteAllText($settingsFile, ($cur | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
 
-$runner = Join-Path $dir "run-scheduled.cmd"
-if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
+# 부를 명령 — 기본은 run-scheduled.cmd. 묶인 데스크톱 앱은 -Command 로 앱 실행 파일을 준다
+#   (예: & '<앱 실행 파일>' --run-module eclass tick --log '<앱 데이터 폴더>\F6_Eclass_agent\state\sync.log')
+if (-not $Command) {
+  $runner = Join-Path $dir "run-scheduled.cmd"
+  if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
+  $Command = "& '$runner'"
+}
 
-# 창을 띄우지 않도록 숨긴 powershell 로 run-scheduled.cmd 를 호출
-$psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"& '$runner'`""
+# 창을 띄우지 않도록 숨긴 powershell 로 호출
+$psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$Command`""
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $psArg -WorkingDirectory $dir
 
 $triggers = @()

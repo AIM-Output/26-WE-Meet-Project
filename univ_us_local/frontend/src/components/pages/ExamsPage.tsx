@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { BookOpen, CalendarDays, Gauge, Plus, RefreshCw, Target, X } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/Layout";
@@ -12,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { CourseExamsModal } from "@/components/exams/CourseExamsModal";
 import { DifficultyModal } from "@/components/exams/DifficultyModal";
 import { ExamCard } from "@/components/exams/ExamCard";
+import { StudyMaterialsModal } from "@/components/exams/StudyMaterialsModal";
 import { ExamForm } from "@/components/exams/ExamForm";
 import { PlanOptions } from "@/components/exams/PlanOptions";
 import { PlanPreviewPanel } from "@/components/exams/PlanPreview";
@@ -19,7 +21,7 @@ import { ProgressPanel } from "@/components/exams/ProgressPanel";
 import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
 import { useIsXl } from "@/lib/useMediaQuery";
 import { useExamDetail, useExams, usePlanPreview } from "@/lib/useExams";
-import { hm, type Exam, type ExamDetail, type ExamInput, type ExamsOverview, type PlanDay, type PlanOptionsInput, type PlanPreview } from "@/lib/exams";
+import { hm, isPrep, type Exam, type ExamDetail, type ExamInput, type ExamsOverview, type PlanDay, type PlanOptionsInput, type PlanPreview } from "@/lib/exams";
 import { parseLocal } from "@/lib/dates";
 
 // /exams — 시험 목록 + 오른쪽 패널(옵션 → 미리보기 → 진도). 페이지를 옮기지 않고 `?exam=&step=` 으로 이어진다(10-2).
@@ -39,7 +41,6 @@ function optionsOf(p: PlanPreview): PlanOptionsInput {
     difficulty: p.difficulty,
     reviewDays: p.reviewDays,
     excludedDates: p.excludedDates,
-    capMinutes: p.capMinutes,
     includeQuiz: p.includeQuiz,
     quizCount: p.quizCount,
     scopeWeeks: p.scopeWeeks,
@@ -48,6 +49,8 @@ function optionsOf(p: PlanPreview): PlanOptionsInput {
     ...(p.studyDatesPicked
       ? { studyDates: p.studyDates, studyDays: null }
       : { studyDates: [], studyDays: p.studyDays && p.studyDays < p.studyPool ? p.studyDays : null }),
+    // 날마다 정한 시간 — 학습일이 아닌 날의 값은 서버가 걸러 준 것으로 맞춘다
+    dayMinutes: p.dayMinutes ?? {},
   };
 }
 
@@ -56,6 +59,7 @@ export default function ExamsPage() {
   const editId = useQueryValue("edit");
   const adding = useQueryValue("new") === "exam";
   const setup = useQueryValue("setup");
+  const studyId = useQueryValue("study");      // 자료 체크 창 (2026-10-06)
   const settingUp = setup === "courses";
   const [review, setReview] = useQueryParam("review", "0", ["0", "1"] as const);
   const [semester, setSemester] = useState<string | null>(null);
@@ -65,7 +69,8 @@ export default function ExamsPage() {
   const [pendingDelete, setPendingDelete] = useState<Exam | null>(null);
 
   const all = useMemo(() => (data ? [...data.exams, ...data.past] : []), [data]);
-  const selected = all.find((e) => e.id === examId) ?? null;
+  // 발표는 계획 패널이 없다(준비 완료만) — 옛 링크로 열려도 패널을 띄우지 않는다
+  const selected = all.find((e) => e.id === examId && !isPrep(e)) ?? null;
   const editing = all.find((e) => e.id === editId) ?? null;
   const list = review === "1" ? (data?.review ?? []) : (data?.exams ?? []);
 
@@ -83,8 +88,8 @@ export default function ExamsPage() {
     <Page wide>
       <PageHeader
         icon={<Target />}
-        title="시험"
-        subtitle={data ? `${data.semester.label} · 다가오는 시험 ${data.counts.upcoming}건` : undefined}
+        title="시험·발표"
+        subtitle={data ? `${data.semester.label} · 다가오는 시험·발표 ${data.counts.upcoming}건` : undefined}
         meta={
           data && data.semesters.length > 1 ? (
             <select
@@ -118,7 +123,7 @@ export default function ExamsPage() {
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => navigateQuery({ new: "exam" }, "push")}>
               <Plus aria-hidden />
-              시험 추가
+              시험·발표 추가
             </button>
           </>
         }
@@ -171,7 +176,7 @@ export default function ExamsPage() {
       </div>
 
       {error ? (
-        <ErrorPanel message={`시험을 불러오지 못했습니다: ${error}`} onRetry={() => void ex.reload()} />
+        <ErrorPanel message={`시험·발표를 불러오지 못했습니다: ${error}`} onRetry={() => void ex.reload()} />
       ) : (
         <div className={`grid gap-5 ${selected && isXl ? "grid-cols-[minmax(0,1fr)_480px]" : ""}`}>
           <div className="space-y-3">
@@ -180,7 +185,7 @@ export default function ExamsPage() {
             ) : list.length === 0 ? (
               <EmptyState
                 icon={<Target />}
-                title={review === "1" ? "확인이 필요한 시험이 없습니다" : "등록된 시험이 없습니다"}
+                title={review === "1" ? "확인이 필요한 시험이 없습니다" : "등록된 시험·발표가 없습니다"}
                 action={
                   review === "1" ? undefined : (
                     <>
@@ -190,7 +195,7 @@ export default function ExamsPage() {
                       </button>
                       <button type="button" className="btn btn-primary btn-sm" onClick={() => navigateQuery({ new: "exam" }, "push")}>
                         <Plus aria-hidden />
-                        시험 추가
+                        시험·발표 추가
                       </button>
                     </>
                   )
@@ -206,6 +211,7 @@ export default function ExamsPage() {
                   active={e.id === examId}
                   busy={busy}
                   onConfirm={() => void ex.confirmExam(e.id)}
+                  onReady={(r) => void ex.setReady(e.id, r)}
                   onEdit={() => navigateQuery({ edit: e.id }, "push")}
                   onDelete={() => setPendingDelete(e)}
                 />
@@ -223,6 +229,7 @@ export default function ExamsPage() {
                       active={e.id === examId}
                       busy={busy}
                       onConfirm={() => void ex.confirmExam(e.id)}
+                      onReady={(r) => void ex.setReady(e.id, r)}
                       onEdit={() => navigateQuery({ edit: e.id }, "push")}
                       onDelete={() => setPendingDelete(e)}
                     />
@@ -241,7 +248,7 @@ export default function ExamsPage() {
                 exit={{ opacity: 0, x: 16 }}
                 transition={{ type: "spring", bounce: 0, visualDuration: 0.25 }}
               >
-                <div className="sticky top-[calc(var(--header-h)+16px)]">
+                <div className="sticky top-[calc(var(--header-h)+16px)] max-h-[calc(100dvh-var(--header-h)-32px)] overflow-y-auto overscroll-contain rounded-2xl">
                   <PlanPanel exam={selected} data={data} ex={ex} />
                 </div>
               </motion.aside>
@@ -259,6 +266,13 @@ export default function ExamsPage() {
       >
         {selected && <PlanPanel exam={selected} data={data} ex={ex} bare />}
       </Modal>
+
+      <StudyMaterialsModal
+        examId={studyId}
+        onClose={() => closeQuery(["study"])}
+        onChanged={() => void ex.reload()}
+        onReplan={(id) => navigateQuery({ study: null, exam: id, step: "options" }, "replace")}
+      />
 
       <DifficultyModal
         open={setup === "difficulty"}
@@ -455,10 +469,10 @@ function PlanBody({
   reloadDetail: () => Promise<void>;
 }) {
   const toast = useToast();
+  const router = useRouter();
   const pv = usePlanPreview();
   // 분량은 쪽수로만 받는다 (2026-10-01 — 시간(분) 단위를 뺐다)
   const [opts, setOpts] = useState<PlanOptionsInput>({ ...detail.options, unit: "pages" });
-  const [armed, setArmed] = useState(false); // 상한 초과인데도 등록 — 한 번 더 누르게 한다 (10-8)
   const [registering, setRegistering] = useState(false);
   const plan = exam.plan;
 
@@ -467,7 +481,6 @@ function PlanBody({
       const p = await pv.calc(exam.id, next ?? opts);
       if (p) {
         setOpts(optionsOf(p)); // 본 것과 등록되는 것이 어긋나지 않게 미리보기가 쓴 값으로 맞춘다
-        setArmed(false);
         setStep("preview");
       }
     },
@@ -479,7 +492,6 @@ function PlanBody({
     const p = await pv.rebalance(plan.id);
     if (p) {
       setOpts(optionsOf(p));
-      setArmed(false);
     }
   }, [plan, pv]);
 
@@ -507,20 +519,16 @@ function PlanBody({
   const register = async () => {
     const p = pv.preview;
     if (!p) return;
-    if (p.needsConfirm && !armed) {
-      setArmed(true);
-      toast(`${p.verdictLabel} — 그래도 등록하려면 '등록하기'를 한 번 더 누르세요`, { tone: "error" });
-      return;
-    }
     setRegistering(true);
     const saved = await ex.createPlan(exam.id, opts);
     setRegistering(false);
     if (saved) {
       // 계산 결과는 그대로 둔다 — 여기서 비우면 아래 자동 계산이 다시 돌아 step 을 미리보기로 되돌린다.
       // 남겨 두면 '미리보기' 탭에서 방금 등록한 것과 같은 표를 다시 볼 수 있다.
-      setArmed(false);
       await reloadDetail();
       setStep("progress");
+      // F8-S01 — 계획 분량은 저녁(19~24시)에 들어갔다. 낮 공강에도 이 과목 공부 블록을 넣을지 이어서 묻는다
+      toast("낮 공강에도 공부 블록을 넣을까요?", { action: { label: "공강에 배치하기", onClick: () => router.push("/?place=preview") }, duration: 8000 });
     }
   };
 

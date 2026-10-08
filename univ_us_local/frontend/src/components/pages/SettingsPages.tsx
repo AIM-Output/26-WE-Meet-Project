@@ -24,7 +24,9 @@ import { useGradImport } from "@/lib/useGraduation";
 import { ENROLLMENT, FIELD_LABEL, FLAG_LABEL, INCOME_BRACKETS, REGIONS, TRACK_LABEL, type Enrollment, type Track } from "@/lib/profile";
 import { api } from "@/lib/api";
 import { AcademicSourcesSection } from "@/components/academic/AcademicSources";
-import { fmtRelative, fmtShortStamp } from "@/lib/dates";
+import { addDays, fmtRelative, fmtShortStamp, toDateStr } from "@/lib/dates";
+import type { AvailabilitySettings as Avail, AvailabilityView } from "@/lib/placement";
+import type { ExamSettings } from "@/lib/exams";
 
 // 설정 5개 — 설정 허브 페이지는 만들지 않는다(헤더 ⚙ 드롭다운이 입구). 페이지 사이는 위쪽 링크로 옮겨 다닌다.
 
@@ -637,71 +639,187 @@ export function RequirementsSettings() {
 
 /* ------------------------------------------------------------------ /settings/availability */
 
-const AVAIL_DEFAULT = { eveningFrom: "19:00", eveningTo: "23:00", useGaps: true, lunch: true, buffer: 10, blockMin: 30, blockMax: 120, dailyCap: 4, weekend: true };
+// 가용 시간 (2026-10-07) — 하루를 둘로 나눠 쓴다.
+//   낮(기본 09:00~18:00) = 공강 배치(F8): 과제·할 일을 먼저 넣고 남는 공강은 공부 블록. 서버 F8_Plan_agent data/settings.json
+//   저녁(기본 19:00~24:00) = 시험 공부 계획(F5) 전용: 계획의 날짜별 분량이 차례로 놓인다. 서버 F5 exams.db meta.evening
+// 바꾸면 바로 저장한다(기본값과 다른 값만). 하루 상한은 두 기능 모두 없다.
+
+const DAY_STARTS = ["07:00", "08:00", "09:00", "10:00", "11:00"];
+const DAY_ENDS = ["15:00", "16:00", "17:00", "18:00", "19:00"];
+const EVENING_STARTS = ["17:00", "18:00", "18:30", "19:00", "19:30", "20:00", "21:00"];
+const EVENING_ENDS = ["21:00", "22:00", "22:30", "23:00", "23:30", "24:00"];
+const withCurrent = (list: string[], cur?: string) => [...new Set([...list, ...(cur ? [cur] : [])])].sort();
+
+function TimeSelect({ label, value, options, onChange, disabled }: { label: string; value?: string; options: string[]; onChange: (v: string) => void; disabled?: boolean }) {
+  return (
+    <select className="field field-sm w-auto" aria-label={label} disabled={disabled} value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
+      {withCurrent(options, value).map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function AvailabilitySettings() {
   const toast = useToast();
-  const [v, setV] = useStored("availability", AVAIL_DEFAULT);
-  const set = <K extends keyof typeof AVAIL_DEFAULT>(k: K, val: (typeof AVAIL_DEFAULT)[K]) => setV((p) => ({ ...p, [k]: val }));
+  const { refresh } = useAppData();
+  const [v, setV] = useState<AvailabilityView | null>(null);
+  const [ev, setEv] = useState<ExamSettings["evening"] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [from, setFrom] = useState(() => toDateStr(new Date()));
+  const [to, setTo] = useState(() => toDateStr(addDays(new Date(), 13)));
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    api.availability().then(setV).catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
+    api.examSettings().then((s) => setEv(s.evening)).catch(() => setEv(null));
+  }, []);
+
+  const save = async (patch: Parameters<typeof api.patchAvailability>[0], ok = "저장했습니다") => {
+    const before = v;
+    if (v && !patch.reset) setV({ ...v, ...(patch as Partial<AvailabilityView>) });
+    try {
+      setV(await api.patchAvailability(patch));
+      toast(ok, { tone: "success" });
+    } catch (e) {
+      setV(before);
+      toast(`저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, { tone: "error" });
+    }
+  };
+
+  const saveEvening = async (patch: { start?: string | null; end?: string | null } | null, ok = "저녁 시간대를 바꿨습니다") => {
+    try {
+      setEv((await api.putEvening(patch)).evening);
+      toast(ok, { tone: "success" });
+    } catch (e) {
+      toast(`저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, { tone: "error" });
+    }
+  };
+
+  const clear = async () => {
+    setClearing(true);
+    try {
+      const out = await api.clearPlacement(from || undefined, to || undefined);
+      await refresh();
+      toast(out.deleted ? `자동 배치 블록 ${out.deleted}개를 지웠습니다` : "지울 자동 배치 블록이 없습니다", { tone: out.deleted ? "success" : "default" });
+    } catch (e) {
+      toast(`지우지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, { tone: "error" });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  if (err)
+    return (
+      <SettingsShell title="가용 시간">
+        <ErrorPanel message={`설정을 불러오지 못했습니다 — ${err}`} />
+      </SettingsShell>
+    );
+  const changed = (k: keyof Avail) => !!v?.changed.includes(k);
+  const dflt = (k: keyof Avail) => (v ? String(v.defaults[k]) : "");
+
   return (
-    <SettingsShell title="가용 시간" subtitle="공강 배치(F8)와 시험 공부 계획(F5)이 쓰는 시간 — 하루 상한은 두 기능이 같은 값을 씁니다">
-      <Section title="언제 공부할 수 있나요">
-        <Row label="저녁 시간대">
-          <input type="time" className="field field-sm w-auto" aria-label="저녁 시작" value={v.eveningFrom} onChange={(e) => set("eveningFrom", e.target.value)} />
+    <SettingsShell title="가용 시간" subtitle="낮 공강은 공강 배치(F8)가, 저녁은 시험 공부 계획(F5)이 씁니다">
+      <Section
+        title="낮 — 공강 배치"
+        action={
+          v && v.changed.length > 0 ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => save({ reset: true }, "기본값으로 되돌렸습니다")}>
+              기본값으로
+            </button>
+          ) : undefined
+        }
+      >
+        <Row label="배치 범위" hint={`기본 ${dflt("dayStart")} ~ ${dflt("dayEnd")} · 이 안에서 수업·일정을 뺀 빈 시간이 공강입니다`}>
+          <TimeSelect label="낮 시작" value={v?.dayStart} options={DAY_STARTS} disabled={!v} onChange={(t) => save({ dayStart: t })} />
           <span className="text-muted">~</span>
-          <input type="time" className="field field-sm w-auto" aria-label="저녁 끝" value={v.eveningTo} onChange={(e) => set("eveningTo", e.target.value)} />
+          <TimeSelect label="낮 끝" value={v?.dayEnd} options={DAY_ENDS} disabled={!v} onChange={(t) => save({ dayEnd: t })} />
+          {(changed("dayStart") || changed("dayEnd")) && (
+            <Chip tone="accent" square>
+              수정함
+            </Chip>
+          )}
         </Row>
-        <Row label="수업 사이 공강 사용">
-          <Toggle checked={v.useGaps} onChange={(x) => set("useGaps", x)} label="수업 사이 공강 사용" />
+        <Row label="남는 공강에 공부 블록" hint="과제·할 일을 넣고 남은 공강을 시험 공부로 채웁니다 — 과목은 남은 진도율 ÷ 시험까지 남은 날수가 큰 순">
+          <Toggle checked={v?.fillStudy ?? true} disabled={!v} onChange={(x) => save({ fillStudy: x })} label="남는 공강에 공부 블록" />
         </Row>
-        <Row label="점심 제외" hint="12:00 ~ 13:00">
-          <Toggle checked={v.lunch} onChange={(x) => set("lunch", x)} label="점심 제외" />
+        <Row label="점심 제외" hint={v ? `${v.lunchStart} ~ ${v.lunchEnd} 에는 넣지 않습니다` : "12:00 ~ 13:00"}>
+          <Toggle checked={v?.lunchBreak ?? true} disabled={!v} onChange={(x) => save({ lunchBreak: x })} label="점심 제외" />
         </Row>
-        <Row label="주말 사용">
-          <Toggle checked={v.weekend} onChange={(x) => set("weekend", x)} label="주말 사용" />
+        <Row label="주말 사용" hint="켜면 토·일 낮도 같은 규칙으로 채웁니다">
+          <Toggle checked={v?.useWeekend ?? false} disabled={!v} onChange={(x) => save({ useWeekend: x })} label="주말 사용" />
         </Row>
-      </Section>
-      <Section title="블록과 상한">
-        <Row label="수업 앞뒤 여유">
-          <select className="field field-sm w-auto" aria-label="여유" value={v.buffer} onChange={(e) => set("buffer", Number(e.target.value))}>
-            {[0, 10, 15, 30].map((m) => (
+        <Row label="수업 앞뒤 여유" hint="이동·준비 시간 — 수업 끝나자마자 시작하는 블록을 만들지 않습니다">
+          <select className="field field-sm w-auto" aria-label="여유" disabled={!v} value={v?.bufferMinutes ?? 10} onChange={(e) => save({ bufferMinutes: Number(e.target.value) })}>
+            {(v?.choices.bufferMinutes ?? [0, 5, 10, 15, 20, 30]).map((m) => (
               <option key={m} value={m}>
                 {m}분
               </option>
             ))}
           </select>
         </Row>
-        <Row label="블록 길이">
-          <select className="field field-sm w-auto" aria-label="최소" value={v.blockMin} onChange={(e) => set("blockMin", Number(e.target.value))}>
-            {[30, 60].map((m) => (
+        <Row label="블록 길이" hint="이보다 짧은 공강은 버리고, 긴 작업은 최대 길이로 쪼갭니다">
+          <select className="field field-sm w-auto" aria-label="최소 블록" disabled={!v} value={v?.minSlotMinutes ?? 30} onChange={(e) => save({ minSlotMinutes: Number(e.target.value) })}>
+            {[15, 20, 30, 45, 60].map((m) => (
               <option key={m} value={m}>
                 최소 {m}분
               </option>
             ))}
           </select>
-          <select className="field field-sm w-auto" aria-label="최대" value={v.blockMax} onChange={(e) => set("blockMax", Number(e.target.value))}>
-            {[60, 90, 120].map((m) => (
+          <select className="field field-sm w-auto" aria-label="최대 블록" disabled={!v} value={v?.maxBlockMinutes ?? 120} onChange={(e) => save({ maxBlockMinutes: Number(e.target.value) })}>
+            {[60, 90, 120, 150, 180].map((m) => (
               <option key={m} value={m}>
                 최대 {m / 60}시간
               </option>
             ))}
           </select>
         </Row>
-        <Row label="하루 상한" hint="F5 시험 계획과 같은 값">
-          <select className="field field-sm w-auto" aria-label="하루 상한" value={v.dailyCap} onChange={(e) => set("dailyCap", Number(e.target.value))}>
-            {[2, 3, 4, 5, 6].map((h) => (
-              <option key={h} value={h}>
-                {h}시간
+        <Row label="배치 기간" hint="미리보기를 열 때 계산하는 기간 (미리보기에서도 바꿀 수 있습니다)">
+          <select className="field field-sm w-auto" aria-label="배치 기간" disabled={!v} value={v?.rangeDays ?? 7} onChange={(e) => save({ rangeDays: Number(e.target.value) })}>
+            {(v?.choices.rangeDays ?? [7, 14]).map((n) => (
+              <option key={n} value={n}>
+                {n}일
               </option>
             ))}
           </select>
         </Row>
       </Section>
+      <Section
+        title="저녁 — 시험 공부 계획"
+        action={
+          ev?.changed ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => saveEvening(null, "기본값으로 되돌렸습니다")}>
+              기본값으로
+            </button>
+          ) : undefined
+        }
+      >
+        <Row label="저녁 시간대" hint={`기본 ${ev?.defaults.start ?? "19:00"} ~ ${ev?.defaults.end ?? "24:00"} · 계획의 날짜별 분량이 시험이 가까운 과목부터 이 시간에 차례로 놓입니다 (공부 캘린더)`}>
+          <TimeSelect label="저녁 시작" value={ev?.start} options={EVENING_STARTS} disabled={!ev} onChange={(t) => saveEvening({ start: t })} />
+          <span className="text-muted">~</span>
+          <TimeSelect label="저녁 끝" value={ev?.end} options={EVENING_ENDS} disabled={!ev} onChange={(t) => saveEvening({ end: t })} />
+          {ev?.changed && (
+            <Chip tone="accent" square>
+              수정함
+            </Chip>
+          )}
+        </Row>
+        <Row label="하루 상한" hint="두지 않습니다 — 하루에 몇 시간을 할지는 계획 만들기에서 정하고, 경고하지 않습니다">
+          <span className="text-[13px] text-muted">없음</span>
+        </Row>
+      </Section>
       <Section title="자동 배치 블록 지우기">
-        <p className="mb-3 text-[13px] text-muted">기간을 골라 자동으로 배치한 블록만 지웁니다. 내가 옮긴(고정) 블록과 완료한 블록은 남깁니다.</p>
-        <button type="button" className="btn btn-danger btn-sm" onClick={() => toast("배치 API 연결 전입니다")}>
-          자동 배치 블록 지우기
-        </button>
+        <p className="mb-3 text-[13px] text-muted">기간을 골라 공강 배치로 자동으로 넣은 블록만 지웁니다. 내가 옮긴(고정) 블록과 완료한 블록, 이미 시작한 블록은 남깁니다.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="date" className="field field-sm w-auto" aria-label="시작 날짜" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <span className="text-muted">~</span>
+          <input type="date" className="field field-sm w-auto" aria-label="끝 날짜" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+          <button type="button" className="btn btn-danger btn-sm" disabled={clearing} onClick={clear}>
+            자동 배치 블록 지우기
+          </button>
+        </div>
       </Section>
     </SettingsShell>
   );

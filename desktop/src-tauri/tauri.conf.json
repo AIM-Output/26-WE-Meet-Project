@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "UnivUs",
+  "mainBinaryName": "UnivUs",
+  "version": "0.1.0",
+  "identifier": "kr.univus.desktop",
+  "build": {
+    "frontendDist": "../splash"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app", "dmg"],
+    "category": "Education",
+    "shortDescription": "유니버스 — 전남대 학사·e클래스 일정 도우미",
+    "longDescription": "e클래스 과제·마감·강의자료, 학사일정, 졸업요건, 출결, 시험 공부 일정을 내 PC 안에서 모아 보여 줍니다. 비밀번호·강의자료는 이 PC 밖으로 나가지 않습니다.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../sidecar/dist/univus-backend/": "sidecar/"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Korean", "English"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.3"
+    }
+  }
+}

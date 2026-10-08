@@ -152,7 +152,7 @@ function ScheduleRow({ schedule, retry, onChange }: { schedule: AcademicSchedule
   };
   const fmt = (s?: string | null) => (s ? `${fmtShortStamp(s)}` : "—");
   return (
-    <div className={`mt-4 rounded-xl border px-3 py-3 md:px-4 ${on ? "border-border" : "border-[#f5dca6] bg-warn-soft"}`}>
+    <div className={`mt-4 rounded-xl border px-3 py-3 md:px-4 ${on ? "border-border" : "border-warn-line bg-warn-soft"}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Clock className={`size-4 flex-none ${on ? "text-primary" : "text-warn-text"}`} aria-hidden />
         <div className="min-w-0 flex-1">

@@ -38,12 +38,12 @@ jobs:
       - name: 테스트 패키지
         run: python -m pip install --disable-pip-version-check -q -r F1_Bachelor_agent/requirements.txt
 
-      - name: 단위 테스트 (C0 · C2 · C3 · F1~F6)
+      - name: 단위 테스트 (C0 · C2 · C3 · F1~F8)
         run: |
           set -e
           python -m pytest C0_Platform_agent/tests -q
           for d in C3_Login_agent C2_Profile_agent F1_Bachelor_agent F2_Graduation_agent F3_Attendance_agent \
-                   F4_Textbook_agent F5_Test_agent F6_Eclass_agent; do
+                   F4_Textbook_agent F5_Test_agent F6_Eclass_agent F7_Task_agent F8_Plan_agent; do
             echo "== $d"
             (cd "$d" && python -m pytest tests -q)
           done
@@ -63,3 +63,10 @@ jobs:
           test -x univ_us_local/backend/.venv/bin/python
           ./C1_Calendar_agent/run.command count
           lsof -ti tcp:8000 -sTCP:LISTEN | xargs kill
+
+      - name: 데스크톱 사이드카 세션 (desktop.py — 실행 코드·세션 쿠키·앱 데이터 폴더)
+        run: |
+          set -e
+          PY=univ_us_local/backend/.venv/bin/python
+          $PY -m pip install --disable-pip-version-check -q pytest
+          $PY -m pytest univ_us_local/backend/tests -q

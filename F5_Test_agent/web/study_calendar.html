@@ -11,6 +11,10 @@
   - 데이터: GET /api/study-calendar?start=&end=  (F5_Test_agent/exams/service.py study_calendar)
   - 완료 체크·해제: PATCH /api/study-plans/{planId}/days/{date} {done} — 다 끝나 닫힌 계획도 체크를 풀면 다시 열린다
   - 삭제: DELETE /api/study-plans/{planId}/days/{date} — 완료한 것도 지운다. 마지막 블록이면 계획도 (2026-10-02)
+  - 시각 (2026-10-07): 계획 분량은 **저녁 시간대(기본 19:00~24:00)**에 시험이 가까운 과목부터 이어 놓이고,
+    낮 09:00~18:00 공강에는 공강 배치(F8)가 넣은 **공강 공부** 블록(kind='gap')이 섞인다.
+    공강 공부 블록은 **전체 캘린더에는 없다** — 두 캘린더는 따로다. 겹침·시험 지남은 블록의 conflict 한 줄로 여기 보인다.
+    공강 공부의 체크·삭제는 F8 API — PATCH/DELETE /api/placement/blocks/{pb:n}
   - 이 파일은 F5_Test_agent/web 에 있고, 대시보드 서버가 /study-calendar 로 준다(같은 출처라 로그인·CORS 가 필요 없다).
   - 전체 캘린더와 달리 날짜가 확정되지 않은 시험(임의 일정·확인 필요)도 표시를 달아 보여 준다 — 그 날짜에 맞춰 공부하고 있으니까.
   - 표시 색은 대시보드 디자인 토큰(globals.css)과 같다. 바깥 라이브러리를 쓰지 않는다.
@@ -103,6 +107,11 @@
   .ln.study { background: var(--study-soft); box-shadow: inset 3px 0 0 var(--cc, var(--study)); }
   .ln.study .a b { color: var(--study); }
   .ln.review { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--cc, var(--study)); }
+  .ln.gap { background: var(--primary-soft); box-shadow: inset 3px 0 0 var(--cc, var(--primary)); }
+  .item.gap { background: var(--primary-soft); border-color: #c4e6e0; }
+  .item .src { font-size: 11px; font-weight: 700; color: var(--primary); background: var(--surface); border-radius: 999px; padding: 1px 7px; }
+  .item .src.warn { color: var(--danger-text); background: var(--danger-soft); white-space: normal; }
+  .ln.conflict { box-shadow: inset 3px 0 0 var(--cc, var(--primary)), inset 0 0 0 1px var(--danger); }
   .ln.done { opacity: .5; } .ln.done .c { text-decoration: line-through; }
   .ln.exam { background: var(--danger-soft); color: var(--danger-text); }
   .ln.exam.unsure { background: transparent; border: 1px dashed var(--danger); }
@@ -132,7 +141,7 @@
 <div class="wrap">
   <header class="top">
     <div>
-      <a class="back" href="/exams">← 시험</a>
+      <a class="back" href="/exams">← 시험·발표</a>
       <h1>공부 캘린더</h1>
       <div class="sub">시험 공부만 — 과목 · 시간 · 분량</div>
     </div>
@@ -167,9 +176,10 @@
   <div class="legend">
     <span><i style="background:var(--study-soft);box-shadow:inset 3px 0 0 var(--study)"></i>공부 (쪽 · 시간)</span>
     <span><i style="background:var(--surface-3)"></i>마무리 복습</span>
-    <span><i style="background:var(--danger-soft)"></i>시험</span>
+    <span><i style="background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)"></i>공강 공부 (09~18시 · 공강 배치)</span>
+    <span><i style="background:var(--danger-soft)"></i>시험·발표</span>
     <span><i style="border:1px dashed var(--danger)"></i>날짜 미확정 시험 (임의·확인 필요)</span>
-    <span>시각은 기본 19:00 — 공강 학습 플랜(F8)이 붙으면 하루 안에서 다시 배치됩니다</span>
+    <span id="eveningNote">계획 분량은 저녁 19:00~24:00 에 차례로 놓입니다 — 시간대는 설정 › 가용 시간에서 바꿉니다</span>
   </div>
 </div>
 
@@ -208,6 +218,8 @@
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
       data = await res.json();
       byDate = new Map(data.days.map((d) => [d.date, d]));
+      if (data.evening) $("eveningNote").textContent =
+        `계획 분량은 저녁 ${data.evening.start}~${data.evening.end} 에 차례로 놓입니다 — 시간대는 설정 › 가용 시간에서 바꿉니다`;
       $("err").style.display = "none";
     } catch (e) {
       $("err").textContent = `공부 일정을 불러오지 못했습니다: ${e.message} — 대시보드 서버가 켜져 있는지 확인하세요`;
@@ -218,7 +230,7 @@
 
   function examLine(x, big) {
     const unsure = !x.confirmed;
-    const tag = x.isAuto ? " (임의)" : x.needsReview ? " (확인 필요)" : "";
+    const tag = (x.isAuto ? " (임의)" : x.needsReview ? " (확인 필요)" : "") + (x.prepOnly && x.ready ? " ✓ 준비 완료" : "");
     const when = x.time ? `${x.time}${x.endTime ? "~" + x.endTime : ""}` : "시각 미정";
     if (big) {
       return `<li class="item exam${unsure ? " unsure" : ""}">
@@ -226,39 +238,51 @@
         <span class="meta num">${esc(when)}${x.place ? " · " + esc(x.place) : ""}</span></li>`;
     }
     return `<div class="ln exam${unsure ? " unsure" : ""}" title="${esc(`${x.course} ${x.title}${tag} · ${when}`)}">
-      <span class="c">🎯 ${esc(x.course)} ${esc(x.typeLabel)}${x.isAuto ? "?" : ""}</span>
+      <span class="c">🎯 ${esc(x.course)} ${esc(x.typeLabel)}${x.isAuto ? "?" : ""}${x.prepOnly && x.ready ? " ✓" : ""}</span>
       <span class="a num">${esc(x.time || "시각 미정")}</span></div>`;
   }
 
   function amount(b) {
+    if (b.kind === "gap") return "공강 공부";
     if (b.kind === "review") return `전체 복습${b.quiz ? ` + 문제 ${b.quiz}개` : ""}`;
     return `${b.pages}쪽`;
   }
 
   function blockLine(b) {
-    const cls = `ln ${b.kind === "review" ? "review" : "study"}${b.done ? " done" : ""}`;
-    return `<div class="${cls}" style="--cc:${esc(b.color)}" title="${esc(`${b.course} · ${b.time} · ${amount(b)} · ${hm(b.minutes)}${b.done ? " · 완료" : ""}`)}">
-      <span class="c">${esc(b.course)}</span>
-      <span class="a num">${esc(b.time)} <b>${esc(amount(b))}</b> · ${esc(hm(b.minutes))}</span></div>`;
+    const warn = b.conflict && !b.done;
+    const cls = `ln ${b.kind === "review" ? "review" : b.kind === "gap" ? "gap" : "study"}${b.done ? " done" : ""}${warn ? " conflict" : ""}`;
+    const t = b.time || "시각 없음";
+    return `<div class="${cls}" style="--cc:${esc(b.color)}" title="${esc(`${b.course} · ${t} · ${amount(b)} · ${hm(b.minutes)}${b.done ? " · 완료" : ""}${warn ? ` · ⚠ ${b.conflict}` : ""}`)}">
+      <span class="c">${warn ? "⚠ " : ""}${esc(b.course)}</span>
+      <span class="a num">${esc(t)} <b>${esc(amount(b))}</b> · ${esc(hm(b.minutes))}</span></div>`;
   }
 
   function itemsFor(dateIso) {
     const d = byDate.get(dateIso);
     if (!d || (!d.blocks.length && !d.exams.length)) {
-      return `<li class="empty">${dateIso === todayIso ? "오늘은 공부 계획이 없습니다" : "이날은 공부 계획이 없습니다"} — 시험 화면에서 계획을 만들면 여기에 나옵니다.</li>`;
+      return `<li class="empty">${dateIso === todayIso ? "오늘은 공부 계획이 없습니다" : "이날은 공부 계획이 없습니다"} — 시험·발표 화면에서 계획을 만들면 여기에 나옵니다.</li>`;
     }
     const exams = d.exams.map((x) => examLine(x, true)).join("");
-    const blocks = d.blocks.map((b) => `
-      <li class="item${b.done ? " done" : ""}">
+    const blocks = d.blocks.map((b) => {
+      const gap = b.kind === "gap";
+      // 공강 공부(F8)는 F8 블록 id 로, 계획 분량은 (계획, 날짜)로 체크·삭제한다
+      const key = gap ? `data-pb="${esc(b.blockId)}"` : `data-plan="${b.planId}" data-date="${dateIso}"`;
+      const delKey = gap ? `data-del-pb="${esc(b.blockId)}"` : `data-del-plan="${b.planId}" data-date="${dateIso}"`;
+      const when = b.time ? `${b.time}~${b.endTime}` : "시각 없음";
+      return `
+      <li class="item${gap ? " gap" : ""}${b.done ? " done" : ""}">
         <input type="checkbox" ${b.done ? "checked" : ""} ${b.editable ? "" : "disabled"}
-          data-plan="${b.planId}" data-date="${dateIso}" aria-label="${esc(`${b.course} ${amount(b)} 완료`)}">
+          ${key} aria-label="${esc(`${b.course} ${amount(b)} 완료`)}">
         <span class="dot" style="background:${esc(b.color)}"></span>
         <span class="what">${esc(b.course)}</span>
         <span class="amount num">${esc(amount(b))}</span>
-        <span class="meta num">${esc(b.time)}~${esc(b.endTime)} · ${esc(hm(b.minutes))} · ${esc(b.examType)} ${esc(md(b.examDate))}</span>
-        ${b.deletable ? `<button type="button" class="del" data-del-plan="${b.planId}" data-date="${dateIso}"
+        ${gap ? `<span class="src" title="${esc(b.reason || "")}">공강</span>` : ""}
+        ${gap && b.conflict && !b.done ? `<span class="src warn">⚠ ${esc(b.conflict)} — 공강 배치에서 다시 계산하세요</span>` : ""}
+        <span class="meta num">${esc(when)} · ${esc(hm(b.minutes))} · ${esc(b.examType)} ${esc(md(b.examDate))}</span>
+        ${b.deletable ? `<button type="button" class="del" ${delKey}
           aria-label="${esc(`${md(dateIso)} ${b.course} ${amount(b)} 공부 일정 삭제`)}">삭제</button>` : ""}
-      </li>`).join("");
+      </li>`;
+    }).join("");
     return exams + blocks;
   }
 
@@ -285,7 +309,7 @@
       const shown = lines.slice(0, 4).join("");
       const more = lines.length > 4 ? `<span class="more">+${lines.length - 4}개 더</span>` : "";
       const tot = d && d.totalMinutes ? `<span class="tot num">${hm(d.totalMinutes)}</span>` : "";
-      const label = `${md(k)}${d ? ` · 공부 ${d.blocks.length}건${d.exams.length ? ` · 시험 ${d.exams.length}건` : ""}` : ""}`;
+      const label = `${md(k)}${d ? ` · 공부 ${d.blocks.length}건${d.exams.length ? ` · 시험·발표 ${d.exams.length}건` : ""}` : ""}`;
       html += `<button type="button" class="cell${out ? " out" : ""}${k === todayIso ? " todayc" : ""}${k === selected ? " sel" : ""}"
         data-date="${k}" aria-label="${esc(label)}" aria-pressed="${k === selected}">
         <span class="d"><span class="num">${day.getDate()}</span>${tot}</span>${shown}${more}</button>`;
@@ -323,7 +347,10 @@
   async function toggle(input) {
     input.disabled = true;
     try {
-      const res = await fetch(`/api/study-plans/${input.dataset.plan}/days/${input.dataset.date}`, {
+      const url = input.dataset.pb
+        ? `/api/placement/blocks/${encodeURIComponent(input.dataset.pb)}`
+        : `/api/study-plans/${input.dataset.plan}/days/${input.dataset.date}`;
+      const res = await fetch(url, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: input.checked }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
@@ -340,7 +367,10 @@
     if (!confirm(`${label} — 이 공부 일정을 지울까요?\n완료한 기록도 함께 지워지고, 되돌릴 수 없습니다.`)) return;
     btn.disabled = true;
     try {
-      const res = await fetch(`/api/study-plans/${btn.dataset.delPlan}/days/${btn.dataset.date}`, { method: "DELETE" });
+      const url = btn.dataset.delPb
+        ? `/api/placement/blocks/${encodeURIComponent(btn.dataset.delPb)}`
+        : `/api/study-plans/${btn.dataset.delPlan}/days/${btn.dataset.date}`;
+      const res = await fetch(url, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
     } catch (e) {
       $("err").textContent = `지우지 못했습니다: ${e.message}`;
@@ -350,13 +380,13 @@
   }
 
   document.addEventListener("click", (e) => {
-    const del = e.target.closest("button[data-del-plan]");
+    const del = e.target.closest("button[data-del-plan], button[data-del-pb]");
     if (del) { remove(del); return; }
     const cell = e.target.closest(".cell");
     if (cell) { selected = cell.dataset.date; render(); }
   });
   document.addEventListener("change", (e) => {
-    if (e.target.matches("input[data-plan]")) toggle(e.target);
+    if (e.target.matches("input[data-plan], input[data-pb]")) toggle(e.target);
   });
   $("prev").onclick = () => move(-1);
   $("next").onclick = () => move(1);

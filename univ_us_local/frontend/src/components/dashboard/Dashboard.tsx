@@ -7,7 +7,7 @@ import { PanelLeftOpen } from "lucide-react";
 import { useAppData } from "@/components/app/AppData";
 import { useToast } from "@/components/ui/Toast";
 import { Tabs } from "@/components/ui/Tabs";
-import { ErrorPanel } from "@/components/ui/Feedback";
+import { Banner, ErrorPanel } from "@/components/ui/Feedback";
 import { EventDetailHost } from "@/components/events/EventDetailHost";
 import { EventForm, DEFAULT_CATEGORIES, type EventDraft } from "@/components/events/EventForm";
 import ActionPanel from "./ActionPanel";
@@ -86,7 +86,7 @@ export default function Dashboard() {
   }, []);
   useEffect(() => writeStore("calendar", { view, filter }), [view, filter]);
 
-  const briefing = useMemo(() => (new Date().getHours() >= 8 ? composeBriefing(events) : null), [events]);
+  const briefing = useMemo(() => (new Date().getHours() >= 8 ? composeBriefing(events, status?.priority?.top) : null), [events, status?.priority?.top]);
 
   const calEvents = useMemo(() => {
     // 수업 회차(F3 class)는 한 주에 10개 넘게 반복된다 — 월·학기 격자에서는 마감이 '+N개'로 밀리므로 주·목록 보기에서만 그린다
@@ -130,25 +130,40 @@ export default function Dashboard() {
     return { title: "", start, end, allDay, category: newKind === "todo" ? "study" : "personal", memo: "", isTodo: newKind === "todo", done: false };
   }, [newKind]);
 
+  // F8 충돌 — 수업·일정이 바뀌어 겹치거나 끝낸 작업의 블록 (서버가 extendedProps.conflict 를 단다, F8-S08)
+  const conflicts = useMemo(
+    () => events.filter((e) => e.extendedProps.kind === "study" && e.extendedProps.conflict && !e.extendedProps.done).length,
+    [events],
+  );
+
   const today = new Date();
   const todayCount = briefing ? briefing.events.length : 0;
   const semester = view === "semester";
 
   return (
     <main id="main" className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-28 md:px-6 md:pt-8">
-      <div className="mb-5 flex flex-wrap items-end gap-x-6 gap-y-2">
+      {/* 오늘 — 큰 날짜(잉크) + 모래빛 쟁반 위 숫자 세 개 */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div>
-          <p className="text-[13px] font-semibold tracking-wide text-primary" style={{ fontFamily: "var(--font-display)" }}>
+          <p translate="no" className="text-[13px] font-semibold tracking-wide text-sand-text" style={{ fontFamily: "var(--font-display)" }}>
             Univ-Us Planner
           </p>
-          <h1 className="text-[26px] font-bold tracking-tight md:text-[30px]">
-            {today.getMonth() + 1}월 {today.getDate()}일 {WEEKDAY_KO[today.getDay()]}요일
+          <h1 className="mt-1 text-[30px] leading-[1.1] font-extrabold tracking-[-0.03em] md:text-[40px]">
+            {today.getMonth() + 1}월 {today.getDate()}일 <span className="text-primary">{WEEKDAY_KO[today.getDay()]}요일</span>
           </h1>
         </div>
-        <p className="pb-1 text-[14px] text-muted">
-          오늘 일정 <b className="num text-text">{todayCount}</b> · 3일 안 마감 <b className="num text-text">{briefing?.deadlines.length ?? 0}</b>
-          {status && <> · 과목 <b className="num text-text">{status.counts.courses}</b></>}
-        </p>
+        <dl className="bezel flex items-stretch divide-x divide-border p-0" aria-label="오늘 한눈에">
+          {[
+            { label: "오늘 일정", value: todayCount },
+            { label: "3일 안 마감", value: briefing?.deadlines.length ?? 0 },
+            ...(status ? [{ label: "과목", value: status.counts.courses }] : []),
+          ].map((s) => (
+            <div key={s.label} className="flex min-w-[88px] flex-col justify-center px-4 py-2.5 md:min-w-[104px] md:px-5">
+              <dt className="text-[12px] font-semibold text-muted">{s.label}</dt>
+              <dd className="num text-[24px] leading-tight font-bold text-text md:text-[26px]">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <div className="mb-5">
@@ -164,54 +179,91 @@ export default function Dashboard() {
           </aside>
         )}
 
-        <section className="card order-1 min-w-0 p-3 md:col-span-2 md:p-4 xl:order-2 xl:col-span-1" aria-label="캘린더">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Tabs items={FILTER_ITEMS} value={filter} onChange={(f) => setFilter(f)} label="캘린더 필터" variant="line" size="sm" className="flex-1" />
-            {semester && (
-              <button type="button" className="btn btn-sm" onClick={() => setView("month")}>
-                <PanelLeftOpen aria-hidden />
-                패널 펼치기
-              </button>
+        {/* 캘린더 = 대시보드의 본판 — 겹테(바깥 모래빛 쟁반 + 안쪽 종이)는 이 판 하나에만 쓴다 */}
+        <section className="bezel order-1 min-w-0 md:col-span-2 xl:order-2 xl:col-span-1" aria-label="캘린더">
+          <div className="bezel-core min-w-0 p-3 md:p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Tabs items={FILTER_ITEMS} value={filter} onChange={(f) => setFilter(f)} label="캘린더 필터" variant="line" size="sm" className="flex-1" />
+              {semester && (
+                <button type="button" className="btn btn-sm" onClick={() => setView("month")}>
+                  <PanelLeftOpen aria-hidden />
+                  패널 펼치기
+                </button>
+              )}
+            </div>
+            {conflicts > 0 && (
+              <Banner
+                tone="warn"
+                className="mb-3"
+                action={
+                  <button type="button" className="btn btn-sm" onClick={() => navigateQuery({ place: "preview" }, "push")}>
+                    재배치 제안 보기
+                  </button>
+                }
+              >
+                학습 블록 <b className="num">{conflicts}</b>개가 수업·일정과 겹치거나 더 필요 없습니다
+              </Banner>
+            )}
+            {error && events.length === 0 ? (
+              <ErrorPanel message="캘린더를 불러오지 못했습니다" onRetry={refresh} />
+            ) : loading ? (
+              <CalendarSkeleton />
+            ) : (
+              <CalendarView
+                events={calEvents}
+                view={view}
+                initialDate={dateParam ? (dateParam.length === 7 ? `${dateParam}-01` : dateParam) : undefined}
+                onViewChange={(v) => setView(v)}
+                onDateChange={(key) => {
+                  const cur = toDateStr(new Date()).slice(0, key.length);
+                  navigateQuery({ date: key === cur ? null : key }, "replace");
+                }}
+                onNew={() => openNew(filter === "todo" ? "todo" : "event")}
+                onSelectRange={(s, e, allDay) => {
+                  if (allDay) {
+                    const last = addDays(e, -1);
+                    openNew(filter === "todo" ? "todo" : "event", toDateStr(s), last > s ? toDateStr(last) : undefined, true);
+                  } else openNew(filter === "todo" ? "todo" : "event", toLocalIso(s), toLocalIso(e));
+                }}
+                onEventClick={(id) => navigateQuery({ event: id }, "push")}
+                onLockedMove={(id) =>
+                  toast(id.startsWith("pb:") ? "완료한 학습 블록은 옮길 수 없습니다 — 상세에서 완료를 풀면 옮길 수 있습니다" : "e클래스·학사·수업 시간표에서 온 일정은 옮길 수 없습니다")
+                }
+                onEventMove={async (id, s, e, allDay, revert) => {
+                  if (id.startsWith("pb:")) {
+                    // 학습 블록(F8) — 옮기면 고정되어 다시 배치해도 그 자리에 있다 (F8-R30)
+                    if (allDay || !e) {
+                      revert();
+                      toast("학습 블록은 시간 칸에만 놓을 수 있습니다");
+                      return;
+                    }
+                    try {
+                      const cur = events.find((x) => x.id === id)?.extendedProps;
+                      const wasAuto = cur?.kind === "study" && cur.auto;
+                      await api.patchStudyBlock(id, { start: toLocalIso(s), end: toLocalIso(e) });
+                      await refresh();
+                      toast(wasAuto ? "이 블록은 이제 고정됩니다 — 다시 배치해도 이 자리에 있습니다" : "옮겼습니다", { tone: "success" });
+                    } catch (err) {
+                      revert();
+                      toast(`옮기지 못했습니다: ${err instanceof Error ? err.message : String(err)}`, { tone: "error" });
+                    }
+                    return;
+                  }
+                  try {
+                    await api.updateEvent(id, {
+                      start: allDay ? toDateStr(s) : toLocalIso(s),
+                      end: e ? (allDay ? toDateStr(e) : toLocalIso(e)) : null,
+                      all_day: allDay,
+                    });
+                    await refresh();
+                  } catch (err) {
+                    revert();
+                    toast(`옮기지 못했습니다: ${err instanceof Error ? err.message : String(err)}`, { tone: "error" });
+                  }
+                }}
+              />
             )}
           </div>
-          {error && events.length === 0 ? (
-            <ErrorPanel message="캘린더를 불러오지 못했습니다" onRetry={refresh} />
-          ) : loading ? (
-            <CalendarSkeleton />
-          ) : (
-            <CalendarView
-              events={calEvents}
-              view={view}
-              initialDate={dateParam ? (dateParam.length === 7 ? `${dateParam}-01` : dateParam) : undefined}
-              onViewChange={(v) => setView(v)}
-              onDateChange={(key) => {
-                const cur = toDateStr(new Date()).slice(0, key.length);
-                navigateQuery({ date: key === cur ? null : key }, "replace");
-              }}
-              onNew={() => openNew(filter === "todo" ? "todo" : "event")}
-              onSelectRange={(s, e, allDay) => {
-                if (allDay) {
-                  const last = addDays(e, -1);
-                  openNew(filter === "todo" ? "todo" : "event", toDateStr(s), last > s ? toDateStr(last) : undefined, true);
-                } else openNew(filter === "todo" ? "todo" : "event", toLocalIso(s), toLocalIso(e));
-              }}
-              onEventClick={(id) => navigateQuery({ event: id }, "push")}
-              onLockedMove={() => toast("e클래스·학사·수업 시간표에서 온 일정은 옮길 수 없습니다")}
-              onEventMove={async (id, s, e, allDay, revert) => {
-                try {
-                  await api.updateEvent(id, {
-                    start: allDay ? toDateStr(s) : toLocalIso(s),
-                    end: e ? (allDay ? toDateStr(e) : toLocalIso(e)) : null,
-                    all_day: allDay,
-                  });
-                  await refresh();
-                } catch (err) {
-                  revert();
-                  toast(`옮기지 못했습니다: ${err instanceof Error ? err.message : String(err)}`, { tone: "error" });
-                }
-              }}
-            />
-          )}
         </section>
 
         {!semester && (

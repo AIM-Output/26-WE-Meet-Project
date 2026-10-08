@@ -16,6 +16,8 @@ univ_us_local/
 │   ├── app/attendance.py ../F3_Attendance_agent 의 API(attendance.api)를 붙인다 — 출결·수업 회차·경고 (F3)
 │   ├── app/materials.py ../F4_Textbook_agent 의 API(textbook.api)를 붙인다 — 강의자료 목록·원문 열기 (F4)
 │   ├── app/exams.py    ../F5_Test_agent 의 API(exams.api)를 붙인다 — 시험·학습 계획·학습 블록 (F5)
+│   ├── app/priority.py ../F7_Task_agent 의 API(tasks.api)를 붙인다 — 과제 우선순위·오늘 남은 시간 (F7)
+│   ├── app/placement.py ../F8_Plan_agent 의 API(placement.api)를 붙인다 — 낮 공강 배치·학습 블록(kind=study)·공부 캘린더의 공강 공부 (F8)
 │   ├── app/config.py   기능 폴더 경로·포트·허용 Origin·과목 색
 │   ├── requirements.txt · run.cmd
 │   └── .venv/          (run.cmd 가 처음 실행 때 만든다)
@@ -23,7 +25,7 @@ univ_us_local/
 │   ├── DESIGN.md       디자인 시스템 v2 (토큰·글자·치수·공용 부품)
 │   ├── src/app/        라우트 17개 (Frontend-Route 2-1) — 각 page.tsx 는 Suspense 로 감싼 클라이언트 화면
 │   ├── src/components/ app(헤더·공용 데이터) · ui(공용 부품) · dashboard · events(상세·새 일정 모달) · pages(기능 화면)
-│   └── src/lib/        api · useQueryState(모달=push/탭=replace) · priority(F7) · demo/(예시 데이터)
+│   └── src/lib/        api · useQueryState(모달=push/탭=replace) · priority·usePriority(F7, 서버 순위를 여러 부품이 나눠 씀) · demo/(예시 데이터)
 └── README.md
 ```
 
@@ -60,12 +62,12 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 
 | 라우트 | 화면 | 데이터 |
 |---|---|---|
-| `/` | 브리핑 카드 → 3단(등록·빠른 실행·확인 필요·대화 카드 / 캘린더 월·주·목록·학기 / 먼저 할 것·할 일) → 기능 타일 10개. `?event=` 상세 · `?new=event` 새 일정 · `?place=preview` 공강 배치 | **실제**(일정·마감·학사일정·동기화 2종) |
-| `/assignments` | 진행 중/완료/지난 마감 · 급한 순 그룹(F7) · 소요시간 편집 · 내가 체크함 | **실제** (소요시간·체크는 브라우저 임시 저장) |
+| `/` | 브리핑 카드 → 3단(등록·빠른 실행·확인 필요·대화 카드 / 캘린더 월·주·목록·학기 / 먼저 할 것·할 일) → 기능 타일 10개. `?event=` 상세 · `?new=event` 새 일정 · `?place=preview` 공강 배치 | **실제**(일정·마감·학사일정·동기화 2종 · 공강 배치 F8_Plan_agent — 학습 블록 `자동` 칩, 끌어 옮기면 고정) |
+| `/assignments` | 진행 중/완료/지난 마감 · 급한 순 그룹(F7 — 놓친 마감·지금 해야 함·이번 주·나중에·마감 없음, 이유 한 줄, 오늘 남은 시간 막대) · 소요시간 편집 · 내가 체크함 · `?setup=priority` 우선순위 설정 | **실제** (F6 원장 · F7_Task_agent — 순위는 서버 계산) |
 | `/academic` | 학기 선택 · 전체/내 해당/확인 필요/숨김 · 월 묶음 · 확인 필요 카드(날짜 고쳐 승인) · 내 캘린더에 담기 | **실제** (F1_Bachelor_agent) |
 | 헤더 🔔 | 알림 팝오버 — 놓친 알림 / 최근, 같은 시각 알림 묶음, 모두 읽음 | **실제** (학사일정 알림 · 출결 경고) |
 | `/graduation` | 요약(남은 학점·판정·판정 근거·영역별·교양 영역 조건·졸업인증) · 이수 과목(구분 지정·제외·직접 입력) · 가정 계산(내 계획) · `?area=` 포함 과목 모달 | **실제** (F2_Graduation_agent) |
-| `/onboarding` · `/settings/*` 5개 | 첫 설정 3단계 · 프로필·수집 원천·졸업요건 기준·가용 시간·알림 | **첫 설정·내 프로필·졸업요건 기준은 실제**(C2 — 학과 목록 625곳, 학사시스템 가져오기 / F2 — 룰셋 보기·수정·되돌리기, 교과구분 매핑, 교육과정 받기), 수집 원천의 e클래스·학사·기이수성적 행과 알림 기준 시각도 실제, 나머지 예시. 프로필이 하나도 없으면 `/` 가 `/onboarding` 으로 보낸다 |
+| `/onboarding` · `/settings/*` 5개 | 첫 설정 3단계 · 프로필·수집 원천·졸업요건 기준·가용 시간·알림 | **첫 설정·내 프로필·졸업요건 기준·가용 시간(F8)은 실제**(C2 — 학과 목록 625곳, 학사시스템 가져오기 / F2 — 룰셋 보기·수정·되돌리기, 교과구분 매핑, 교육과정 받기), 수집 원천의 e클래스·학사·기이수성적 행과 알림 기준 시각도 실제, 나머지 예시. 프로필이 하나도 없으면 `/` 가 `/onboarding` 으로 보낸다 |
 | `/attendance` | 과목별 현황(결석/허용 횟수 막대·남은 여유·상태·근거 줄·누적 직접 수정·회차 목록 칩 출석·결석·지각·공결·휴강, 학사일정·e클래스 공지 휴강은 자동) · 이번 주 몰아서 입력 · 시간표 설정(자동 가져오기·요일·교시·한도·지각 환산·학기·휴업일·교시 시각). 캘린더 주·목록 보기의 수업을 눌러도 출결 | **실제** (F3_Attendance_agent) |
 | `/courses` | 과목별 강의자료 — 종류(강의자료·게시판 첨부·과제 첨부·직접 추가)·주차(추정)·쪽수·상태, 파일 끌어다 추가, 앱 안에서 열기·내려받기 | **자료 탭·원문 뷰어는 실제** (F4_Textbook_agent). 요약·문제·질문 탭은 예시 (모델 정해진 뒤) |
 | `/exams` | 시험 목록(공지에서 찾은 것·확인 필요·지난 시험) + 우측 패널 3단계(옵션 → 미리보기 → 진도) · 시험 추가·수정·삭제 | **실제** (F5_Test_agent). 캘린더의 시험·학습 블록 상세, 대시보드 `오늘 공부` 타일도 같은 데이터 |
@@ -105,6 +107,8 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 | GET | `/api/attendance/summary?semester=` | F3 출결 — 학기·과목(시간표·회차·집계)·합계·교시 시각. 출결 찍기·휴강·보강·시간표 저장·자동 가져오기 등 나머지는 [F3_Attendance_agent/README.md](../F3_Attendance_agent/README.md) |
 | GET | `/api/materials?course=&kind=&q=` | F4 강의자료 — 과목 요약 + 자료 목록(종류·주차·쪽수·상태). 직접 추가·삭제·다시 훑기는 [F4_Textbook_agent/README.md](../F4_Textbook_agent/README.md) |
 | GET | `/api/materials/{id}/file` | 원문 열기(inline) · `?download=1` 내려받기 — **자료 id 로만** 연다(경로를 받지 않는다). 파일은 PC 밖으로 나가지 않는다 |
+| GET | `/api/priority?course=` | F7 과제 우선순위 — 급한 순 목록(그룹·순서·이유·소요시간·여유) · 그룹 헤더 · 오늘 남은 시간 · 상위 3건. `GET /api/priority/top`(브리핑) · `GET/PATCH /api/settings/priority`(안전계수·유형별 기본 시간·취침 시각) — [F7_Task_agent/README.md](../F7_Task_agent/README.md) |
+| POST | `/api/placement/preview` · `/api/placement` | F8 공강 배치(낮 09~18시) — 미리보기(저장 안 함: 주간 격자·과제·할 일·공부 블록·미배치·하루 합계·공부 과목 순서·조정 제안) · 등록(미리보기 signature 가 같을 때만). 옮기기·완료·지우기·충돌·`GET/PATCH /api/settings/availability` 는 [F8_Plan_agent/README.md](../F8_Plan_agent/README.md) |
 | GET | `/api/exams?semester=` | F5 시험 — 다가오는 시험·확인 필요·지난 시험·오늘 분량. 시험 추가·수정, 계획 미리보기·등록·진도·재조정은 [F5_Test_agent/README.md](../F5_Test_agent/README.md) |
 | POST | `/api/study-plans/preview` · `/api/study-plans` | 계획 계산(저장 안 함) · 등록(학습 블록 생성). 조정안은 본문에 `apply` 를 넣어 다시 부른다 |
 
@@ -137,11 +141,13 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 - 출결(F3)은 `F3_Attendance_agent` 의 코드·DB(`data/attendance.db`). 학기 범위·휴업일은 F1 DB 를 읽기만 하고, 경고는 F1 의 알림 표에 넣는다. 그 폴더가 없으면 `/api/status` 의 `attendance.available=false`.
 - 강의자료(F4)는 `F4_Textbook_agent` 의 코드·DB(`data/textbook.db`)·**보관함**(`data/materials/`). F6 가 받아 둔 파일을 하드링크(안 되면 복사)로 들여와 F4 에서 연다 — F6 `data/` 를 지워도 자료는 남는다. 그 폴더가 없으면 `/api/status` 의 `materials.available=false`.
 - 시험·학습 계획(F5)은 `F5_Test_agent` 의 코드·DB(`data/exams.db`). 시험은 e클래스 공지(F6 가 모아 둔 글)에서 찾고 분량은 F4 의 쪽수를 읽는다 — 둘 다 읽기만 한다. 계산은 규칙 기반이고 LLM 호출이 없다. 그 폴더가 없으면 `/api/status` 의 `exams.available=false`.
+- 과제 우선순위(F7)는 `F7_Task_agent` 의 코드 + 설정(`data/settings.json`)뿐. 과제는 F6 원장을 읽고, 오늘 남은 시간에는 C1 내 일정·F3 수업·F5 시험·학습 분량을 백엔드가 넘겨준다. 순위는 저장하지 않는다. 그 폴더가 없으면 `/api/status` 의 `priority.available=false` 이고 과제 화면은 마감 순으로 보인다.
+- 공강 학습 플랜(F8)은 `F8_Plan_agent` 의 코드·DB(`data/placement.db` — 등록된 블록) + 설정(`data/settings.json`). 수업(F3)·내 일정·할 일(C1)·학사(F1)·시험·공부 진도율(F5 `study_targets`)·과제 순위(F7)는 백엔드가 넘겨준다(읽기만). 과제·할 일 블록은 `/api/events` 에 `kind=study` 로 섞이고, **공부 블록은 전체 캘린더에 넣지 않고 F5 공부 캘린더에만** 섞인다(`exams.router(extra_blocks=placement.study_source(_busy_events))`). 저녁(19~24시)은 F5 시험 공부 계획 전용이다. 그 폴더가 없으면 `/api/status` 의 `placement.available=false`.
 - `data/`·`.venv/`·`node_modules/` 는 커밋하지 않는다. `frontend/out/`(빌드 결과)은 **커밋한다** — 팀원이 Node 없이 실행하기 위해. 프론트를 고쳤으면 `npm run build` 후 `out/` 도 함께 커밋.
 
 ## 다음 단계 (아래 Features 칸 순서)
 
-F7 우선순위 → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → F11 장학 → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
+~~F7 우선순위~~(2026-10-06 `F7_Task_agent`) → ~~F8 공강 배치~~(2026-10-06 `F8_Plan_agent`) → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → F11 장학 → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
 
 ## 알아둘 것
 

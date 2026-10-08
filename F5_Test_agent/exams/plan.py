@@ -12,16 +12,24 @@ DB 도, 파일도, 네트워크도 건드리지 않는다. 같은 입력이면 �
     쪽당 시간    = 난이도 계수 (쉬움 1.5 / 보통 2.5 / 어려움 4분)
     하루 분량    = ceil(총 분량 ÷ D)      ← 균등 분할, 반올림 오차는 **마지막 날이 흡수**한다 (9절 '정확성')
     하루 시간    = 하루 분량 × 쪽당 시간
+
+시간 배치 (2026-10-06 사용자 요청 D11)
+    총 공부 시간 = 남은 분량 × 쪽당 시간. 사용자가 학습일마다 **공부할 시간을 직접 정할 수 있다**(`dayMinutes`).
+    시간을 정한 날(고정)이 먼저 그 시간만큼 쪽수를 가져가고, **손대지 않은 날이 남은 분량을 고르게 나눈다** —
+    그래서 한 날을 바꾸면 나머지가 따라 움직이고 합계는 늘 총 분량과 같다.
+    모든 날을 고정했는데 합이 모자라면 `short`(등록 불가 + '남은 시간 마지막 날에 더하기'·'고르게 나누기'),
+    넘치면 날짜 순으로 잘라 넣고 알린다. 쪽 반올림 오차(고정한 날마다 1쪽까지)는 경고하지 않고 흡수한다.
     마무리 복습일 = 전체 훑기(총 시간 × 0.3 ÷ R) + (선택) 예상 문제 풀이
 
-상한 검사 (F5 5절 표)
-    하루 시간 ≤ 상한          → ok
-    하루 시간 > 상한          → over    + 조정안 3가지
-    여러 시험 합산 > 상한      → overlap + 어느 날 어느 과목이 몰렸는지
+판정
     학습일 D ≤ 0 (시험이 내일·오늘) → no_time — 계획 대신 남은 시간에 볼 우선순위
+    직접 정한 시간이 모자람         → short   — 등록 불가 + 조정안
+    그 외                          → ok
 
-경고는 **숫자로** 말한다 ("하루 6시간이 필요합니다", F5-R25). 색만으로 표시하지 않으려고 level 과 message 를
-같이 준다 (9절 '접근성').
+하루 학습 시간 기준(4시간)은 없다 — 2026-10-07 사용자 요청으로 '하루 N시간이 필요합니다'(over) · 여러 시험 합산(overlap)
+경고와 그 조정안(학습일 늘리기 · 분량 줄이기 · 복습일 늘리기 …)을 지웠다. 하루에 몇 시간을 할지는 D11 시간 배치에서
+사용자가 정하고, 그 시간은 저녁 시간대(기본 19:00~24:00)에 이어서 놓인다(service.study_calendar).
+경고는 level 과 message 를 같이 준다 (9절 '접근성').
 """
 from __future__ import annotations
 
@@ -35,9 +43,8 @@ WEEKDAYS = "월화수목금토일"
 
 VERDICT_LABEL = {
     "ok": "정상",
-    "over": "하루 상한 초과",
-    "overlap": "다른 과목과 겹침",
     "no_time": "시간 없음",
+    "short": "배치 시간 부족",
 }
 
 
@@ -78,10 +85,6 @@ def normalize(exam: dict, options: Optional[dict] = None) -> dict:
     review_days = _int(o.get("reviewDays"), C.review_days_for(exam.get("type") or "etc"))
     if not 0 <= review_days <= C.MAX_REVIEW_DAYS:
         raise Invalid(f"마무리 복습일은 0~{C.MAX_REVIEW_DAYS}일 사이입니다: {review_days}")
-    cap = _int(o.get("capMinutes"), C.DEFAULT_CAP_MINUTES)
-    if not 30 <= cap <= 24 * 60:
-        raise Invalid(f"하루 상한은 30분~24시간 사이입니다: {cap}분")
-
     excluded = sorted({_date_str(d, "제외일") for d in (o.get("excludedDates") or [])})
     if len(excluded) > C.MAX_EXCLUDED:
         raise Invalid(f"제외일이 너무 많습니다 ({len(excluded)}개)")
@@ -96,12 +99,14 @@ def normalize(exam: dict, options: Optional[dict] = None) -> dict:
     return {
         "unit": unit, "totalPages": total_pages, "totalMinutes": total_minutes,
         "pageMinutes": page_minutes, "difficulty": difficulty,
-        "reviewDays": review_days, "excludedDates": excluded, "capMinutes": cap,
+        "reviewDays": review_days, "excludedDates": excluded,
         "includeQuiz": include_quiz, "quizCount": quiz_count,
         "startDate": _date_str(o["startDate"], "시작일") if o.get("startDate") else None,
         # 2026-10-01 — 날짜가 주 옵션이다: 며칠 공부할지(studyDays) 또는 어느 날 공부할지(studyDates, 사용자가 달력에서 고름)
         "studyDays": _study_count(o.get("studyDays")),
         "studyDates": sorted({_date_str(d, "학습 날짜") for d in (o.get("studyDates") or [])}),
+        # 2026-10-06 — 학습일마다 사용자가 정한 공부 시간(분). 정하지 않은 날은 남은 분량을 고르게 나눈다
+        "dayMinutes": _day_minutes(o.get("dayMinutes")),
         "scopeWeeks": sorted({int(w) for w in (o.get("scopeWeeks") or [])}),
         "scopeMaterialIds": list(o.get("scopeMaterialIds") or []),
     }
@@ -110,6 +115,22 @@ def normalize(exam: dict, options: Optional[dict] = None) -> dict:
 def _mins(x: float) -> int:
     """분은 **반올림(0.5 는 올림)** — 파이썬 기본 round 는 22.5 를 22 로 만든다(짝수 쪽으로)."""
     return int(x + 0.5)
+
+
+def _day_minutes(v: Any) -> dict[str, int]:
+    """{날짜: 분} — 학습일마다 직접 정한 공부 시간. 0분이면 그 날은 쉰다(블록을 만들지 않는다)."""
+    if not v:
+        return {}
+    if not isinstance(v, dict):
+        raise Invalid("dayMinutes 는 {날짜: 분} 모양입니다")
+    out: dict[str, int] = {}
+    for k, m in v.items():
+        when = _date_str(k, "시간을 정한 날")
+        n = _int(m, 0)
+        if not 0 <= n <= 24 * 60:
+            raise Invalid(f"하루 공부 시간은 0분~24시간 사이입니다: {when} {n}분")
+        out[when] = n
+    return dict(sorted(out.items()))
 
 
 def _study_count(v: Any) -> Optional[int]:
@@ -202,13 +223,62 @@ def _even(total: int, n: int) -> list[int]:
     return out
 
 
+def allocate(total: int, dates: list[str], pins: dict[str, int], per_unit: float) -> dict:
+    """학습일에 분량(쪽 또는 분)을 나눈다 — **시간을 정한 날 먼저, 나머지 날이 남은 분량을 고르게** (D11).
+
+    pins = {날짜: 분} (학습일이 아닌 날의 값은 버린다). 고정한 날의 쪽수 = 분 ÷ 쪽당 시간(반올림).
+    돌려주는 것: shares {날짜: 단위}, minutes {날짜: 분}, pinned [날짜], unassigned(모자란 단위), over(넘친 단위)
+    고정한 날마다 1단위까지의 반올림 오차는 마지막 고정일이 흡수한다 — 경고하지 않는다.
+    """
+    pins = {d: m for d, m in pins.items() if d in set(dates)}
+    pinned = [d for d in dates if d in pins]
+    auto = [d for d in dates if d not in pins]
+    want = {d: _mins(pins[d] / per_unit) for d in pinned}
+    slack = len(pinned)                                   # 반올림 오차로 볼 만큼 (고정한 날마다 1단위)
+    shares: dict[str, int] = {}
+    minutes: dict[str, int] = {}
+    over = 0
+    room = total
+    for d in pinned:
+        take = min(want[d], room)
+        over += want[d] - take
+        room -= take
+        shares[d] = take
+        minutes[d] = pins[d]
+    if over > slack:                                       # 정말로 넘쳤다 — 잘린 날은 실제로 넣은 만큼의 시간으로
+        for d in pinned:
+            if shares[d] < want[d]:
+                minutes[d] = _mins(shares[d] * per_unit)
+    else:
+        over = 0
+    for d, amount in zip(auto, _even(room, len(auto))):
+        shares[d] = amount
+        minutes[d] = _mins(amount * per_unit)
+    unassigned = room if not auto else 0
+    if 0 < unassigned <= slack and pinned:                # 반올림으로 남은 몇 쪽 — 마지막 고정일에 얹는다
+        shares[pinned[-1]] += unassigned
+        unassigned = 0
+    return {"shares": shares, "minutes": minutes, "pinned": pinned, "pins": {d: pins[d] for d in pinned},
+            "unassigned": unassigned, "over": over}
+
+
+def _fit_pins(pins: dict[str, int], need: int) -> dict[str, int]:
+    """넘친 고정 시간을 필요한 시간에 맞게 같은 비율로 줄인다 — 합이 정확히 need 가 되게 마지막 날이 맞춘다."""
+    total = sum(pins.values())
+    if not total:
+        return dict(pins)
+    keys = list(pins)
+    out = {d: int(pins[d] * need / total) for d in keys}
+    out[keys[-1]] += need - sum(out.values())
+    return out
+
+
 # ---------------------------------------------------------------- 본체
 
 def compute(exam: dict, options: Optional[dict] = None, today: Optional[date] = None,
-            other_load: Optional[dict[str, int]] = None, carry: Optional[dict] = None) -> dict:
+            carry: Optional[dict] = None) -> dict:
     """시험 + 옵션 → 날짜별 분량 표와 경고·조정안. 저장하지 않는다 (미리보기가 그대로 쓴다).
 
-    other_load = {날짜: 다른 계획의 분} — 여러 시험 합산 상한 검사 (F5-R23)
     carry      = {'pages','minutes','days'} — 재조정에서 **이미 완료한 분량**을 빼고 나머지만 다시 나눌 때
     """
     o = normalize(exam, options)
@@ -231,13 +301,16 @@ def compute(exam: dict, options: Optional[dict] = None, today: Optional[date] = 
     per_unit = o["pageMinutes"] if o["unit"] == "pages" else 1.0
     left = max(0, unit_total - done_pages if o["unit"] == "pages" else unit_total - done_minutes)
 
-    shares = _even(left, len(study))
+    study_iso = [d.isoformat() for d in study]
+    alloc = allocate(left, study_iso, o["dayMinutes"], per_unit)
+    shares = [alloc["shares"][d] for d in study_iso]
     days: list[dict] = list(carry_days)
     for d, amount in zip(study, shares):
+        iso = d.isoformat()
         if amount <= 0:
-            continue                                        # 분량이 남지 않은 날은 블록을 만들지 않는다
+            continue                                        # 분량이 남지 않은 날(0분으로 정한 날 포함)은 블록을 만들지 않는다
         days.append(_day(d, pages=amount if o["unit"] == "pages" else 0,
-                         minutes=_mins(amount * per_unit), kind="study"))
+                         minutes=alloc["minutes"][iso], kind="study", pinned=iso in alloc["pins"]))
 
     # 마무리 복습일 — 전체 훑기 + (선택) 예상 문제 풀이 (F5-R13·R20)
     skim_total = _mins(unit_total * per_unit * C.REVIEW_SKIM_RATIO)
@@ -255,16 +328,29 @@ def compute(exam: dict, options: Optional[dict] = None, today: Optional[date] = 
     real = [d for d in days if d["kind"] != "excluded"]
     peak_day = max(real, key=lambda d: d["minutes"], default=None)
     peak = peak_day["minutes"] if peak_day else 0
+    mine = [d for d in real if d["kind"] == "study" and not d["done"]]
 
-    overlap = _overlap(real, other_load or {}, o["capMinutes"])
-    verdict, warnings = _judge(o, exam, parts, peak_day, overlap, left)
+    need = _mins(left * per_unit)
+    allocation = {
+        "needMinutes": need,                               # 총 공부 시간 (복습 제외) — 남은 분량 × 쪽당 시간
+        "assignedMinutes": sum(d["minutes"] for d in mine),
+        "unassignedUnits": alloc["unassigned"],
+        "unassignedMinutes": _mins(alloc["unassigned"] * per_unit),
+        "overMinutes": _mins(alloc["over"] * per_unit),
+        "pinnedDates": alloc["pinned"],
+        "autoDates": [d for d in study_iso if d not in alloc["pins"]],
+        "reviewMinutes": sum(d["minutes"] for d in real if d["kind"] == "review"),
+    }
+    allocation["fixes"] = _allocation_fixes(alloc, need, study_iso, per_unit)
+
+    verdict, warnings = _judge(o, exam, parts, left, alloc, per_unit)
     out = {
         "examId": exam.get("id"), "courseId": exam.get("courseId"), "courseName": exam.get("courseName", ""),
         "examDate": exam_date.isoformat(), "examTime": exam.get("time") or "",
         "examType": exam.get("type"), "examTypeLabel": C.type_label(exam.get("type") or "etc"),
         "state": "draft",
         **{k: o[k] for k in ("unit", "totalPages", "totalMinutes", "pageMinutes", "difficulty",
-                             "reviewDays", "excludedDates", "capMinutes", "includeQuiz", "quizCount",
+                             "reviewDays", "excludedDates", "includeQuiz", "quizCount",
                              "scopeWeeks", "scopeMaterialIds")},
         "startDate": parts["start"].isoformat(),
         "availableDays": len(parts["available"]),
@@ -276,6 +362,13 @@ def compute(exam: dict, options: Optional[dict] = None, today: Optional[date] = 
         "reviewDayDates": [d.isoformat() for d in review],
         "dailyPages": daily_pages,
         "dailyMinutes": daily_minutes,
+        # 시간을 직접 정했으면 날마다 다르다 — 화면은 '하루 1시간~3시간'처럼 범위로 보여 준다
+        "dayRange": {"minMinutes": min((d["minutes"] for d in mine), default=0),
+                     "maxMinutes": max((d["minutes"] for d in mine), default=0),
+                     "minPages": min((d["pages"] for d in mine), default=0),
+                     "maxPages": max((d["pages"] for d in mine), default=0)},
+        "dayMinutes": alloc["pins"],                  # 실제로 쓴 고정 시간 (학습일이 아닌 날의 값은 빠진다)
+        "allocation": allocation,
         "days": days,
         "totals": {
             "pages": sum(d["pages"] for d in real),
@@ -288,47 +381,45 @@ def compute(exam: dict, options: Optional[dict] = None, today: Optional[date] = 
         "verdict": verdict,
         "verdictLabel": VERDICT_LABEL[verdict],
         "warnings": warnings,
-        "overlap": overlap,
         "peakDate": peak_day["date"] if peak_day else None,
-        "adjustments": (_adjustments(o, parts, real, peak, per_unit, today)
-                        if verdict in ("over", "overlap") else []),
-        # 상한을 넘어도 등록을 막지는 않는다 — 확인을 한 번 더 받는다 (Frontend-Route 10-8)
-        "canRegister": bool([d for d in real if d["minutes"] or d["pages"]]),
-        "needsConfirm": verdict in ("over", "overlap"),
+        "adjustments": allocation["fixes"][:4],
+        # 시간을 정한 날만으로 분량을 다 담지 못했으면(short) 등록하지 않는다 — 계획에서 빠지는 쪽이 생긴다
+        "canRegister": bool([d for d in real if d["minutes"] or d["pages"]]) and verdict != "short",
     }
     return out
 
 
-def _day(d: date, pages: int, minutes: int, kind: str, quiz: int = 0) -> dict:
+def _day(d: date, pages: int, minutes: int, kind: str, quiz: int = 0, pinned: bool = False) -> dict:
     return {"date": d.isoformat(), "weekday": WEEKDAYS[d.weekday()], "pages": pages, "minutes": minutes,
-            "kind": kind, "quiz": quiz, "done": False, "moved": False}
+            "kind": kind, "quiz": quiz, "done": False, "moved": False, "pinned": pinned}
 
 
-def _overlap(days: list[dict], other_load: dict[str, Any], cap: int) -> list[dict]:
-    """같은 날 다른 과목 계획과 합산해 상한을 넘는 날 (F5-R23 · S06).
+def _allocation_fixes(alloc: dict, need: int, study_iso: list[str], per_unit: float) -> list[dict]:
+    """시간 배치가 어긋났을 때 한 번에 고치는 조정안 — 미리보기·옵션 화면이 같은 것을 쓴다."""
+    pins = alloc["pins"]
+    if not pins:
+        return []
+    even = {"key": "even_split", "label": "고르게 나누기",
+            "detail": "직접 정한 시간을 풀고 학습일마다 같은 시간으로 나눕니다", "apply": {"dayMinutes": {}}}
+    if alloc["unassigned"]:
+        last = study_iso[-1]
+        missing = max(need - sum(pins.values()), _mins(alloc["unassigned"] * per_unit))
+        return [{"key": "fill_last", "label": f"남은 시간을 {_md(last)}에 더하기",
+                 "detail": f"{_md(last)} 공부 시간을 {_hm(pins.get(last, 0))} → {_hm(pins.get(last, 0) + missing)}으로 늘립니다",
+                 "apply": {"dayMinutes": {**pins, last: min(24 * 60, pins.get(last, 0) + missing)}}}, even]
+    if alloc["over"]:
+        return [{"key": "fit_pins", "label": "정한 시간 줄이기",
+                 "detail": f"직접 정한 시간을 같은 비율로 줄여 총 {_hm(need)}에 맞춥니다",
+                 "apply": {"dayMinutes": _fit_pins(pins, need)}}, even]
+    return []
 
-    other_load 의 값은 분(int) 이거나 {'minutes', 'courses'} 다 — 명령줄에서는 숫자만 넘긴다."""
-    out = []
-    for d in days:
-        raw = other_load.get(d["date"]) or 0
-        if isinstance(raw, dict):
-            other_minutes, courses = int(raw.get("minutes") or 0), list(raw.get("courses") or [])
-        else:
-            other_minutes, courses = int(raw), []
-        if not other_minutes:
-            continue
-        total = d["minutes"] + other_minutes
-        if total > cap:
-            out.append({"date": d["date"], "minutes": total, "mine": d["minutes"], "others": other_minutes,
-                        "cap": cap, "courses": courses})
-    return out
 
-
-def _judge(o: dict, exam: dict, parts: dict, peak_day: Optional[dict], overlap: list[dict],
-           left: int) -> tuple[str, list[dict]]:
+def _judge(o: dict, exam: dict, parts: dict, left: int, alloc: Optional[dict] = None,
+           per_unit: float = 1.0) -> tuple[str, list[dict]]:
+    """판정 + 경고. 하루 학습 시간 기준(4시간)은 보지 않는다 (2026-10-07)."""
     warnings: list[dict] = []
     study, available = parts["study"], parts["available"]
-    peak = peak_day["minutes"] if peak_day else 0
+    alloc = alloc or {"unassigned": 0, "over": 0, "pins": {}}
     verdict = "ok"
 
     if not available:
@@ -343,24 +434,18 @@ def _judge(o: dict, exam: dict, parts: dict, peak_day: Optional[dict], overlap: 
         warnings.append({"level": "error", "code": "no_study_days",
                          "message": f"학습일이 없습니다 — 남은 {len(available)}일이 모두 마무리 복습일이거나 제외일입니다. "
                                     f"복습일을 줄이거나 제외일을 지우면 분량이 나뉩니다"})
-    elif peak > o["capMinutes"]:
-        verdict = "over"
-        where = f"{_md(peak_day['date'])} 에 " if peak_day else ""
-        what = "마무리 복습에 " if peak_day and peak_day["kind"] == "review" else ""
-        warnings.append({"level": "error", "code": "over_cap",
-                         "message": f"{where}{what}{_hm(peak)}이 필요합니다 — "
-                                    f"하루 기준 {_hm(o['capMinutes'])}을 넘습니다"})
-    elif overlap:
-        verdict = "overlap"
+    elif alloc["unassigned"]:
+        verdict = "short"
+        miss = _mins(alloc["unassigned"] * per_unit)
+        what = f"{alloc['unassigned']}쪽({_hm(miss)})" if o["unit"] == "pages" else _hm(miss)
+        warnings.append({"level": "error", "code": "unassigned",
+                         "message": f"{what}이 아직 어느 날에도 배치되지 않았습니다 — "
+                                    f"남은 시간을 어느 날에 더하거나 고르게 나누세요"})
 
-    if overlap and verdict != "no_time":
-        worst = max(overlap, key=lambda x: x["minutes"])
-        names = ", ".join(worst["courses"]) if worst["courses"] else "다른 과목"
-        warnings.append({"level": "warn", "code": "overlap",
-                         "message": f"{_md(worst['date'])} 에 {names} 계획과 합쳐 {_hm(worst['minutes'])}입니다 "
-                                    f"— 상한 {_hm(worst['cap'])}"})
-        if verdict == "ok":
-            verdict = "overlap"
+    if alloc["over"] and verdict != "no_time":
+        warnings.append({"level": "warn", "code": "over_assigned",
+                         "message": f"직접 정한 시간이 필요한 시간보다 {_hm(_mins(alloc['over'] * per_unit))} 많습니다 — "
+                                    f"분량이 다 찬 뒤의 시간은 비워 둡니다"})
 
     if o["unit"] == "pages" and not o["totalPages"]:
         warnings.append({"level": "info", "code": "no_pages",
@@ -374,83 +459,6 @@ def _judge(o: dict, exam: dict, parts: dict, peak_day: Optional[dict], overlap: 
         warnings.append({"level": "info", "code": "excluded",
                          "message": f"제외일 {len(parts['excluded'])}일은 0쪽으로 두고 나머지 날에 나눴습니다"})
     return verdict, warnings
-
-
-def _fit_pages(o: dict, n: int, per_unit: float, cap: int) -> int:
-    """상한 안에 들어오는 총 쪽수 — 학습일과 마무리 복습일 **둘 다** 본다.
-
-    학습일:  ceil(총/ n) × 쪽당 ≤ 상한
-    복습일:  총 × 쪽당 × 훑기비율 ÷ R + 문제시간 ≤ 상한
-    복습일 쪽을 빼먹으면 '분량 줄이기'를 눌러도 경고가 그대로 남는다."""
-    limits = [cap * n / per_unit]
-    r = o["reviewDays"]
-    if r:
-        quiz_minutes = _even(o["quizCount"], r)[0] * C.QUIZ_MINUTES_PER_ITEM if o["quizCount"] else 0
-        room = max(1, cap - quiz_minutes)
-        limits.append(room * r / (per_unit * C.REVIEW_SKIM_RATIO))
-    return max(1, int(min(limits)))
-
-
-def _adjustments(o: dict, parts: dict, days: list[dict], peak: int, per_unit: float,
-                 today: date) -> list[dict]:
-    """조정안 (F5-R24) — 사용자가 하나를 고르면 `apply` 를 옵션에 덮어 다시 계산한다.
-
-    넘친 곳이 **학습일**이냐 **마무리 복습일**이냐에 따라 다른 것을 권한다 — 복습일이 넘쳤는데
-    '분량 줄이기'를 권하면 눌러도 경고가 그대로다.
-    """
-    study_fix: list[dict] = []
-    review_fix: list[dict] = []
-    cap = o["capMinutes"]
-    n = len(parts["study"])
-    study_peak = max((d["minutes"] for d in days if d["kind"] == "study"), default=0)
-    review_peak = max((d["minutes"] for d in days if d["kind"] == "review"), default=0)
-
-    if study_peak > cap and n and n < parts["pool"]:
-        total_minutes = sum(d["minutes"] for d in days if d["kind"] == "study")
-        need = min(parts["pool"], max(n + 1, math.ceil(total_minutes / cap)))
-        study_fix.append({"key": "more_days", "label": "학습일 늘리기",
-                          "detail": f"학습일을 {n}일 → {need}일로 늘리면 하루 부담이 줄어듭니다",
-                          "apply": {"studyDays": need, "studyDates": []}})
-    if study_peak > cap:
-        if o["startDate"] and o["startDate"] > today.isoformat():
-            gained = (date.fromisoformat(o["startDate"]) - today).days
-            study_fix.append({"key": "start_earlier", "label": "시작일 앞당기기",
-                        "detail": f"오늘부터 시작하면 학습일이 {gained}일 늘어납니다",
-                        "apply": {"startDate": today.isoformat()}})
-        elif o["excludedDates"]:
-            study_fix.append({"key": "drop_excluded", "label": "제외일 지우기",
-                        "detail": f"제외일 {len(o['excludedDates'])}일을 학습일로 쓰면 하루 분량이 줄어듭니다",
-                        "apply": {"excludedDates": []}})
-        elif o["reviewDays"] > 1:
-            study_fix.append({"key": "less_review", "label": "마무리 복습일 줄이기",
-                        "detail": f"복습일을 {o['reviewDays']}일 → {o['reviewDays'] - 1}일로 두면 "
-                                  f"학습일이 하루 늘어납니다",
-                        "apply": {"reviewDays": o["reviewDays"] - 1}})
-        if n and o["unit"] == "pages":
-            fit = _fit_pages(o, n, per_unit, cap)
-            if fit < o["totalPages"]:
-                study_fix.append({"key": "less_scope", "label": "분량 줄이기",
-                            "detail": f"{o['totalPages']}쪽 → {fit}쪽이면 하루 {_hm(cap)} 안에 들어옵니다",
-                            "apply": {"totalPages": fit}})
-
-    if review_peak > cap:
-        spare = len(parts["available"]) - len(parts["review"])
-        if o["reviewDays"] < C.MAX_REVIEW_DAYS and spare > 1:
-            review_fix.append({"key": "more_review", "label": "마무리 복습일 늘리기",
-                        "detail": f"복습일을 {o['reviewDays']}일 → {o['reviewDays'] + 1}일로 나누면 "
-                                  f"복습 하루가 가벼워집니다",
-                        "apply": {"reviewDays": o["reviewDays"] + 1}})
-        if o["includeQuiz"] and o["quizCount"]:
-            room = max(0, cap - (review_peak - _even(o["quizCount"], max(1, o["reviewDays"]))[0]
-                                 * C.QUIZ_MINUTES_PER_ITEM))
-            fit = max(0, int(room / C.QUIZ_MINUTES_PER_ITEM) * max(1, o["reviewDays"]))
-            review_fix.append({"key": "less_quiz", "label": "예상 문제 줄이기",
-                        "detail": f"문제를 {o['quizCount']}개 → {fit}개로 줄이면 복습일이 상한 안에 들어옵니다"
-                                  if fit else "예상 문제 풀이를 빼면 복습일이 가벼워집니다",
-                        "apply": {"quizCount": fit, "includeQuiz": bool(fit)}})
-
-    # 하루 상한은 사용자가 고르는 옵션이 아니다(2026-10-02) — '상한 올리기'는 권하지 않는다
-    return (study_fix + review_fix)[:3]
 
 
 def _hm(minutes: int) -> str:
@@ -467,4 +475,4 @@ def _md(iso: str) -> str:
     return f"{d.month}/{d.day}({WEEKDAYS[d.weekday()]})"
 
 
-__all__ = ["compute", "normalize", "split_days", "date_str", "Invalid", "VERDICT_LABEL", "WEEKDAYS"]
+__all__ = ["compute", "normalize", "split_days", "allocate", "date_str", "Invalid", "VERDICT_LABEL", "WEEKDAYS"]

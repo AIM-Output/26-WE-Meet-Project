@@ -1,0 +1,6 @@
+# 내 학습 블록·가용 시간 설정 — 공유하지 않는다
+data/
+
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -5,9 +5,10 @@ import { useAppData } from "@/components/app/AppData";
 import { api } from "./api";
 import { readStore, writeStore } from "./storage";
 import { buildAssignments, type Assignment } from "./priority";
+import { usePriority } from "./usePriority";
 
 // 과제 목록(F6) + 우선순위(F7). '내가 체크함'·소요시간은 서버(F6 과제 원장)에 저장한다 — 재수집해도 유지된다(F6-R34).
-// 순위는 저장하지 않고 1분마다 다시 계산한다(시간이 흐르면 그룹이 바뀐다).
+// 순위·이유·오늘 남은 시간은 서버(F7, GET /api/priority)가 계산한다 — 저장하지 않고 1분마다·과제가 바뀔 때 다시 받는다(usePriority).
 
 const LEGACY_DONE = "assignment-user-done";
 const LEGACY_EST = "assignment-estimates";
@@ -47,11 +48,16 @@ export function useAssignments() {
   }, []);
   useLegacyMigration(!loading && events.length > 0, refresh);
 
-  const list: Assignment[] = useMemo(() => buildAssignments(events, now), [events, now]);
+  const priority = usePriority();
+  const list: Assignment[] = useMemo(() => buildAssignments(events, priority.data, now), [events, priority.data, now]);
 
   return {
     list,
     now,
+    priority: priority.data,
+    priorityError: priority.error,
+    priorityLoading: priority.loading,
+    reloadPriority: priority.reload,
     setEstimate: (id: string, hours: number | null) =>
       void patchAssignment(id, { estimatedHours: hours === null ? null : Math.max(0.25, hours) }),
     setUserDone: (id: string, done: boolean) => patchAssignment(id, { userDone: done }),

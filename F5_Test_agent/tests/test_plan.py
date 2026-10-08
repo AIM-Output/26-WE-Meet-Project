@@ -95,38 +95,22 @@ def test_review_minutes_are_skim_not_full_read():
     assert [d["minutes"] for d in review] == [expected, expected]
 
 
-# ---------------------------------------------------------------- 상한 검사 (F5 5절 표)
+# ---------------------------------------------------------------- 하루 기준 없음 (2026-10-07)
 
-def test_over_cap_warns_with_numbers():
-    """하루 시간이 상한을 넘으면 숫자로 경고한다 (F5-R25)."""
-    out = compute(totalPages=900, capMinutes=240)
-    assert out["verdict"] == "over"
-    over = [w for w in out["warnings"] if w["code"] == "over_cap"]
-    assert over and "기준" in over[0]["message"]                 # 상한은 옵션이 아니라 하루 기준(4시간)이다 (2026-10-02)
-    assert "시간" in over[0]["message"]
-    assert out["needsConfirm"] is True
-    assert out["canRegister"] is True                # 막지는 않는다 — 확인을 한 번 더 받는다
-
-
-def test_over_cap_offers_adjustments_that_work():
-    """조정안 (F5-R24) — 3개 안에 '분량 줄이기'가 있고, 누르면 실제로 풀린다. '상한 올리기'는 없다 (2026-10-02)."""
-    out = compute(totalPages=900, capMinutes=240)
-    keys = [a["key"] for a in out["adjustments"]]
-    assert len(keys) <= 3 and "less_scope" in keys and "raise_cap" not in keys
-    adj = next(a for a in out["adjustments"] if a["key"] == "less_scope")
-    again = compute(**{"totalPages": 900, "capMinutes": 240, **adj["apply"]})
-    assert again["verdict"] != "over"
+def test_no_daily_cap_warning():
+    """하루 학습 시간 기준(4시간)은 없다 — 하루에 몇 시간이 나와도 경고·확인·조정안이 없다 (2026-10-07 사용자 요청)."""
+    out = compute(totalPages=900)
+    assert out["verdict"] == "ok"
+    assert max(d["minutes"] for d in out["days"]) > 240
+    assert not [w for w in out["warnings"] if w["level"] in ("error", "warn")]
+    assert out["adjustments"] == [] and out["canRegister"] is True
+    assert "needsConfirm" not in out and "overlap" not in out and "capMinutes" not in out
 
 
-def test_review_overflow_offers_review_adjustments():
-    """복습일이 넘쳤으면 '분량 줄이기'가 아니라 복습일·문제 수를 권한다."""
-    out = compute(totalPages=900, capMinutes=300, includeQuiz=True, quizCount=200)
-    assert out["verdict"] == "over"
-    peak = max(out["days"], key=lambda d: d["minutes"])
-    assert peak["kind"] == "review"
-    keys = {a["key"] for a in out["adjustments"]}
-    assert "more_review" in keys or "less_quiz" in keys
-    assert "less_scope" not in keys
+def test_old_cap_option_is_ignored():
+    """옛 화면·명령줄이 capMinutes 를 보내도 계산에 쓰지 않는다."""
+    a, b = compute(totalPages=900), compute(totalPages=900, capMinutes=60)
+    assert a["days"] == b["days"] and b["verdict"] == "ok"
 
 
 def test_no_time_when_exam_is_today():
@@ -144,22 +128,6 @@ def test_no_time_when_only_review_days_left():
     assert out["studyDays"] == 0
     assert [d["kind"] for d in out["days"]] == ["review"]
     assert out["canRegister"] is True
-
-
-def test_overlap_with_other_plans():
-    """여러 시험이 겹치면 하루 총 시간을 합산해 검사한다 (F5-R23)."""
-    load = {"2026-10-15": {"minutes": 220, "courses": ["컴퓨터네트워크"]}}
-    out = P.compute(EXAM, {**DOC}, TODAY, other_load=load)
-    assert out["verdict"] == "overlap"
-    assert out["overlap"] and out["overlap"][0]["date"] == "2026-10-15"
-    assert out["overlap"][0]["minutes"] == 220 + 38
-    msg = [w["message"] for w in out["warnings"] if w["code"] == "overlap"]
-    assert msg and "컴퓨터네트워크" in msg[0]
-
-
-def test_overlap_accepts_plain_minutes():
-    out = P.compute(EXAM, {"totalPages": 120}, TODAY, other_load={"2026-10-15": 220})
-    assert out["verdict"] == "overlap"
 
 
 # ---------------------------------------------------------------- 시간 단위 · 시작일 · 재조정
@@ -214,7 +182,6 @@ def test_carry_day_is_not_split_twice():
     {"totalPages": 100, "pageMinutes": 0},
     {"totalPages": 100, "pageMinutes": 999},
     {"totalPages": 100, "reviewDays": 99},
-    {"totalPages": 100, "capMinutes": 5},
     {"totalPages": 100, "excludedDates": ["10/15"]},
     {"totalPages": 100, "startDate": "언젠가"},
     {"unit": "days", "totalPages": 100},
@@ -229,11 +196,3 @@ def test_review_day_default_is_one_day_for_every_type():
     for t in ("midterm", "final", "quiz", "presentation", "etc"):
         out = P.compute({**EXAM, "type": t}, {"totalPages": 40}, TODAY)
         assert out["reviewDays"] == 1 and out["reviewDayDates"] == ["2026-10-22"], t
-
-
-def test_no_raise_cap_adjustment():
-    """하루 상한은 옵션이 아니다 — '상한 올리기'를 권하지 않는다 (2026-10-02). 경고는 숫자로 남는다."""
-    out = compute(totalPages=900)
-    assert out["verdict"] == "over"
-    assert "raise_cap" not in {a["key"] for a in out["adjustments"]}
-    assert any("시간" in w["message"] for w in out["warnings"] if w["code"] == "over_cap")

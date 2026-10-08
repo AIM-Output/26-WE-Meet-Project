@@ -11,6 +11,15 @@ import 한다(다른 기능이 서로를 빌려 쓰는 방식 — F2→C2 · F6�
     틀린 숫자보다 모른다고 말하는 것이 낫다 (F4 의 쪽수 규칙과 같은 태도).
 
 F4 가 없거나 못 불러와도 F5 는 돌아간다 — `available: False` 로 알리고 사용자가 분량을 직접 넣는다 (F5-R11).
+
+공부 완료 체크 (2026-10-06 사용자 요청)
+  사용자가 **서비스 밖에서 공부한 자료**를 체크해 두면(`exams.store.material_done`) 그 쪽수를 범위에서 뺀다.
+  `pages` = 아직 공부할 쪽수(범위 − 체크), `scopePages` = 범위 전체, `donePages` = 체크한 쪽수.
+  계획 만들기가 `pages` 를 분량 기본값으로 쓰므로 체크하면 남은 분량이 바로 줄어든다.
+
+범위를 정하지 않은 시험 (공지에 범위가 없는 과목)
+  **지금까지 e클래스에 올라온 강의자료 전체**(`basis='all'`). 과제 첨부(`kind='assignment'` — 제출 양식·샘플)는
+  공부할 자료가 아니라서 뺀다 (실측: 산학협력 제안서 양식·소공론 정의서 샘플).
 """
 from __future__ import annotations
 
@@ -78,7 +87,8 @@ def _rows(course_id: str) -> list[dict]:
 
 
 def _usable(rows: list[dict]) -> list[dict]:
-    return [r for r in rows if not r["missing"] and not r["dupOf"]]
+    """공부할 자료 — 사라진 파일·중복·과제 첨부(양식·샘플)는 뺀다."""
+    return [r for r in rows if not r["missing"] and not r["dupOf"] and r["kind"] != "assignment"]
 
 
 def materials(course_id: str) -> list[dict]:
@@ -92,51 +102,76 @@ def weeks(course_id: str) -> list[int]:
 
 
 def measure(course_id: str, scope_weeks: Optional[list[int]] = None,
-            material_ids: Optional[list[str]] = None) -> dict:
-    """범위 안 자료의 쪽수 합계 (F5-R10).
+            material_ids: Optional[list[str]] = None, done: Optional[dict[str, str]] = None) -> dict:
+    """범위 안 자료의 쪽수 합계 (F5-R10) — 공부 완료로 체크한 자료는 남은 분량에서 뺀다.
 
-    자료 id 를 주면 그것만, 주차를 주면 그 주차만, 둘 다 없으면 **과목의 자료 전체**를 센다.
-    {available, pages, files, noPages, materials, weeks, note}
+    자료 id 를 주면 그것만, 주차를 주면 그 주차만, 둘 다 없으면 **과목의 강의자료 전체**를 센다.
+    done = {자료 id: 체크한 시각} (exams.store.material_done)
+    {available, pages(남은 쪽), scopePages, donePages, files, doneFiles, materials, weeks, basis, label, note}
     """
     rows = _usable(_rows(course_id))
+    done = done or {}
     ids = set(material_ids or [])
     weeks_set = {int(w) for w in (scope_weeks or [])}
     if ids:
-        picked = [r for r in rows if r["id"] in ids]
+        picked, basis = [r for r in rows if r["id"] in ids], "ids"
     elif weeks_set:
-        picked = [r for r in rows if r["week"] in weeks_set]
+        picked, basis = [r for r in rows if r["week"] in weeks_set], "weeks"
     else:
-        picked = list(rows)
+        picked, basis = list(rows), "all"
 
     counted = [r for r in picked if r["pages"]]
     no_pages = [r for r in picked if not r["pages"]]
-    pages = sum(r["pages"] or 0 for r in counted)
+    scope_pages = sum(r["pages"] or 0 for r in counted)
+    checked = [r for r in picked if r["id"] in done]
+    done_pages = sum(r["pages"] or 0 for r in checked)
     return {
         "available": available(),
         "error": _error,
-        "pages": pages,
+        "pages": scope_pages - done_pages,
+        "scopePages": scope_pages,
+        "donePages": done_pages,
         "files": len(picked),
+        "doneFiles": len(checked),
         "counted": len(counted),
         "noPages": len(no_pages),
         "noPagesTitles": [r["title"] for r in no_pages[:5]],
         "materials": [{"id": r["id"], "title": r["title"], "week": r["week"], "pages": r["pages"],
-                       "kind": r["kind"], "ext": r["ext"]} for r in picked],
+                       "kind": r["kind"], "ext": r["ext"], "done": r["id"] in done,
+                       "doneAt": done.get(r["id"])} for r in picked],
         "weeks": sorted({r["week"] for r in picked if r["week"]}),
-        "note": _note(picked, counted, no_pages),
+        "basis": basis,
+        "label": _label(basis, picked, weeks_set),
+        "note": _note(picked, counted, no_pages, done_pages, len(checked)),
     }
 
 
-def _note(picked: list[dict], counted: list[dict], no_pages: list[dict]) -> str:
+def _label(basis: str, picked: list[dict], weeks_set: set[int]) -> str:
+    """범위 한 줄 — 카드의 '범위 …'."""
+    if basis == "all":
+        return "e클래스 강의자료 전체"
+    if basis == "weeks":
+        ws = sorted(weeks_set)
+        run = ws == list(range(ws[0], ws[-1] + 1))
+        return f"{ws[0]}~{ws[-1]}주차" if run and len(ws) > 2 else "·".join(map(str, ws)) + "주차"
+    return f"고른 자료 {len(picked)}개"
+
+
+def _note(picked: list[dict], counted: list[dict], no_pages: list[dict],
+          done_pages: int = 0, done_files: int = 0) -> str:
     if not available():
         return "강의자료(F4)를 읽을 수 없습니다 — 쪽수를 직접 입력하세요"
     if not picked:
         return "범위 안에 자료가 없습니다 — 쪽수를 직접 입력하세요"
     if not counted:
         return f"자료 {len(picked)}개의 쪽수를 세지 못했습니다 — 쪽수를 직접 입력하세요"
+    total = sum(r["pages"] for r in counted)
+    head = f"자료 {len(counted)}개 {total}쪽"
     if no_pages:
-        return f"자료 {len(counted)}개 {sum(r['pages'] for r in counted)}쪽 " \
-               f"(쪽수를 세지 못한 {len(no_pages)}개는 빠졌습니다)"
-    return f"자료 {len(counted)}개 {sum(r['pages'] for r in counted)}쪽"
+        head += f" (쪽수를 세지 못한 {len(no_pages)}개는 빠졌습니다)"
+    if done_files:
+        head += f" · 공부 완료 {done_files}개 {done_pages}쪽 빼고 {total - done_pages}쪽"
+    return head
 
 
 __all__ = ["measure", "materials", "weeks", "available", "error", "reset"]

@@ -65,6 +65,15 @@ def load_courses() -> list[dict]:
         return []
 
 
+def load_assignments() -> list[dict]:
+    """과제 원장 전체(완료·지난 마감 포함, 사라진 것 제외) — F7 우선순위가 읽는다. 마감 없는 과제도 들어온다."""
+    if not f6:
+        return []
+    with f6.store.connect() as con:
+        f6.service.ensure_reconciled(con)
+        return f6.service.list_assignments(con, None)["items"]
+
+
 def load_deadline_events() -> list[dict]:
     """과제·퀴즈·동영상 마감 → 캘린더 이벤트(kind=deadline). 마감이 없거나 사라진 과제는 빠진다."""
     if not f6:

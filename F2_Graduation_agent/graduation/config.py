@@ -27,7 +27,8 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import script, venv_python  # noqa: E402,F401 — script 는 안내 문구(setup.cmd / setup.command)
+from osenv import (FROZEN, IS_WINDOWS, browsers_dir, chromium_state, module_cmd,  # noqa: E402,F401
+                   script, venv_python)
 
 DATA_DIR = Path(os.environ.get("F2_DATA_DIR") or ROOT / "data")
 STATE_DIR = Path(os.environ.get("F2_STATE_DIR") or ROOT / "state")
@@ -52,11 +53,14 @@ USER_AGENT = (
 # ── 학사정보시스템 (SSO) — C3_Login_agent 의 세션·브라우저 + C2 의 로그인 절차를 빌린다 ──
 C2_AGENT_DIR = Path(os.environ.get("C2_AGENT_DIR") or PROJECT_ROOT / "C2_Profile_agent")
 C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or PROJECT_ROOT / "C3_Login_agent")
-C3_PYTHON = venv_python(C3_AGENT_DIR / ".venv")
-C3_BROWSERS = C3_AGENT_DIR / ".venv" / "pw-browsers"
-C3_STATE = C3_AGENT_DIR / "state" / "storage_state.json"
-C3_CRED = C3_AGENT_DIR / "state" / "cred.bin"
-C2_HAKSTD_STATE = C2_AGENT_DIR / "state" / "hakstd_state.json"
+C3_VENV = C3_AGENT_DIR / ".venv"
+C3_PYTHON = Path(sys.executable) if FROZEN else venv_python(C3_VENV)   # 묶인 데스크톱 앱이면 같은 실행 파일 (osenv.module_cmd)
+C3_BROWSERS = browsers_dir(C3_VENV)
+# C3 의 state 자리 — C3 config 와 같은 규칙(C3_STATE_DIR). 자격증명 표시는 OS 마다 이름이 다르다 (C3 auth.py)
+C3_STATE_DIR = Path(os.environ.get("C3_STATE_DIR") or C3_AGENT_DIR / "state")
+C3_STATE = C3_STATE_DIR / "storage_state.json"
+C3_CRED = C3_STATE_DIR / ("cred.bin" if IS_WINDOWS else "cred.keychain.json")
+C2_HAKSTD_STATE = Path(os.environ.get("C2_STATE_DIR") or C2_AGENT_DIR / "state") / "hakstd_state.json"
 HAKSTD_BASE = "https://hakstd.jnu.ac.kr"
 HAKSTD_DASHBOARD = f"{HAKSTD_BASE}/Home/DashBoard"
 HAKSTD_GRADES = f"{HAKSTD_BASE}/web/Sung/Sung010"          # 기이수성적

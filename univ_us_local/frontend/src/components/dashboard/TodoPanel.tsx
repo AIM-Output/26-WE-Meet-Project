@@ -22,7 +22,8 @@ const open = (id: string) => navigateQuery({ event: id }, "push");
 
 export function TopPriority() {
   const { list } = useAssignments();
-  const top = useMemo(() => sortByPriority(list.filter((a) => isOpen(a) && a.group !== "overdue")).slice(0, 3), [list]);
+  // 서버 순위(F7) 그대로 — 놓친 마감·마감 없음은 빼고 앞에서 3건 (F7-S06). 방금 체크한 과제는 바로 빠진다(isOpen)
+  const top = useMemo(() => sortByPriority(list.filter((a) => isOpen(a) && (a.group === "now" || a.group === "week" || a.group === "later"))).slice(0, 3), [list]);
   return (
     <section className="card p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -36,13 +37,13 @@ export function TopPriority() {
           {top.map((a, i) => (
             <li key={a.id}>
               <button type="button" onClick={() => open(a.id)} className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-2">
-                <span className={`num grid size-6 flex-none place-items-center rounded-full text-[12px] font-bold ${i === 0 ? "bg-accent-text text-white" : "bg-surface-3 text-muted"}`}>
+                <span className={`num grid size-6 flex-none place-items-center rounded-full text-[12px] font-bold ${i === 0 ? "bg-accent-text text-on-accent" : "bg-surface-3 text-muted"}`}>
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-semibold">{a.title}</span>
                   <span className="block truncate text-[12px] text-muted">
-                    {a.p.courseShort} · {a.reason}
+                    {a.p.courseShort} · {a.reason ?? ""}
                   </span>
                 </span>
               </button>
@@ -73,7 +74,7 @@ export default function TodoPanel({ onNewTodo }: { onNewTodo: () => void }) {
         out.push({ id: ev.id, title: ev.title, when: parseLocal(ev.start), allDay: ev.allDay, done: ev.extendedProps.done, kind: "todo", sub: ev.extendedProps.categoryLabel, color: ev.extendedProps.color, ev });
     }
     for (const a of list)
-      out.push({ id: a.id, title: a.title, when: a.due, allDay: false, done: !isOpen(a), kind: "deadline", sub: a.p.courseShort, color: courseColor(a.p.courseShort) ?? a.p.courseColor });
+      if (a.due) out.push({ id: a.id, title: a.title, when: a.due, allDay: false, done: !isOpen(a), kind: "deadline", sub: a.p.courseShort, color: courseColor(a.p.courseShort) ?? a.p.courseColor });
     return out;
   }, [events, list, courseColor]);
 

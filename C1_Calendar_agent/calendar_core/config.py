@@ -31,8 +31,8 @@ LEGACY_DB = Path(os.environ.get("C1_LEGACY_DB") or PROJECT_ROOT / "univ_us_local
 
 # 내 일정 분류 (C1 3절 '내 일정' — 색은 분류별. 소스 구분은 색만으로 하지 않는다, C1-R12)
 CATEGORIES = {
-    "personal": {"label": "개인", "color": "#4f46e5"},
-    "study": {"label": "학업", "color": "#059669"},
-    "team": {"label": "팀플", "color": "#d97706"},
-    "etc": {"label": "기타", "color": "#64748b"},
+    "personal": {"label": "개인", "color": "#33644d"},
+    "study": {"label": "학업", "color": "#3d6b8c"},
+    "team": {"label": "팀플", "color": "#9a6a14"},
+    "etc": {"label": "기타", "color": "#6b6560"},
 }

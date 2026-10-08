@@ -6,18 +6,20 @@
 - /                 frontend/out (next build 결과) 가 있으면 정적으로 서빙. 없으면 안내 페이지.
 개발 중에는 `next dev`(3000) 가 /api 를 여기로 넘겨준다 (frontend/next.config.ts rewrites).
 
-이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5).
+이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8).
 """
 from __future__ import annotations
 
+import hmac
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import academic, attendance, calendar_events, exams, graduation, materials
+from . import academic, attendance, calendar_events, exams, graduation, materials, placement, priority
 from . import config as C
 from . import eclass_data, student_profile
 
@@ -48,6 +50,18 @@ async def cache_headers(request: Request, call_next):
         else:
             response.headers.setdefault("Cache-Control", "no-cache")
     return response
+
+
+@app.middleware("http")
+async def desktop_session(request: Request, call_next):
+    """데스크톱 앱 창에서 온 요청만 받는다 — desktop.py 가 띄웠을 때(C.SESSION_TOKEN)만 켜진다.
+    이 서버는 성적·일정·학교 로그인 세션을 다루므로, 같은 PC 의 다른 프로그램·브라우저 탭이 127.0.0.1 로 부르지 못하게
+    앱 창만 가진 HttpOnly 쿠키를 요구한다. 쿠키는 /desktop/launch 의 한 번 쓰는 코드로만 받을 수 있다."""
+    if not C.SESSION_TOKEN or request.url.path == "/desktop/launch":
+        return await call_next(request)
+    if hmac.compare_digest(request.cookies.get(C.SESSION_COOKIE, ""), C.SESSION_TOKEN):
+        return await call_next(request)
+    return JSONResponse({"detail": "유니버스 앱 창에서만 열 수 있습니다"}, status_code=403)
 
 
 @app.middleware("http")
@@ -93,6 +107,8 @@ def get_status() -> dict:
         "attendance": attendance.status(),   # F3: 위험 과목 · 확인 안 한 수업 · 시간표 미입력 · updatedAt (기능 타일)
         "materials": materials.status(),     # F4: 강의자료 수 · 쪽수 · 확인 필요 · updatedAt (기능 타일)
         "exams": exams.status(),             # F5: 오늘 분량 · 다가오는 시험 · 확인 필요 · 밀린 계획 · updatedAt (기능 타일)
+        "priority": priority.status(),       # F7: 지금 해야 함 · 합계 · 놓친 마감 · 상위 3건 (대시보드 '먼저 할 것')
+        "placement": placement.status(),     # F8: 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt (바뀌면 화면이 캘린더를 다시 받는다)
     }
 
 
@@ -113,11 +129,22 @@ def _profile_changed() -> None:
 
 # C1 캘린더 — /api/events (C1_Calendar_agent/calendar_core/api.py)
 # 내 일정·할 일은 C1 이 저장하고, 다른 기능이 캘린더에 얹는 일정은 아래 소스 함수로 넘겨준다 (C1 3절).
+# F8 이 공강을 계산할 때 '차지된 시간'으로 읽는 일정 — 수업(F3) · 시험(F5) + 내 일정·할 일(C1, collect 가 붙인다).
+# 학사 일정(F1)은 넣지 않는다 — 학교 전체 일정이라 내 시간이 아니다. '내 일정에 넣기'로 만든 것은 C1 내 일정이라 들어간다(2026-10-07).
+# 과제 마감은 한 시점이라 시간을 차지하지 않고, 학습 블록은 F8 자신이라 넣지 않는다(돌고 돌지 않게).
+_PLACEMENT_BUSY = (attendance.calendar_events, exams.calendar_events)
+
+
+def _busy_events(start, end):
+    return calendar_events.collect(_PLACEMENT_BUSY, start, end)
+
+
 CALENDAR_SOURCES = (
     lambda start, end: eclass_data.load_deadline_events(),   # F6 과제·퀴즈·동영상 마감 (kind=deadline)
     academic.calendar_events,                                # F1 학사 일정 (kind=academic, 내 캘린더에 등록된 것만)
     attendance.calendar_events,                              # F3 수업 회차 (kind=class)
-    exams.calendar_events,                                   # F5 시험(kind=exam) · 학습 블록(kind=study)
+    exams.calendar_events,                                   # F5 시험(kind=exam) — 공부 계획은 공부 캘린더에만
+    placement.calendar_source(_busy_events),                 # F8 과제·할 일 블록(kind=study) — 공부 블록은 공부 캘린더에만
 )
 if (_c1_router := calendar_events.router(CALENDAR_SOURCES)) is not None:
     app.include_router(_c1_router)
@@ -151,9 +178,36 @@ if (_f4_router := materials.router()) is not None:
     app.include_router(_f4_router)
 
 # F5 시험 공부 일정 — /api/exams* · /api/study-plans* (F5_Test_agent/exams/api.py)
-# e클래스 공지에서 시험을 찾아 '확인 필요'로 세우고, 확인한 계획을 학습 블록(kind=study)으로 캘린더에 넣는다.
-if (_f5_router := exams.router()) is not None:
+# e클래스 공지에서 시험을 찾아 '확인 필요'로 세우고, 확인한 계획의 날짜별 분량은 저녁 시간대(19~24시)에 공부 캘린더로 놓인다.
+# 공부 캘린더에는 F8 이 낮 공강(09~18시)에 넣은 공강 공부 블록도 섞는다(2026-10-07) — 그 블록은 전체 캘린더에는 없다.
+if (_f5_router := exams.router(extra_blocks=placement.study_source(_busy_events))) is not None:
     app.include_router(_f5_router)
+
+# F7 과제 우선순위 — /api/priority* · /api/settings/priority (F7_Task_agent/tasks/api.py)
+# F6 과제 원장을 마감 + 예상 소요시간으로 '지금 해야 함 / 이번 주 / 나중에'로 가른다. 순위는 저장하지 않고 부를 때마다 계산한다.
+# 오늘 남은 시간에서 뺄 일정은 수업(F3)·시험(F5)·내 일정(C1)뿐이라 그 소스만 합친다(과제 마감·학사 일정은 시간을 차지하지 않는다).
+_BUSY_SOURCES = (attendance.calendar_events, exams.calendar_events)
+if (_f7_router := priority.router(lambda start, end: calendar_events.collect(_BUSY_SOURCES, start, end))) is not None:
+    app.include_router(_f7_router)
+
+# F8 공강 학습 플랜 — /api/placement* · /api/settings/availability (F8_Plan_agent/placement/api.py)
+# 낮 공강(09~18시)에 F7 순서대로의 과제와 할 일을 넣고, 남는 공강은 공부 블록(남은 진도율 ÷ 시험까지 남은 날수)으로 채운다.
+# 저녁(19~24시)은 F5 시험 공부 계획 몫. 미리보기는 저장하지 않고, '배치하기'를 눌렀을 때만 블록(kind=study)이 생긴다.
+if (_f8_router := placement.router(_busy_events)) is not None:
+    app.include_router(_f8_router)
+
+
+# ---------------------------------------------------------------- 데스크톱 앱
+
+@app.get("/desktop/launch", include_in_schema=False)
+def desktop_launch(code: str = ""):
+    """앱 창이 맨 처음 여는 주소 — 한 번 쓰는 코드를 세션 쿠키로 바꾸고 첫 화면으로 보낸다."""
+    if not C.SESSION_TOKEN or not C.consume_launch_code(code):
+        return JSONResponse({"detail": "이미 쓰였거나 맞지 않는 실행 코드입니다 — 앱을 다시 실행하세요"}, status_code=403)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(C.SESSION_COOKIE, C.SESSION_TOKEN, httponly=True, samesite="strict", path="/")
+    print("desktop: 앱 창이 연결됨 (실행 코드 사용)", file=sys.stderr, flush=True)
+    return resp
 
 
 # ---------------------------------------------------------------- 정적 프론트

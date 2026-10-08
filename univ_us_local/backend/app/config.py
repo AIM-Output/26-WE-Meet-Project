@@ -2,12 +2,13 @@
 
 원칙
   - 127.0.0.1 에만 바인딩한다. LAN 에 열려면 인증·HTTPS 를 먼저 붙인다.
-  - 기능마다 폴더가 따로 있다(C1 · F6_Eclass_agent · F1 · C2 · F2 · F3 · F4 · F5). 이 서버는 그 API 를 붙이기만 한다.
+  - 기능마다 폴더가 따로 있다(C1 · F6_Eclass_agent · F1 · C2 · F2 · F3 · F4 · F5 · F7 · F8). 이 서버는 그 API 를 붙이기만 한다.
     학교 로그인·브라우저는 C3_Login_agent 몫이다 — 이 서버의 .venv 에는 playwright 가 없다.
   - 내 일정·할 일도 C1_Calendar_agent 로 나갔다 (그 폴더의 data/univus.db). 여기에는 DB 가 없다.
 """
 from __future__ import annotations
 
+import hmac
 import os
 from pathlib import Path
 
@@ -24,6 +25,8 @@ F2_AGENT_DIR = Path(os.environ.get("F2_AGENT_DIR") or PROJECT_ROOT / "F2_Graduat
 F3_AGENT_DIR = Path(os.environ.get("F3_AGENT_DIR") or PROJECT_ROOT / "F3_Attendance_agent")  # F3 출결 (attendance.api)
 F4_AGENT_DIR = Path(os.environ.get("F4_AGENT_DIR") or PROJECT_ROOT / "F4_Textbook_agent")   # F4 강의자료 (textbook.api)
 F5_AGENT_DIR = Path(os.environ.get("F5_AGENT_DIR") or PROJECT_ROOT / "F5_Test_agent")       # F5 시험 공부 일정 (exams.api)
+F7_AGENT_DIR = Path(os.environ.get("F7_AGENT_DIR") or PROJECT_ROOT / "F7_Task_agent")       # F7 과제 우선순위 (tasks.api)
+F8_AGENT_DIR = Path(os.environ.get("F8_AGENT_DIR") or PROJECT_ROOT / "F8_Plan_agent")       # F8 공강 학습 플랜 (placement.api)
 
 FRONTEND_OUT = ROOT / "frontend" / "out"                     # `npm run build` 결과 (정적 export)
 
@@ -37,16 +40,32 @@ ALLOWED_ORIGINS = {
 }
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+# ── 데스크톱 앱 세션 (univ_us_local/backend/desktop.py 가 띄울 때만) ──
+# 실행마다 새로 만든 값. 저장소 실행(.cmd/.command)에서는 비어 있어 아무 검사도 하지 않는다.
+# 환경변수에서 pop 하는 것은 이 서버가 띄우는 자식 프로세스(수집기)에 물려주지 않으려는 것이다.
+SESSION_TOKEN = os.environ.pop("UNIVUS_SESSION_TOKEN", "") or None
+SESSION_COOKIE = "univus_session"
+_launch_code = os.environ.pop("UNIVUS_LAUNCH_CODE", "") or None
+
+
+def consume_launch_code(code: str) -> bool:
+    """앱 창이 처음 여는 /desktop/launch?code=… 의 코드 — 한 번만 맞는다 (주소가 새어도 다시 쓸 수 없다)."""
+    global _launch_code
+    ok = bool(_launch_code) and hmac.compare_digest(code or "", _launch_code)
+    if ok:
+        _launch_code = None
+    return ok
+
 # 과목 색 — courses.json 순서대로 배정 (7과목 + 여유)
-COURSE_PALETTE = [
-    "#4f46e5",  # indigo
-    "#0891b2",  # cyan
-    "#d97706",  # amber
-    "#059669",  # emerald
-    "#db2777",  # pink
-    "#7c3aed",  # violet
-    "#ea580c",  # orange
-    "#2563eb",  # blue
-    "#65a30d",  # lime
-    "#9333ea",  # purple
+COURSE_PALETTE = [  # 흙빛 팔레트 (디자인 v3 "Paper & Pine" — DESIGN.md)
+    "#3d6b8c",  # slate blue
+    "#a0522d",  # sienna
+    "#7a4f8a",  # plum
+    "#2f7a73",  # pine teal
+    "#9a6a14",  # ochre
+    "#a63d52",  # berry
+    "#4c5fa6",  # dusk indigo
+    "#8a6a4c",  # walnut
+    "#55753a",  # moss
+    "#b05a7a",  # rose
 ]

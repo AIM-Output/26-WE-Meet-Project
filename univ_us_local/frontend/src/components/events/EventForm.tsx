@@ -19,10 +19,10 @@ export interface EventDraft {
 }
 
 export const DEFAULT_CATEGORIES: Record<CategoryKey, CategoryInfo> = {
-  personal: { label: "개인", color: "#4f46e5" },
-  study: { label: "학업", color: "#059669" },
-  team: { label: "팀플", color: "#d97706" },
-  etc: { label: "기타", color: "#64748b" },
+  personal: { label: "개인", color: "#33644d" },
+  study: { label: "학업", color: "#3d6b8c" },
+  team: { label: "팀플", color: "#9a6a14" },
+  etc: { label: "기타", color: "#6b6560" },
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");

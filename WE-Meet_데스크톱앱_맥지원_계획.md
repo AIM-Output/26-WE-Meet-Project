@@ -116,7 +116,7 @@ C1 일정·할 일 · F2 계산(수동 입력·기본 룰셋) · F3 출결 기�
 2. **포트 8000 고정** — 충돌 시 앱이 안 뜸. 빈 포트를 골라 앱 창에 알려 준다(`UNIVUS_PORT` 는 이미 있음).
 3. **프로세스 이름 "python" 의존** — `pid_alive`(F1 runner·pipeline, F6 runs)의 `"python" in out.lower()`, F6 jobs 의 CIM `Name like 'python%'`. 포장하면 이름이 `UnivUs.exe` 등으로 바뀌어 잠금이 깨진다.
 4. **venv 3벌 + python 경로 하드코딩** — 실행환경 1벌, 자식 프로세스는 "같은 실행 파일을 다른 모드로" 재실행.
-5. **데이터를 저장소 폴더에 씀** — 설치 폴더(Program Files, `.app` 내부)는 권한 오류·맥 코드서명 깨짐. 앱 시작 시 환경변수로 `%LOCALAPPDATA%\UnivUs` / `~/Library/Application Support/UnivUs` 지정. F6·F4 데이터는 같은 볼륨에 둬야 F4 하드링크가 산다.
+5. **데이터를 저장소 폴더에 씀** — 설치 폴더(Program Files, `.app` 내부)는 권한 오류·맥 코드서명 깨짐. 앱 시작 시 환경변수로 `%LOCALAPPDATA%\kr.univus.desktop\data` / `~/Library/Application Support/kr.univus.desktop/data` 지정. F6·F4 데이터는 같은 볼륨에 둬야 F4 하드링크가 산다.
 6. **예약 실행이 저장소 `.cmd` 경로를 등록** — 앱 로그인 항목 + 트레이 상주 스케줄러로.
 7. **DPAPI 전용** — `keyring`(Windows 자격 증명 관리자·맥 키체인) + 기존 `cred.bin` 1회 이전. **`auth.py` 의 ENTROPY·설명 문자열 `"eclass-agent"` 는 절대 바꾸지 않는다.**
 8. **업데이트·빌드** — `git pull` → 자동 업데이트(Tauri updater), `frontend/out` 커밋 → CI 빌드.
@@ -177,12 +177,14 @@ server/                    얇은 서버 (나중에)
 - [ ] 맥 실기기 검증 (팀 맥 사용자) — 키체인 허용 창, launchd 가 잠자기 뒤·로그인 시 실제로 tick 을 부르는지, Gatekeeper 경고
 
 ### 4단계 — 데스크톱 앱 (Tauri)
-- [ ] 데이터 폴더를 사용자 데이터 디렉터리로 (환경변수 일괄 지정, 기존 저장소 내 데이터 1회 이전)
-- [ ] Origin 허용 + 실행 토큰, 빈 포트 선택
-- [ ] 실행환경 1벌(PyInstaller onedir) + "같은 실행 파일 다른 모드" 자식 프로세스, 프로세스 확인을 이름 대신 잠금 파일·명령줄 기준으로
-- [ ] Chromium: 첫 실행 다운로드 vs 시스템 Edge/Chrome 결정
-- [ ] 트레이 상주 + 로그인 항목, 자동 업데이트, 코드 서명(Windows SmartScreen · 맥 공증)
-- [ ] `frontend/out` 커밋 중단 → CI 빌드
+- [x] 데이터 폴더 → `osenv.appdata`: `%LOCALAPPDATA%\kr.univus.desktop\data` / `~/Library/Application Support/kr.univus.desktop/data` 에 저장소와 같은 모양(앱 식별자 폴더 — 설치 폴더 `%LOCALAPPDATA%\UnivUs` 와 분리, 제거할 때 '앱 데이터 삭제'가 지우는 곳)(F6 상대경로 규칙 유지). 기존 데이터 이전은 자동이 아니라 `python -m osenv migrate-data`(복사·덮어쓰지 않음 — SQLite 를 두 실행 방식이 같이 열지 않게)
+- [x] 실행 토큰·빈 포트 — Origin 을 늘리는 대신 **창이 사이드카와 같은 origin(127.0.0.1:<빈 포트>)을 연다**. `/desktop/launch?code=` 한 번 쓰는 코드 → HttpOnly·SameSite=Strict 세션 쿠키, 쿠키 없으면 모든 요청 403. 저장소 실행은 검사 없음(그대로)
+- [x] 실행환경 1벌 — `desktop.py` 를 PyInstaller onedir(`univus-backend`, 약 153MB)로. 기능 코드는 원본 .py 로 넣고 import 를 AST 로 훑어 hiddenimports. 자식 프로세스는 `osenv.module_cmd` → `<실행 파일> --run-module eclass sync`. pid_alive·프로세스 찾기(CIM/pgrep)·작업 경로 확인이 묶인 실행 파일 이름도 안다. 작업 스케줄러는 `register-task.ps1 -Command` 로 앱 실행 파일을 등록
+- [x] Chromium — **첫 실행 때 앱 데이터 폴더로 백그라운드 다운로드**(지금까지 검증된 Playwright Chromium·신뢰 기기 쿠키를 그대로 쓰려고. Edge 채널은 지문이 달라져 2차 인증이 다시 뜰 수 있다). 받는 동안 '내려받는 중' 안내(`osenv.chromium_state`)
+- [x] 트레이 상주(창 닫기 = 숨기기) · 로그인할 때 실행(autostart, `--hidden`) · 단일 인스턴스 · 바깥 링크는 기본 브라우저 · 종료 시 사이드카 정리(stdin 닫기 → 5초 뒤 강제)
+- [ ] 코드 서명(Windows SmartScreen · 맥 공증) — 인증서·Apple 개발자 계정이 필요해 사용자 결정
+- [ ] 자동 업데이트(tauri-plugin-updater) — 서명 키·배포 위치(GitHub Releases) 결정 필요
+- [ ] CI 에서 설치 파일 빌드(Windows·맥), 그다음 `frontend/out` 커밋 중단
 
 ### 5단계 — 얇은 서버 + 데스크톱 클라이언트
 - [ ] `shared/schema` 업로드 형식, `server/` 별도 앱(FastAPI + Postgres)
@@ -216,3 +218,15 @@ server/                    얇은 서버 (나중에)
   - 테스트 추가: C0 launchd·키체인 4 · C3 auth 3 · F6 맥 예약 2 · F1 맥 예약 1 (launchctl·keyring 은 가짜).
   - 검증(Windows): C0 12 · C3 3 · C2 22 · F1 52 · F2 60 · F3 74 · F4 57 · F5 164 · F6 56 · notice 34 = **534 통과**, `tsc`·`next build` 통과. 이 PC 의 작업 스케줄러 상태(F6·F1 registered·pathOk)와 저장된 자격증명 읽기가 그대로인 것 확인.
   - 맥 실측은 아직 없다 — macOS 워크플로가 push 되면 러너에서 처음 돈다. 남은 맥 제한: notice_agent.
+- 2026-10-05 — **4단계(데스크톱 앱)**. 브랜치 `feat/desktop-app` (main 에서, PR #3 머지 뒤).
+  - C0: `osenv.appdata`(앱 데이터 폴더·`migrate-data`), `FROZEN`·`module_cmd`·`python_ready`·`browsers_dir`·`chromium_state`, pid_alive 가 묶인 실행 파일 이름도 앎.
+  - C2·F2 가 C3 state 를 `C3_AGENT_DIR/state` 로 직접 짚던 것을 `C3_STATE_DIR` 규칙으로(맥 자격증명 표시 이름도). F2 의 C2 hakstd state 도 `C2_STATE_DIR`.
+  - F6·C2·F2·F1 자식 프로세스 → `module_cmd`, F6 프로세스 찾기(CIM/pgrep)가 `--run-module` 도 앎, 작업 스케줄러 `register-task.ps1 -Command`(F6·F1), 경로 확인(pathOk)이 묶인 앱이면 실행 파일 기준.
+  - 백엔드: `/desktop/launch` + 세션 쿠키 미들웨어(desktop.py 가 띄울 때만). `univ_us_local/backend/desktop.py` 사이드카 진입점(`--run-module`·준비 줄·stdin 닫히면 종료·첫 실행 Chromium·기본 로그).
+  - `desktop/`: PyInstaller spec(원본 .py + AST hiddenimports, `.env` 제외)·build.py, Tauri 2.12 껍데기(main.rs — 사이드카·트레이·자동 실행·단일 인스턴스·바깥 링크·종료 정리), 시작 화면, 아이콘(표준 라이브러리로 만든 원본 → `tauri icon`).
+  - 산출물(Windows): 사이드카 onedir 약 153MB, **설치 파일 `UnivUs_0.1.0_x64-setup.exe` 45.8MB**(NSIS, 현재 사용자 설치·관리자 권한 불필요).
+  - 검증(Windows): 테스트 C0 16 · C3 3 · C2 22 · F1 52 · F2 60 · F3 74 · F4 57 · F5 164 · F6 58 · 백엔드 세션 1 · notice 34 = **541 통과**.
+    묶인 사이드카: 준비 1.9초, 쿠키 없으면 403·실행 코드 1회·잘못된 쿠키 403, `--run-module` 로 C1·F6·playwright 실행, 예약 실행처럼 환경변수 없이 불러도 앱 데이터 폴더를 잡음.
+    **실제 앱 실행**(임시 LOCALAPPDATA): UnivUs.exe → 사이드카 자식 프로세스, 로그에 '앱 창이 연결됨', 바깥 요청 403, DB 가 앱 데이터 폴더에, 앱을 강제 종료하면 사이드카도 끝남.
+  - 확인 못 한 것: 창 안 화면을 눈으로 보기(데스크톱 창 캡처 도구 없음), 트레이 메뉴·창 닫기→숨기기·자동 실행 클릭, 맥 Tauri 빌드, 설치 파일로 설치해 보기, 첫 실행 Chromium 다운로드(시험에서는 껐다).
+  - 남은 것: 코드 서명 · 자동 업데이트 · CI 설치 파일 빌드(사용자 결정 필요 — 4단계 체크리스트).

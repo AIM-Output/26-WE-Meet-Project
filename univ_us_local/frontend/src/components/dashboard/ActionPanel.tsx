@@ -173,7 +173,7 @@ export default function ActionPanel({ reviewCount, onNew }: { reviewCount: numbe
       {(reviewCount > 0 || newCount > 0) && (
         // 크기는 예전 '확인 필요' 상자 그대로 — 제목 한 줄 + 설명 한 줄. 숫자마다 가는 곳이 달라 링크를 둘로 나눈다
         <div
-          className={`card flex items-center gap-3 p-4 ${reviewCount > 0 ? "border-[#f5dca6] bg-warn-soft text-warn-text" : "border-primary-soft-2 bg-primary-soft text-primary"}`}
+          className={`card flex items-center gap-3 p-4 ${reviewCount > 0 ? "border-warn-line bg-warn-soft text-warn-text" : "border-primary-soft-2 bg-primary-soft text-primary"}`}
         >
           {reviewCount > 0 ? <TriangleAlert className="size-5 flex-none" aria-hidden /> : <Sparkles className="size-5 flex-none" aria-hidden />}
           <span className="min-w-0 flex-1">

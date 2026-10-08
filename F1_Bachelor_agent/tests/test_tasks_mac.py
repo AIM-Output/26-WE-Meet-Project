@@ -26,7 +26,7 @@ def test_register_info_unregister(monkeypatch, tmp_path):
     pl = plistlib.loads(launchd.plist_path(C.LAUNCHD_LABEL).read_bytes())
     h, m = (int(x) for x in C.SCHEDULE_AT.split(":"))
     assert pl["StartCalendarInterval"] == [{"Hour": h, "Minute": m}]
-    assert pl["ProgramArguments"][1:] == ["-m", "bachelor", "tick", "--log", str(C.LOG_FILE)]
+    assert pl["ProgramArguments"][1:] == ["-X", "utf8", "-m", "bachelor", "tick", "--log", str(C.LOG_FILE)]
     assert Path(pl["ProgramArguments"][0]).parts[-3:] == (".venv", "bin", "python")
 
     info = runner.task_info(force=True)

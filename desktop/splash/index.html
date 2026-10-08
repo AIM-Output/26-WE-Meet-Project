@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>유니버스</title>
+  <!-- 디자인 v3 "Paper & Pine" — 대시보드(univ_us_local/frontend/DESIGN.md)와 같은 색, 라이트만(다크 모드 없음). Tauri API 없음.
+       main.rs 가 오류일 때 #msg 글자를 바꾼다 → 아래 스크립트가 알아채고 진행 막대를 멈추고 오류 모양으로 바꾼다. -->
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f8f4f0; --surface: #fffdfa; --border: #e7dfd5;
+      --text: #1f2b25; --muted: #4b524d;
+      --primary: #33644d; --track: #e9f0ec; --glow: rgba(203, 175, 148, 0.34);
+      --danger-text: #9f2f2d; --danger-soft: #fbeceb;
+      --brand-green: #33644d; --brand-sand: #cbaf94;
+      --grain: 0.05;
+    }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid; place-items: center; color: var(--text);
+      background: radial-gradient(900px 460px at 15% -10%, var(--glow), transparent 70%), var(--bg);
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; word-break: keep-all; user-select: none;
+    }
+    /* 종이 결 — 고정·포인터 없음 층 */
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: var(--grain);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.16 0 0 0 0 0.1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    main { display: flex; flex-direction: column; align-items: center; padding: 24px; text-align: center; }
+    .mark {
+      display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 22px; border-radius: 18px;
+      background: var(--brand-green); color: var(--brand-sand);
+      font: 800 30px/1 "Plus Jakarta Sans", "Pretendard Variable", "Malgun Gothic", sans-serif;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 32px -14px rgba(51, 100, 77, 0.55);
+      animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; animation: rise 0.5s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .brand { margin: 4px 0 26px; color: #7a5c40; font: 600 12px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: 0.04em; }
+    /* 진행 막대 — 끝을 모르는 대기라 왕복하는 띠 (transform 만 움직인다) */
+    .bar { position: relative; width: 200px; height: 4px; overflow: hidden; border-radius: 999px; background: var(--track); }
+    .bar::after {
+      content: ""; position: absolute; inset: 0; width: 40%; border-radius: inherit; background: var(--primary);
+      animation: slide 1.3s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+    }
+    #msg { max-width: 34ch; margin: 16px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; text-wrap: pretty; }
+    body.failed .bar { display: none; }
+    body.failed #msg {
+      margin-top: 0; padding: 10px 14px; border-radius: 12px; color: var(--danger-text); background: var(--danger-soft);
+      border: 1px solid color-mix(in oklab, var(--danger-text) 30%, transparent); font-weight: 600;
+    }
+    @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .bar::after { animation: none; width: 100%; opacity: 0.5; }
+      .mark, h1 { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">U</div>
+    <h1>유니버스를 시작하는 중</h1>
+    <p class="brand" translate="no">Univ-Us</p>
+    <div class="bar" role="progressbar" aria-label="로컬 서버 시작 중"></div>
+    <p id="msg" role="status" aria-live="polite">내 PC 의 로컬 서버를 켜고 있습니다…</p>
+  </main>
+  <script>
+    // main.rs 의 show_status 는 오류일 때만 글자를 바꾼다 — 바뀌면 오류 모양으로
+    (function () {
+      var m = document.getElementById("msg");
+      var first = m.textContent;
+      new MutationObserver(function () {
+        if (m.textContent === first || document.body.classList.contains("failed")) return;
+        document.body.classList.add("failed");
+        document.querySelector("h1").textContent = "유니버스를 시작하지 못했습니다";
+      }).observe(m, { childList: true, characterData: true, subtree: true });
+    })();
+  </script>
+</body>
+</html>

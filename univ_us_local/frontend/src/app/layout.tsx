@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0f766e",
+  themeColor: "#f8f4f0", // 종이색 — 다크 모드는 두지 않는다(2026-10-08)
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <a
           href="#main"
-          className="sr-only z-[80] rounded-lg bg-primary px-4 py-2 font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+          className="sr-only z-[80] rounded-lg bg-primary px-4 py-2 font-semibold text-on-primary focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
         >
           본문으로 건너뛰기
         </a>

@@ -13,6 +13,9 @@
     GET    /api/exams/{id}                          시험 하나 + 계획 옵션 기본값 + 범위 후보 (F5-S04)
     PATCH  /api/exams/{id}                          승인·수정 (F5-S02)
     DELETE /api/exams/{id}                          삭제
+    GET    /api/exams/{id}/materials                범위 강의자료 + 공부 완료 체크 (2026-10-06)
+    PATCH  /api/exams/{id}/materials                {ids, done} — 서비스 밖에서 공부한 자료 체크·해제 (과목 단위)
+    PATCH  /api/exams/{id}/ready                    {ready} — 발표 '준비 완료' (발표는 공부 계획 없이 이것만, 2026-10-06)
     POST   /api/study-plans/preview                 계획 계산만 — 등록하지 않는다 (F5-S05)
     POST   /api/study-plans                         계획 등록 → 학습 블록 생성 (F5-R31 — 공부 캘린더에만 나온다)
     GET    /api/study-plans/{id}                    계획 + 진도 + 범위 자료 (F5-S07)
@@ -88,6 +91,12 @@ def today_block(get_courses: Optional[CoursesGetter] = None) -> dict:
         return service.today_block(con, None, service.course_map(get_courses))
 
 
+def study_targets(get_courses: Optional[CoursesGetter] = None, with_progress: bool = True) -> list[dict]:
+    """공강 공부 대상 — 다가오는 시험과 남은 진도율. F8(공강 배치)이 남는 공강에 넣을 과목을 고른다 (2026-10-07)."""
+    with store.connect() as con:
+        return service.study_targets(con, get_courses, with_progress=with_progress)
+
+
 def sync(get_courses: Optional[CoursesGetter] = None,
          notify: Optional[service.Notify] = None) -> dict:
     """e클래스 수집이 끝났다 — 새 공지에서 시험을 찾는다 (백엔드가 수집 뒤에 부른다)."""
@@ -103,7 +112,9 @@ def touch() -> None:
 # ---------------------------------------------------------------- 라우터
 
 def build_router(get_courses: Optional[CoursesGetter] = None,
-                 notify: Optional[service.Notify] = None) -> APIRouter:
+                 notify: Optional[service.Notify] = None,
+                 extra_blocks: Optional[Callable[[str, str], list[dict]]] = None) -> APIRouter:
+    """extra_blocks(start, end) — 공부 캘린더에 섞을 F8 공강 공부 블록 (백엔드가 넘겨준다, 2026-10-07)."""
     r = APIRouter(tags=["F5 시험 공부 일정"])
 
     # ── 시험 ──
@@ -148,7 +159,7 @@ def build_router(get_courses: Optional[CoursesGetter] = None,
         """공부 캘린더 데이터 — 날짜마다 과목·시간·분량 + 그날의 시험 (2026-10-01)."""
         def run():
             with store.connect() as con:
-                return service.study_calendar(con, start, end, get_courses)
+                return service.study_calendar(con, start, end, get_courses, extra=extra_blocks)
         return _errors(run)
 
     @r.get("/study-calendar", include_in_schema=False)
@@ -161,16 +172,25 @@ def build_router(get_courses: Optional[CoursesGetter] = None,
 
     @r.get("/api/exams/settings")
     def exam_settings() -> dict:
-        """난이도 시간 설정 — 난이도별 쪽당 시간(분). 기본 쉬움 1 · 보통 1.5 · 어려움 2 (2026-10-02)."""
+        """난이도 시간 설정(쪽당 분, 기본 쉬움 1 · 보통 1.5 · 어려움 2) + 저녁 시간대(기본 19:00~24:00, 계획 전용)."""
         with store.connect() as con:
-            return {"difficulties": service.difficulty_view(con), "updatedAt": store.updated_at(con)}
+            return {"difficulties": service.difficulty_view(con), "evening": service.evening_view(con),
+                    "updatedAt": store.updated_at(con)}
 
     @r.put("/api/exams/settings")
     def put_exam_settings(body: dict[str, Any] = Body(...)) -> dict:
-        """{difficulty: {easy?, normal?, hard?}} — 값이 null 이면 기본값으로."""
+        """{difficulty?: {easy?, normal?, hard?}, evening?: {start?, end?}} — 값이 null 이면 기본값으로."""
         def run():
+            body_ = body or {}
+            if "difficulty" not in body_ and "evening" not in body_:
+                raise service.Invalid("difficulty 또는 evening 을 주세요")
             with store.connect() as con:
-                return service.set_difficulty_minutes(con, (body or {}).get("difficulty") or {})
+                if "difficulty" in body_:
+                    service.set_difficulty_minutes(con, body_.get("difficulty") or {})
+                if "evening" in body_:
+                    service.set_evening(con, body_.get("evening"))
+                return {"difficulties": service.difficulty_view(con), "evening": service.evening_view(con),
+                        "updatedAt": store.updated_at(con)}
         return _errors(run)
 
     @r.get("/api/exams/courses")
@@ -215,6 +235,30 @@ def build_router(get_courses: Optional[CoursesGetter] = None,
         def run():
             with store.connect() as con:
                 return {**service.delete_exam(con, exam_id), "updatedAt": store.updated_at(con)}
+        return _errors(run)
+
+    # ── 공부 완료 체크 (2026-10-06) — 서비스 밖에서 공부한 강의자료 ──
+
+    @r.get("/api/exams/{exam_id}/materials")
+    def exam_materials(exam_id: str) -> dict:
+        def run():
+            with store.connect() as con:
+                return service.study_materials(con, exam_id, get_courses)
+        return _errors(run)
+
+    @r.patch("/api/exams/{exam_id}/materials")
+    def patch_exam_materials(exam_id: str, body: dict[str, Any] = Body(...)) -> dict:
+        def run():
+            with store.connect() as con:
+                return service.set_study_materials(con, exam_id, body, get_courses)
+        return _errors(run)
+
+    @r.patch("/api/exams/{exam_id}/ready")
+    def patch_exam_ready(exam_id: str, body: dict[str, Any] = Body(...)) -> dict:
+        def run():
+            with store.connect() as con:
+                return {"exam": service.set_ready(con, exam_id, body, get_courses),
+                        "updatedAt": store.updated_at(con)}
         return _errors(run)
 
     # ── 학습 계획 ──
@@ -293,8 +337,8 @@ def build_router(get_courses: Optional[CoursesGetter] = None,
 
 
 _OPTION_KEYS = ("unit", "totalPages", "totalMinutes", "pageMinutes", "difficulty", "reviewDays",
-                "excludedDates", "capMinutes", "includeQuiz", "quizCount", "startDate",
-                "scopeWeeks", "scopeMaterialIds", "studyDays", "studyDates")
+                "excludedDates", "includeQuiz", "quizCount", "startDate",
+                "scopeWeeks", "scopeMaterialIds", "studyDays", "studyDates", "dayMinutes")
 
 
 def _options(body: dict) -> dict:

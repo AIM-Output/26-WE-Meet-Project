@@ -3,7 +3,7 @@
 
 import type { CalEvent } from "../types";
 import { addDays, daysUntil, fmtDeadline, fmtTime, isSameDay, parseLocal, startOfDay, toDateStr } from "../dates";
-import { buildAssignments, isOpen, sortByPriority } from "../priority";
+import { buildAssignments, isOpen, type PriorityTop } from "../priority";
 
 export interface BriefingLine {
   text: string;
@@ -22,7 +22,8 @@ export interface Briefing {
   top: BriefingLine[];
 }
 
-export function composeBriefing(events: CalEvent[], now = new Date()): Briefing {
+/** top = F7 상위 3건 (/api/status 의 priority.top — 순위는 서버가 계산한다) */
+export function composeBriefing(events: CalEvent[], top3: PriorityTop[] = [], now = new Date()): Briefing {
   const today = startOfDay(now);
   const tomorrow = addDays(today, 1);
   const on = (ev: CalEvent) => {
@@ -49,14 +50,12 @@ export function composeBriefing(events: CalEvent[], now = new Date()): Briefing 
     .sort((a, b) => a.d - b.d)
     .map(({ e, d }) => ({ text: `D-${d} ${e.title}`, href: acHref(e) }));
 
-  const list = buildAssignments(events, now).filter(isOpen);
+  const list = buildAssignments(events, null, now).filter(isOpen);
   const soon = list
-    .filter((a) => a.due >= now && a.due < addDays(tomorrow, 3))
-    .sort((a, b) => a.due.getTime() - b.due.getTime())
-    .map((a) => ({ text: `${fmtDeadline(a.due, now)} ${a.title}`, href: `/?event=${encodeURIComponent(a.id)}` }));
-  const top = sortByPriority(list.filter((a) => a.group !== "overdue"))
-    .slice(0, 3)
-    .map((a, i) => ({ text: `${i + 1}) ${a.title}`, href: "/assignments?sort=priority" }));
+    .flatMap((a) => (a.due && a.due >= now && a.due < addDays(tomorrow, 3) ? [{ a, due: a.due }] : []))
+    .sort((x, y) => x.due.getTime() - y.due.getTime())
+    .map(({ a, due }) => ({ text: `${fmtDeadline(due, now)} ${a.title}`, href: `/?event=${encodeURIComponent(a.id)}` }));
+  const top = top3.slice(0, 3).map((a, i) => ({ text: `${i + 1}) ${a.title}`, href: "/assignments?sort=priority" }));
 
   return {
     date: toDateStr(today),

@@ -16,6 +16,7 @@
 param(
   [string[]]$At = @("08:00"),
   [string]$TaskName = "UnivUs-F1-Academic-Sync",
+  [string]$Command = "",
   [switch]$Remove
 )
 
@@ -32,10 +33,15 @@ if ($Remove) {
   return
 }
 
-$runner = Join-Path $dir "run-scheduled.cmd"
-if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
+# 부를 명령 — 기본은 run-scheduled.cmd. 묶인 데스크톱 앱은 -Command 로 앱 실행 파일을 준다
+#   (예: & '<앱 실행 파일>' --run-module eclass tick --log '<앱 데이터 폴더>\F6_Eclass_agent\state\sync.log')
+if (-not $Command) {
+  $runner = Join-Path $dir "run-scheduled.cmd"
+  if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
+  $Command = "& '$runner'"
+}
 
-$psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"& '$runner'`""
+$psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$Command`""
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $psArg -WorkingDirectory $dir
 
 $triggers = @()

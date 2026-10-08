@@ -53,16 +53,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
               transition={{ type: "spring", bounce: 0, visualDuration: 0.25 }}
-              className="pointer-events-auto flex max-w-[min(560px,100%)] items-center gap-3 rounded-xl bg-[#0f2724] py-2.5 pr-2 pl-4 text-[14px] font-semibold text-white"
-              style={{ boxShadow: "var(--shadow-pop)" }}
+              className="pointer-events-auto flex max-w-[min(560px,100%)] items-center gap-3 rounded-xl py-2.5 pr-2 pl-4 text-[14px] font-semibold"
+              style={{ boxShadow: "var(--shadow-pop)", background: "var(--toast-bg)", color: "var(--toast-fg)" }}
             >
-              {t.tone === "success" && <Check className="size-4 flex-none text-[#5eead4]" aria-hidden />}
-              {t.tone === "error" && <OctagonAlert className="size-4 flex-none text-[#fca5a5]" aria-hidden />}
+              {t.tone === "success" && <Check className="size-4 flex-none" style={{ color: "var(--toast-ok)" }} aria-hidden />}
+              {t.tone === "error" && <OctagonAlert className="size-4 flex-none" style={{ color: "var(--toast-err)" }} aria-hidden />}
               <span className="min-w-0">{t.message}</span>
               {t.action && (
                 <button
                   type="button"
-                  className="flex-none rounded-md px-2 py-1 text-[#5eead4] underline-offset-2 hover:bg-white/10 hover:underline"
+                  className="flex-none rounded-md px-2 py-1 underline-offset-2 hover:bg-[color-mix(in_oklab,var(--toast-fg)_12%,transparent)] hover:underline"
+                  style={{ color: "var(--toast-ok)" }}
                   onClick={() => {
                     t.action?.onClick();
                     dismiss(t.id);
@@ -73,7 +74,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               )}
               <button
                 type="button"
-                className="grid size-7 flex-none place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+                className="grid size-7 flex-none place-items-center rounded-md opacity-70 hover:bg-[color-mix(in_oklab,var(--toast-fg)_12%,transparent)] hover:opacity-100"
                 onClick={() => dismiss(t.id)}
                 aria-label="알림 닫기"
               >

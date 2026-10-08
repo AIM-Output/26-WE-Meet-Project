@@ -29,7 +29,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import IS_WINDOWS, script, venv_python  # noqa: E402,F401 — script 는 안내 문구(setup.cmd / setup.command)
+from osenv import FROZEN, IS_WINDOWS, browsers_dir, chromium_state, script, venv_python  # noqa: E402,F401
 
 STATE_DIR = Path(os.environ.get("C3_STATE_DIR") or ROOT / "state")
 STATE_FILE = STATE_DIR / "storage_state.json"   # 세션 (쿠키 전부 — 신뢰 기기 쿠키를 골라내면 신뢰 인식이 깨진다)
@@ -39,8 +39,9 @@ DEBUG_SHOT = STATE_DIR / "login_debug.png"      # 무인 로그인이 실패했�
 
 # 브라우저가 필요한 기능이 쓰는 python 과 Chromium (setup.cmd 가 만든다)
 VENV_DIR = ROOT / ".venv"
-PYTHON = venv_python(VENV_DIR)
-BROWSERS = VENV_DIR / "pw-browsers"
+# 묶인 데스크톱 앱이면 venv 가 없다 — 같은 실행 파일이 --run-module 로 대신한다 (osenv.module_cmd)
+PYTHON = Path(sys.executable) if FROZEN else venv_python(VENV_DIR)
+BROWSERS = browsers_dir(VENV_DIR)                # 앱 데이터 폴더를 쓰면 PLAYWRIGHT_BROWSERS_PATH 쪽
 
 # ── 전남대 SSO ──
 ECLASS_BASE = "https://sel.jnu.ac.kr"

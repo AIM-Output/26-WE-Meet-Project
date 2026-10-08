@@ -50,10 +50,11 @@ def _notify(alert: dict) -> None:
                       nid=f"exam:{alert['refId']}:{alert['at']}")
 
 
-def router():
+def router(extra_blocks=None):
+    """extra_blocks(start, end) — 공부 캘린더에 섞을 F8 공강 공부 블록 (main.py 가 placement.study_source(...) 를 넘긴다 — 이 블록은 전체 캘린더에는 없다)."""
     if not f5:
         return None
-    return f5.build_router(eclass_data.load_courses, notify=_notify)
+    return f5.build_router(eclass_data.load_courses, notify=_notify, extra_blocks=extra_blocks)
 
 
 def calendar_events(start: Optional[str] = None, end: Optional[str] = None) -> list[dict]:
@@ -73,6 +74,13 @@ def today_block() -> dict:
         return f5.today_block(eclass_data.load_courses)
     except Exception:                           # noqa: BLE001
         return {"blocks": [], "text": "", "nextExam": None}
+
+
+def study_targets(with_progress: bool = True) -> list[dict]:
+    """공강 공부 대상 — 다가오는 시험 · 남은 진도율. F8 이 남는 공강에 넣을 과목을 고른다 (2026-10-07)."""
+    if not f5:
+        return []
+    return f5.study_targets(eclass_data.load_courses, with_progress)
 
 
 def sync() -> dict:

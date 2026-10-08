@@ -9,9 +9,9 @@ import { FlaskConical, Info, LoaderCircle, OctagonAlert, RefreshCw, TriangleAler
 type BannerTone = "info" | "warn" | "danger" | "neutral" | "primary";
 
 const BANNER: Record<BannerTone, { cls: string; icon: ReactNode }> = {
-  info: { cls: "bg-info-soft text-info-text border-[#c9d8fb]", icon: <Info aria-hidden /> },
-  warn: { cls: "bg-warn-soft text-warn-text border-[#f5dca6]", icon: <TriangleAlert aria-hidden /> },
-  danger: { cls: "bg-danger-soft text-danger-text border-[#f5c2c2]", icon: <OctagonAlert aria-hidden /> },
+  info: { cls: "bg-info-soft text-info-text border-info-line", icon: <Info aria-hidden /> },
+  warn: { cls: "bg-warn-soft text-warn-text border-warn-line", icon: <TriangleAlert aria-hidden /> },
+  danger: { cls: "bg-danger-soft text-danger-text border-danger-line", icon: <OctagonAlert aria-hidden /> },
   neutral: { cls: "bg-surface-2 text-muted border-border", icon: <Info aria-hidden /> },
   primary: { cls: "bg-primary-soft text-primary border-primary-soft-2", icon: <Info aria-hidden /> },
 };
@@ -108,7 +108,7 @@ export function EmptyState({
 /** 패널 하나만 실패 — 다른 패널은 정상 동작(19절 6번) */
 export function ErrorPanel({ message = "불러오지 못했습니다", onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-[#f5c2c2] bg-danger-soft px-6 py-8 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-danger-line bg-danger-soft px-6 py-8 text-center">
       <OctagonAlert className="size-5 text-danger-text" aria-hidden />
       <p className="text-[14px] font-semibold text-danger-text">{message}</p>
       {onRetry && (

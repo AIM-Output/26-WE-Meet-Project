@@ -89,6 +89,8 @@ def import_problem(interactive: bool) -> Optional[str]:
     """가져오기를 시작할 수 없는 이유. None 이면 시작해도 된다."""
     if not C.C3_PYTHON.exists():
         return f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {C.script('setup')} 를 먼저 실행하세요"
+    if C.chromium_state(C.C3_BROWSERS) == "installing":
+        return "브라우저 엔진을 내려받는 중입니다 — 몇 분 뒤 다시 시도하세요"
     if not C.C3_BROWSERS.exists():
         return f"브라우저 엔진이 없습니다 — C3_Login_agent 의 {C.script('setup')} 를 다시 실행하세요"
     if not interactive and not (C.C3_STATE.exists() or C.C3_CRED.exists() or C.HAKSTD_STATE.exists()):
@@ -99,11 +101,11 @@ def import_problem(interactive: bool) -> Optional[str]:
 def _run_import(interactive: bool) -> None:
     C.STATE_DIR.mkdir(parents=True, exist_ok=True)
     C.IMPORT_OUT.unlink(missing_ok=True)
-    cmd = [str(C.C3_PYTHON), "-X", "utf8", "-m", "student.hakstd", "--out", str(C.IMPORT_OUT)]
+    cmd = C.module_cmd(C.C3_VENV, "student.hakstd", "--out", str(C.IMPORT_OUT))
     if interactive:
         cmd.append("--interactive")
     env = {**os.environ, "PLAYWRIGHT_BROWSERS_PATH": str(C.C3_BROWSERS), "PYTHONUTF8": "1",
-           "C3_AGENT_DIR": str(C.C3_AGENT_DIR)}
+           "C3_AGENT_DIR": str(C.C3_AGENT_DIR), "C3_STATE_DIR": str(C.C3_STATE_DIR)}
     try:
         with open(C.IMPORT_LOG, "a", encoding="utf-8") as log:
             code = subprocess.run(cmd, cwd=str(C.ROOT), env=env, stdout=log, stderr=subprocess.STDOUT,

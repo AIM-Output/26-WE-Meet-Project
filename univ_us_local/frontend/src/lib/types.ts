@@ -5,10 +5,13 @@ import type { AcademicType, ReminderOpt } from "./academic";
 import type { EclassStatus, RetryInfo, RunSource } from "./assignments";
 import type { AttendanceStatus, ClassProps } from "./attendance";
 import type { ExamsStatus } from "./exams";
+import type { PriorityStatus } from "./priority";
+import type { PlacementStatus, StudyProps } from "./placement";
 import type { GraduationSummary } from "./graduation";
 import type { MaterialsStatus } from "./materials";
 
 export type { ClassProps } from "./attendance";
+export type { StudyProps } from "./placement";
 
 export type CategoryKey = "personal" | "study" | "team" | "etc";
 
@@ -121,7 +124,7 @@ export interface CalEvent {
   end: string | null; // 종일이면 exclusive 날짜
   allDay: boolean;
   editable: boolean;
-  extendedProps: DeadlineProps | UserProps | AcademicProps | ClassProps | ExamProps;
+  extendedProps: DeadlineProps | UserProps | AcademicProps | ClassProps | ExamProps | StudyProps;
 }
 
 export interface UserEventInput {
@@ -166,6 +169,8 @@ export interface Status {
   attendance?: AttendanceStatus; // F3 — 위험 과목 · 확인 안 한 수업 · updatedAt
   materials?: MaterialsStatus; // F4 — 강의자료 수 · 쪽수 · 확인 필요 · updatedAt
   exams?: ExamsStatus; // F5 — 오늘 분량 · 다가오는 시험 · 확인 필요 · 밀린 계획 · updatedAt
+  priority?: PriorityStatus; // F7 — 지금 해야 함 · 합계 · 놓친 마감 · 상위 3건
+  placement?: PlacementStatus; // F8 — 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt
 }
 
 /* ---------------------------------------------------------------- F1 학사 원천·수집 */

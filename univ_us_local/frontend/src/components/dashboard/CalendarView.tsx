@@ -18,13 +18,14 @@ import multiMonthPlugin from "@fullcalendar/react/multimonth";
 import interactionPlugin from "@fullcalendar/react/interaction";
 import breezyTheme from "@fullcalendar/react/themes/breezy";
 import koLocale from "@fullcalendar/react/locales/ko";
-import { ChevronLeft, ChevronRight, Keyboard, Landmark, School, Square, SquareCheck, Target } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Keyboard, Landmark, School, Square, SquareCheck, Target, TriangleAlert } from "lucide-react";
 
 import { Tabs } from "@/components/ui/Tabs";
 import { Modal } from "@/components/ui/Modal";
-import type { AcademicProps, CalEvent, ClassProps, DeadlineProps, ExamProps, UserProps } from "@/lib/types";
+import type { AcademicProps, CalEvent, ClassProps, DeadlineProps, ExamProps, StudyProps, UserProps } from "@/lib/types";
 import { typeMeta } from "@/lib/academic";
 import { ATT_LABEL } from "@/lib/attendance";
+import { TASK_LABEL } from "@/lib/placement";
 import { daysUntil, deadlineDay, parseLocal, toDateStr } from "@/lib/dates";
 
 // C1 서비스 캘린더 — 월·주·목록·학기 뷰 (Frontend-Route 4절). FullCalendar 7 은 클래스명이 해시라
@@ -39,7 +40,7 @@ const VIEW_ITEMS: { key: CalView; label: string }[] = [
   { key: "semester", label: "학기" },
 ];
 
-type Extended = DeadlineProps | UserProps | AcademicProps | ClassProps | ExamProps;
+type Extended = DeadlineProps | UserProps | AcademicProps | ClassProps | ExamProps | StudyProps;
 
 function deadlineInput(ev: CalEvent, now: Date): EventInput {
   const p = ev.extendedProps as DeadlineProps;
@@ -52,7 +53,7 @@ function deadlineInput(ev: CalEvent, now: Date): EventInput {
     end: ev.end ?? undefined,
     allDay: ev.allDay,
     editable: false,
-    color: overdue ? "#dc2626" : p.courseColor,
+    color: overdue ? "var(--danger)" : p.courseColor,
     className: ["ev-deadline", done ? "ev-done" : ""].join(" "),
     extendedProps: p,
   };
@@ -67,7 +68,7 @@ function userInput(ev: CalEvent): EventInput {
     end: ev.end ?? undefined,
     allDay: ev.allDay,
     editable: ev.editable,
-    color: p.isTodo ? "#c2410c" : p.color,
+    color: p.isTodo ? "var(--accent-text)" : p.color,
     className: [p.isTodo ? "ev-todo" : "ev-user", p.isTodo && p.done ? "ev-done" : ""].join(" "),
     extendedProps: p,
   };
@@ -118,8 +119,24 @@ function classInput(ev: CalEvent): EventInput {
     allDay: false,
     editable: false,
     color: `${p.color}2e`, // FullCalendar 7 은 color · contrastColor 만 받는다 — 8자리 hex 로 연하게
-    contrastColor: "#0f2724",
+    contrastColor: "var(--text)",
     className: ["ev-class", p.state === "canceled" ? "ev-done" : "", p.attendance === "absent" ? "ev-absent" : ""].join(" "),
+    extendedProps: p,
+  };
+}
+
+/** 학습 블록(F8, C1 kind=study) — 연두. 끌어 옮기면 고정된다(placedBy=user, `자동` 칩이 사라짐). 완료는 흐리게+취소선 */
+function studyInput(ev: CalEvent): EventInput {
+  const p = ev.extendedProps as StudyProps;
+  return {
+    id: ev.id,
+    title: ev.title,
+    start: ev.start,
+    end: ev.end ?? undefined,
+    allDay: false,
+    editable: ev.editable,
+    color: "var(--study)",
+    className: ["ev-study", p.done ? "ev-done" : "", p.conflict ? "ev-conflict" : ""].join(" "),
     extendedProps: p,
   };
 }
@@ -137,6 +154,20 @@ function EventContent({ info }: { info: EventDisplayInfo }) {
         }`}
       >
         <School aria-hidden />
+        {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
+        <span className="fc-ev-title">{info.event.title}</span>
+        {tag && <span className="fc-ev-tag">{tag}</span>}
+      </div>
+    );
+  }
+  if (p.kind === "study") {
+    const tag = p.conflict ? "겹침" : p.done ? "✓" : p.auto ? "자동" : "";
+    return (
+      <div
+        className="fc-ev"
+        title={`공강 ${TASK_LABEL[p.taskType] ?? "학습"} · ${info.event.title} · ${p.reason}${p.auto ? " · 자동 배치" : " · 고정"}${p.conflict ? ` · ⚠ ${p.conflict}` : ""}`}
+      >
+        {p.conflict ? <TriangleAlert aria-label="충돌" /> : <BookOpen aria-hidden />}
         {info.timeText && <span className="fc-ev-time">{info.timeText}</span>}
         <span className="fc-ev-title">{info.event.title}</span>
         {tag && <span className="fc-ev-tag">{tag}</span>}
@@ -200,7 +231,7 @@ export interface CalendarViewProps {
   onSelectRange: (start: Date, end: Date, allDay: boolean) => void;
   onEventClick: (id: string) => void;
   onEventMove: (id: string, start: Date, end: Date | null, allDay: boolean, revert: () => void) => void;
-  onLockedMove: () => void;
+  onLockedMove: (id: string) => void;
   onNew: () => void;
 }
 
@@ -221,7 +252,9 @@ export default function CalendarView(props: CalendarViewProps) {
             ? classInput(e)
             : e.extendedProps.kind === "exam"
               ? examInput(e)
-              : userInput(e),
+              : e.extendedProps.kind === "study"
+                ? studyInput(e)
+                : userInput(e),
     );
   }, [events]);
 
@@ -339,7 +372,7 @@ export default function CalendarView(props: CalendarViewProps) {
         eventDrop={(info: EventDropInfo) => {
           if (!info.event.startEditable) {
             info.revert();
-            onLockedMove();
+            onLockedMove(info.event.id);
             return;
           }
           onEventMove(info.event.id, info.event.start as Date, info.event.end, info.event.allDay, info.revert);

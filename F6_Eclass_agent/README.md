@@ -24,7 +24,7 @@ F6_Eclass_agent/
 │   ├── jobs.py              (백엔드 쪽) 버튼 수집 띄우기 · 예약 실행 감지 · 로그인 창 · 작업 스케줄러
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py          명령줄
-├── tests/                   pytest 54개 (날짜·캘린더·퀴즈 해석 · 원장 반영 · 알림 시점 · 주기·잠금·재시도 사슬 · 새 글·자료 피드)
+├── tests/                   pytest 58개 (날짜·캘린더·퀴즈 해석 · 원장 반영 · 알림 시점 · 주기·잠금·재시도 사슬 · 새 글·자료 피드 · 앱 모드 실행 인자)
 ├── sync.cmd                 이 창에서 수집 (진행 상황이 보임)
 ├── run-sync.cmd             창 없이 수집 → state\sync.log (대시보드 버튼과 같은 실행)
 ├── run-scheduled.cmd        작업 스케줄러가 부른다 (tick)

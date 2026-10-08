@@ -28,7 +28,7 @@ export const FEATURES: Feature[] = [
   { key: "graduation", label: "졸업요건", href: "/graduation", icon: GraduationCap, fid: "F2" },
   { key: "attendance", label: "출결", href: "/attendance", icon: UserCheck, fid: "F3" },
   { key: "courses", label: "강의자료", href: "/courses", icon: BookOpen, fid: "F4" },
-  { key: "exams", label: "시험", href: "/exams", icon: Target, fid: "F5" },
+  { key: "exams", label: "시험·발표", href: "/exams", icon: Target, fid: "F5" },
   { key: "opportunities", label: "기회", href: "/opportunities", icon: Gift, fid: "F11~13" },
   { key: "team", label: "팀플", href: "/team", icon: Users, fid: "F16" },
   { key: "briefing", label: "브리핑", href: "/briefing", icon: Sun, fid: "F10" },

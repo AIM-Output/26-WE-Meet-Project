@@ -1,0 +1,12 @@
+# 사이드카(univus-backend) 빌드용 — desktop/sidecar/build.py 가 desktop/sidecar/.venv 에 설치한다.
+# 런타임에 묶여 들어가는 것 = 백엔드(fastapi·uvicorn) + C3(playwright·bs4) + F1(requests·lxml·truststore·pypdf) + 맥 키체인
+pyinstaller>=6.10,<7
+fastapi>=0.115
+uvicorn>=0.30
+playwright>=1.45
+beautifulsoup4>=4.13,<5
+lxml>=6.0,<7
+requests>=2.32,<3
+truststore>=0.9,<1
+pypdf>=6.0,<7
+keyring>=25; sys_platform == "darwin"

@@ -1,0 +1,22 @@
+[package]
+name = "univus-desktop"
+version = "0.1.0"
+description = "유니버스 데스크톱 앱 — 로컬 서버(사이드카)를 띄우고 창·트레이를 맡는다"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-opener = "2"
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

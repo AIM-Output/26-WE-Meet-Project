@@ -24,6 +24,8 @@ export interface UseExams {
   sync: () => Promise<void>;
   addExam: (body: ExamInput) => Promise<boolean>;
   patchExam: (id: string, body: Partial<ExamInput> & { status?: "confirmed" | "review" }) => Promise<boolean>;
+  /** 발표 준비 완료 체크·해제 (2026-10-06) */
+  setReady: (id: string, ready: boolean) => Promise<boolean>;
   /** 확인 필요 카드의 '맞아요' — 승인만 한다 (F5-S02) */
   confirmExam: (id: string) => Promise<boolean>;
   deleteExam: (id: string) => Promise<boolean>;
@@ -152,6 +154,19 @@ export function useExams(semester?: string | null): UseExams {
     [reloadAll, run, toast],
   );
 
+  const setReady = useCallback(
+    async (id: string, ready: boolean) => {
+      const out = await run(() => api.setExamReady(id, ready), "저장하지 못했습니다");
+      if (!out) return false;
+      await load(); // 캘린더는 그대로다 — 목록만 다시 받는다
+      toast(ready ? `${out.exam.course} ${out.exam.title} — 준비 완료` : `${out.exam.course} ${out.exam.title} — 준비 완료를 풀었습니다`, {
+        tone: ready ? "success" : undefined,
+      });
+      return true;
+    },
+    [load, run, toast],
+  );
+
   const deleteExam = useCallback(
     async (id: string) => {
       const out = await run(() => api.deleteExam(id), "지우지 못했습니다");
@@ -231,6 +246,7 @@ export function useExams(semester?: string | null): UseExams {
     addExam,
     patchExam,
     confirmExam,
+    setReady,
     deleteExam,
     setCourseExams,
     saveDifficulty,

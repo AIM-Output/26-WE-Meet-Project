@@ -25,7 +25,8 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import pid_alive, script, venv_python  # noqa: E402,F401 — pid_alive 는 runs, script 는 안내 문구
+from osenv import (FROZEN, browsers_dir, module_cmd, pid_alive, script,  # noqa: E402,F401 — pid_alive 는 runs
+                   venv_python)
 
 # data/ 아래 경로는 manifest·assignments 에 'data\\<과목>\\…' 처럼 ROOT 기준 상대경로로 적힌다 (F3 공지 휴강이 같은 규칙으로 읽는다).
 DATA_DIR = Path(os.environ.get("F6_DATA_DIR") or ROOT / "data")
@@ -46,8 +47,9 @@ RUNS_KEEP = 300
 
 # ── C3 포털 자동 로그인 (세션 · 재인증 · 브라우저 · python) ──
 C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or PROJECT_ROOT / "C3_Login_agent")
-C3_PYTHON = venv_python(C3_AGENT_DIR / ".venv")
-C3_BROWSERS = C3_AGENT_DIR / ".venv" / "pw-browsers"
+C3_VENV = C3_AGENT_DIR / ".venv"
+C3_PYTHON = Path(sys.executable) if FROZEN else venv_python(C3_VENV)   # 묶인 데스크톱 앱이면 같은 실행 파일
+C3_BROWSERS = browsers_dir(C3_VENV)
 
 # ── e클래스 (sel.jnu.ac.kr, Moodle/유비온) ──
 BASE_URL = "https://sel.jnu.ac.kr"
@@ -122,9 +124,9 @@ EARLY_DUE_HOURS = 3                                 # 마감이 09:00 이전이�
 MISSED_AFTER_MIN = 60                               # 예정보다 이만큼 늦게 배달되면 '놓친 알림'
 
 # 과목 색 — courses.json 순서대로 배정 (대시보드 캘린더와 같은 표)
-COURSE_PALETTE = [
-    "#4f46e5", "#0891b2", "#d97706", "#059669", "#db2777",
-    "#7c3aed", "#ea580c", "#2563eb", "#65a30d", "#9333ea",
+COURSE_PALETTE = [  # 흙빛 팔레트 (디자인 v3 "Paper & Pine" — DESIGN.md)
+    "#3d6b8c", "#a0522d", "#7a4f8a", "#2f7a73", "#9a6a14",
+    "#a63d52", "#4c5fa6", "#8a6a4c", "#55753a", "#b05a7a",
 ]
 
 

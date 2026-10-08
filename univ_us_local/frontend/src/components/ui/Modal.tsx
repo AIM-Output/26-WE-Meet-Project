@@ -151,7 +151,7 @@ function ModalBody({
             )}
           </div>
         )}
-        <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-5 md:px-6">{children}</div>
+        <div className="thin-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 md:px-6">{children}</div>
         {footer && (
           <div className="flex flex-none flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3 md:px-6">{footer}</div>
         )}

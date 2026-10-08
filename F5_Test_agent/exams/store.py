@@ -96,6 +96,12 @@ CREATE TABLE IF NOT EXISTS plan_days (
     PRIMARY KEY (plan_id, date),
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
 );
+-- 서비스 밖에서 공부한 강의자료 (2026-10-06) — F4 자료 id 단위, 과목에 한 번. 체크하면 계획의 남은 분량에서 빠진다
+CREATE TABLE IF NOT EXISTS material_done (
+    material_id TEXT PRIMARY KEY,                  -- F4 materials.id
+    course_id   TEXT NOT NULL,
+    done_at     TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
     value TEXT
@@ -106,6 +112,8 @@ CREATE TABLE IF NOT EXISTS meta (
 _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("exams", "note", "TEXT NOT NULL DEFAULT ''"),          # 2026-10-01 — 임의 일정(source='auto')
     ("exams", "time_auto", "INTEGER NOT NULL DEFAULT 0"),   # 2026-10-01 — 시각 미정 → 수업 시간
+    ("plans", "day_minutes", "TEXT NOT NULL DEFAULT '{}'"), # 2026-10-06 — 학습일마다 직접 정한 공부 시간 {날짜: 분}
+    ("exams", "ready_at", "TEXT"),                          # 2026-10-06 — 발표 '준비 완료'를 누른 시각 (없으면 아직)
 )
 
 _initialized: set[str] = set()
@@ -336,3 +344,24 @@ def all_active_days(con: sqlite3.Connection) -> list[sqlite3.Row]:
         "SELECT d.*, p.exam_id, e.course_id, e.course, e.type FROM plan_days d "
         "JOIN plans p ON p.id = d.plan_id JOIN exams e ON e.id = p.exam_id "
         "WHERE p.state = 'active' AND e.removed_at IS NULL ORDER BY d.date"))
+
+
+# ---------------------------------------------------------------- 공부 완료한 강의자료 (2026-10-06)
+
+def material_done(con: sqlite3.Connection, course_id: str) -> dict[str, str]:
+    """{자료 id: 체크한 시각} — 서비스 밖에서 공부했다고 체크한 자료."""
+    return {r["material_id"]: r["done_at"] for r in con.execute(
+        "SELECT material_id, done_at FROM material_done WHERE course_id = ?", (course_id,))}
+
+
+def set_material_done(con: sqlite3.Connection, course_id: str, ids: list[str], done: bool) -> int:
+    """체크·해제. 바뀐 줄 수를 돌려준다."""
+    n = 0
+    for mid in ids:
+        if done:
+            cur = con.execute("INSERT OR IGNORE INTO material_done (material_id, course_id, done_at) VALUES (?, ?, ?)",
+                              (mid, course_id, now()))
+        else:
+            cur = con.execute("DELETE FROM material_done WHERE material_id = ? AND course_id = ?", (mid, course_id))
+        n += cur.rowcount
+    return n

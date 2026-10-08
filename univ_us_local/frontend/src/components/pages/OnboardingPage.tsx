@@ -39,7 +39,7 @@ export default function OnboardingPage() {
     <Page>
       <div className="mx-auto max-w-[640px]">
         <div className="mb-6 flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-white">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-on-primary">
             <GraduationCap className="size-5" aria-hidden />
           </span>
           <div>
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
               <li key={l} className="flex flex-1 items-center gap-2" aria-current={on ? "step" : undefined}>
                 <span
                   className={`num grid size-7 flex-none place-items-center rounded-full text-[13px] font-bold transition-colors ${
-                    done ? "bg-primary text-white" : on ? "bg-primary-soft text-primary ring-2 ring-primary" : "bg-surface-3 text-faint"
+                    done ? "bg-primary text-on-primary" : on ? "bg-primary-soft text-primary ring-2 ring-primary" : "bg-surface-3 text-faint"
                   }`}
                 >
                   {done ? <Check className="size-4" aria-hidden /> : i + 1}

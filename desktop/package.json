@@ -1,0 +1,15 @@
+{
+  "name": "univus-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "유니버스 데스크톱 앱 껍데기 (Tauri) — 로컬 서버 사이드카를 띄우고 창·트레이를 맡는다",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icon": "tauri icon src-tauri/icons/source.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

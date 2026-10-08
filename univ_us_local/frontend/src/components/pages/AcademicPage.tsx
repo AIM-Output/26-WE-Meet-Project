@@ -80,7 +80,8 @@ export default function AcademicPage() {
 
   const rows = useMemo(() => {
     const src = tab === "mine" ? confirmed.filter(mineOf) : tab === "hidden" ? hidden : confirmed;
-    return [...src].filter((e) => tab === "hidden" || !isFresh(e)).sort((a, b) => (a.start ?? "").localeCompare(b.start ?? "") || a.title.localeCompare(b.title));
+    // 날짜 미확인(start 없음)은 맨 뒤 '날짜 미확인' 묶음으로
+    return [...src].filter((e) => tab === "hidden" || !isFresh(e)).sort((a, b) => (a.start ?? "9").localeCompare(b.start ?? "9") || a.title.localeCompare(b.title));
   }, [tab, confirmed, hidden]);
 
   const months = useMemo(() => {
@@ -225,11 +226,13 @@ export default function AcademicPage() {
           {months.map(([month, items]) => (
             <section key={month} aria-labelledby={`m-${month}`}>
               <h2 id={`m-${month}`} className="num sticky top-[var(--header-h)] z-10 -mx-1 mb-2 bg-bg/95 px-1 py-1.5 text-[14px] font-bold text-muted backdrop-blur">
-                {month.slice(0, 4)}년 {Number(month.slice(5))}월
+                {month ? `${month.slice(0, 4)}년 ${Number(month.slice(5))}월` : "날짜 미확인"}
               </h2>
               <ul className="overflow-hidden rounded-xl border border-border bg-surface">
                 {items.map((e) => {
-                  const past = toDateStr(lastDay(e)!) < todayKey;
+                  // 날짜를 못 읽은 일정(이미지 공지)은 확인 필요에서 숨기면 숨김 탭에 날짜 없이 온다
+                  const last = lastDay(e);
+                  const past = !!last && toDateStr(last) < todayKey;
                   const isFirst = !past && !upcomingMarked;
                   if (isFirst) upcomingMarked = true;
                   return (

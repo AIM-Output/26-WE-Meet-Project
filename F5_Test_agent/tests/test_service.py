@@ -163,7 +163,7 @@ def test_create_plan_makes_blocks_only_on_study_calendar(db):
     evs = service.calendar_events(db, None, None, courses, TODAY)
     assert [x["extendedProps"]["kind"] for x in evs] == ["exam"]
     assert evs[0]["start"] == "2026-10-23T14:00:00"
-    assert evs[0]["extendedProps"]["color"] == "#B91C1C" and evs[0]["editable"] is False
+    assert evs[0]["extendedProps"]["color"] == "#9F2F2D" and evs[0]["editable"] is False
 
     cal = service.study_calendar(db, "2026-10-01", "2026-10-31", courses, TODAY)
     blocks = [b for d in cal["days"] for b in d["blocks"]]
@@ -330,28 +330,16 @@ def test_delete_exam_removes_plan(db):
     assert service.study_calendar(db, "2026-10-01", "2026-10-31", courses, TODAY)["days"] == []
 
 
-# ---------------------------------------------------------------- 여러 시험 합산 (F5-R23)
+# ---------------------------------------------------------------- 여러 시험 (2026-10-07 — 합산 상한 없음)
 
-def test_overlap_between_two_plans(db):
+def test_heavy_day_with_other_plans_is_not_flagged(db):
+    """같은 날 다른 과목 계획이 많아도 경고하지 않는다 — 합산 상한(F5-R23)은 하루 기준과 함께 없앴다."""
     a = add_exam(db, when="2026-10-23", course="74261")
     b = add_exam(db, when="2026-10-24", course="74245")
-    plan_for(db, a["id"], totalPages=600, pageMinutes=4, capMinutes=360)
-    out = service.preview(db, b["id"], {"totalPages": 600, "difficulty": "hard", "capMinutes": 360, "reviewDays": 2,
+    plan_for(db, a["id"], totalPages=600, pageMinutes=4)
+    out = service.preview(db, b["id"], {"totalPages": 600, "difficulty": "hard", "reviewDays": 2,
                                         "pageMinutes": 4}, TODAY, courses)
-    assert out["verdict"] == "overlap"
-    assert out["overlap"] and "소프트웨어공학론" in out["overlap"][0]["courses"]
-    assert out["otherLoad"]
-
-
-def test_done_blocks_are_not_future_load(db):
-    a = add_exam(db, when="2026-10-23", course="74261")
-    b = add_exam(db, when="2026-10-24", course="74245")
-    pid = plan_for(db, a["id"], totalPages=600, pageMinutes=4, capMinutes=360)["plan"]["planId"]
-    for d in store.days(db, pid):
-        service.patch_day(db, pid, d["date"], {"done": True}, TODAY, courses)
-    out = service.preview(db, b["id"], {"totalPages": 600, "difficulty": "hard", "capMinutes": 360, "reviewDays": 2,
-                                        "pageMinutes": 4}, TODAY, courses)
-    assert out["overlap"] == []
+    assert out["verdict"] == "ok" and "overlap" not in out
 
 
 # ---------------------------------------------------------------- 오늘 · 상태 · 범위
@@ -442,7 +430,6 @@ def test_preview_matches_what_registering_will_do(db):
     shown = service.preview(db, e["id"], {"totalPages": 120}, TODAY, courses)
     assert shown["carried"]["pages"] == 15
     assert shown["totals"]["pages"] == 120
-    assert shown["overlap"] == []                    # 자기 계획을 '다른 과목 부담'으로 세지 않는다
 
     registered = service.create_plan(db, e["id"], {"totalPages": 120}, TODAY, courses)["plan"]
     assert [(d["date"], d["pages"]) for d in registered["days"]] == [

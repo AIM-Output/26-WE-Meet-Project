@@ -69,11 +69,12 @@ export function EclassFailureStrip() {
   if (!ec?.warn) return null;
   const last = ec.lastOkAt ?? status?.updated_at;
   return (
-    <div role="alert" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-danger px-4 py-2 text-center text-[13px] font-semibold text-white">
+    <div role="alert" className="mx-auto mt-2 flex max-w-[1560px] flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl border px-4 py-2 text-center text-[13px] font-semibold text-danger-text"
+      style={{ background: "var(--danger-soft)", borderColor: "color-mix(in oklab, var(--danger) 35%, transparent)" }}>
       <TriangleAlert className="size-4 flex-none" aria-hidden />
       e클래스 수집이 {ec.failureStreak}회 연속 실패했습니다 · 마지막 성공 {last ? fmtRelative(last) : "없음"}
       {ec.needLogin && " — 로그인이 필요할 수 있습니다"}
-      <Link href="/settings/sources" className="rounded bg-white/15 px-1.5 underline-offset-2 hover:underline">
+      <Link href="/settings/sources" className="rounded bg-surface px-1.5 underline-offset-2 hover:underline">
         수집 원천
       </Link>
     </div>

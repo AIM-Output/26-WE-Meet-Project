@@ -83,7 +83,7 @@ export function Tabs<K extends string>({
               <motion.span
                 layoutId={`tab-${id}`}
                 className={line ? "absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" : "absolute inset-0 rounded-md bg-surface"}
-                style={line ? undefined : { boxShadow: "0 1px 2px rgba(16,42,40,0.08)" }}
+                style={line ? undefined : { boxShadow: "var(--shadow-card), var(--inner-hi)" }}
                 transition={{ type: "spring", bounce: 0, visualDuration: 0.22 }}
                 aria-hidden
               />
