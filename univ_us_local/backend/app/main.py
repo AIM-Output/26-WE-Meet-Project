@@ -1,10 +1,8 @@
-"""유니버스(Univ-Us) 개인 로컬 서버 — FastAPI.
+"""유니버스(Univ-Us) 데스크톱 앱의 로컬 서버 — FastAPI. backend/desktop.py(사이드카 진입점)가 띄운다.
 
-    uvicorn app.main:app --host 127.0.0.1 --port 8000        (backend/ 에서)
-
-- /api/*            프론트가 쓰는 JSON API
+- /api/*            프론트가 쓰는 JSON API (앱 창의 세션 쿠키가 있어야 한다 — desktop_session)
 - /                 frontend/out (next build 결과) 가 있으면 정적으로 서빙. 없으면 안내 페이지.
-개발 중에는 `next dev`(3000) 가 /api 를 여기로 넘겨준다 (frontend/next.config.ts rewrites).
+개발 모드(desktop/ 에서 npm run dev)에서는 `next dev`(3000) 가 /api·/desktop/launch 를 여기(8020)로 넘겨준다 (frontend/next.config.ts rewrites).
 
 이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8).
 """
@@ -21,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import academic, attendance, calendar_events, exams, graduation, materials, placement, priority
 from . import config as C
-from . import eclass_data, student_profile
+from . import eclass_data, login_creds, student_profile
 
 
 @asynccontextmanager
@@ -153,6 +151,10 @@ if (_c1_router := calendar_events.router(CALENDAR_SOURCES)) is not None:
 # F1 의 /api/sources/{key} 보다 먼저 붙여야 /api/sources/eclass 가 F6 로 간다.
 if (_f6_router := eclass_data.router()) is not None:
     app.include_router(_f6_router)
+
+# C3 자동 로그인 정보 — /api/login/creds (C3_Login_agent/login/api.py)
+if (_c3_router := login_creds.router()) is not None:
+    app.include_router(_c3_router)
 
 # C2 프로필·학과 마스터 — /api/profile* · /api/master/* (C2_Profile_agent/student/api.py)
 if (_c2_router := student_profile.router(on_change=_profile_changed)) is not None:

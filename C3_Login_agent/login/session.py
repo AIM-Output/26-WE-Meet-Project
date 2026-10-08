@@ -1,9 +1,9 @@
 """세션 확보 — 로그인 창(대화형) / 무인 자동 로그인 / 조용한 쿠키 복구.
 
-  login.cmd            로그인 창: 브라우저 창을 띄워 본인이 직접 SSO 로그인 (+2차 인증).
+  python -m login           로그인 창: 브라우저 창을 띄워 본인이 직접 SSO 로그인 (+2차 인증).
                        이때 만들어지는 신뢰 기기 쿠키(~1년) 덕에 이후 2차 인증이 생략된다.
                        저장된 자격증명이 있으면 아이디·비밀번호는 자동으로 채워 준다(사람은 휴대폰 인증만).
-  login.cmd --auto     무인: setup-creds 로 저장한 자격증명으로 headless 자동 로그인.
+  python -m login --auto    무인: 앱의 '자동 로그인 정보'(또는 login creds)로 저장한 자격증명으로 headless 자동 로그인.
                        신뢰 기기 쿠키가 있어야 2차 인증 없이 끝까지 진행된다.
 
 빌려 쓰는 기능(F6 수집 · C2·F2 학사정보시스템 · notice_agent)은 reauthenticate(p) 를 부른다:
@@ -182,7 +182,7 @@ def auto_login(p, uid: str, pw: str, timeout_s: int = C.AUTO_TIMEOUT) -> bool:
         # 여기까지 왔으면 실패. 화면을 남긴다.
         if submitted and _mfa_blocking(page):
             print("  로그인 후 2차 인증(휴대폰) 대기 상태입니다. 신뢰 기기가 만료된 듯합니다.")
-            print(f"  → C3_Login_agent 의 {C.script('login')}(또는 화면의 '로그인 창 열기')로 한 번 휴대폰 인증을 통과하면 다시 무인 가능합니다.")
+            print("  → 화면의 '로그인 창 열기'로 한 번 휴대폰 인증을 통과하면 다시 무인 가능합니다.")
         else:
             print("  자동 로그인 시간 초과. 아이디/비밀번호 또는 로그인 흐름을 확인하세요.")
         _debug_shot(page)
@@ -277,7 +277,7 @@ def interactive_login(wait_s: int = C.WAIT_SECONDS) -> int:
 def auto_login_cli() -> int:
     creds = auth.load()
     if not creds:
-        print(f"저장된 자격증명이 없습니다. 먼저 `{C.script('setup-creds')}` 를 실행하세요.")
+        print("저장된 자격증명이 없습니다. 먼저 앱 설정(연결 소스)의 '자동 로그인 정보'에서 저장하세요.")
         return 1
     print("무인 로그인 시도 중...")
     with sync_playwright() as p:

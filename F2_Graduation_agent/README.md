@@ -17,7 +17,7 @@ F2_Graduation_agent/
 │   ├── curriculum.py       교육과정검색 수집·스냅숏 (학과·전공·입학년도별 교필·전필·전선)
 │   ├── store.py            SQLite — 원천(courses)과 내 값(overrides·category_map·certs·rulesets·plans)을 나눈다
 │   ├── service.py          화면이 받는 모양 · 과목 추가/구분 지정/제외 · 가져오기 반영 · 룰셋 내 수정본 · 인증 · 내 계획
-│   ├── hakstd.py           학사정보시스템 기이수성적 수집 (C3_Login_agent .venv 에서 실행, 로그인은 C2 의 절차를 빌림)
+│   ├── hakstd.py           학사정보시스템 기이수성적 수집 (자식 프로세스 — osenv.module_cmd, 로그인은 C2 의 절차를 빌림)
 │   ├── jobs.py             대시보드 버튼 뒤의 백그라운드 작업 (가져오기 · 교육과정 받기)
 │   ├── api.py              FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py         명령줄
@@ -26,29 +26,27 @@ F2_Graduation_agent/
 │   └── jnu-common-ge-2023.json  전남대 2023학년도 이후 입학 교양 영역 조건 (학과 룰셋에 덧붙는다)
 ├── curriculum/             교육과정 스냅숏 — 인공지능학부·3개 전공 2021~2026 (네트워크 없이 계산되게)
 ├── tests/                  pytest 60개 (모의 이수 내역 10건 회귀 · 매칭 · 파서 · 사용자 조작 · 가져오기 배관)
-├── run.cmd
 └── data/  state/           (gitignore) 내 이수 내역 DB · 내려받은 교육과정 · 가져오기 로그
 ```
 
 ## 쓰는 법
 
-**설치할 것이 없다.** 대시보드(`유니버스 열기.cmd`) → 기능 타일 **졸업요건** → `이수 내역 가져오기`.
-학사정보시스템 로그인은 C3_Login_agent 의 세션을 빌린다(한 번 `C3_Login_agent\login.cmd` 로 로그인해 두면 된다). 세션이 없으면 화면에 `로그인 창 열기`가 뜬다.
+**설치할 것이 없다.** 앱 대시보드 → 기능 타일 **졸업요건** → `이수 내역 가져오기`.
+학사정보시스템 로그인은 C3_Login_agent 의 세션을 빌린다(앱에서 한 번 `로그인 창 열기`로 로그인해 두면 된다). 세션이 없으면 화면에 `로그인 창 열기`가 뜬다.
 
-명령줄 (`run.cmd` = 백엔드 .venv 의 python 으로 `python -m graduation`):
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m graduation` 를 돌린다, `--app` 이면 앱 데이터):
 
-```powershell
-cd F2_Graduation_agent
-.\run.cmd status                 # 졸업까지 남은 학점 · 영역별 · 세부 요건 · 인증 · 판정 근거
-.\run.cmd courses                # 이수 과목 (영역 · 계산 제외 이유)
-.\run.cmd import                 # 학사정보시스템 기이수성적 가져오기 (--interactive 면 로그인 창)
-.\run.cmd curriculum             # 내 학과·전공·입학년도 교육과정 받기
-.\run.cmd rulesets               # 기본 룰셋 목록
-.\run.cmd add "편입 인정 학점" 30 --area free --year 2024 --semester 1
-.\run.cmd clear                  # 이수 내역·내 지정·수정본·계획 전부 지우기
+```bash
+python desktop/cli.py graduation status                 # 졸업까지 남은 학점 · 영역별 · 세부 요건 · 인증 · 판정 근거
+python desktop/cli.py graduation courses                # 이수 과목 (영역 · 계산 제외 이유)
+python desktop/cli.py graduation import                 # 학사정보시스템 기이수성적 가져오기 (--interactive 면 로그인 창)
+python desktop/cli.py graduation curriculum             # 내 학과·전공·입학년도 교육과정 받기
+python desktop/cli.py graduation rulesets               # 기본 룰셋 목록
+python desktop/cli.py graduation add "편입 인정 학점" 30 --area free --year 2024 --semester 1
+python desktop/cli.py graduation clear                  # 이수 내역·내 지정·수정본·계획 전부 지우기
 ```
 
-테스트: `..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q` (pytest 가 있는 아무 파이썬)
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv `desktop/sidecar/.venv`)
 
 ## 계산 규칙 (요구사항정의서 F2 5절)
 

@@ -1,6 +1,6 @@
-"""대시보드에서 수집 띄우기 — run-sync.cmd 를 백그라운드로 실행하고 진행 상태를 알려 준다 (F1-R05, D7).
+"""대시보드에서 수집 띄우기 — `-m bachelor sync` 를 백그라운드로 실행하고 진행 상태를 알려 준다 (F1-R05, D7).
 
-수집은 이 폴더의 .venv(requests·bs4) 에서 돈다. 대시보드 백엔드는 이 파일(표준 라이브러리만)만 import 한다.
+수집은 자식 프로세스(지금 도는 python / 묶인 앱 실행 파일 — osenv.module_cmd)에서 돈다. 대시보드 백엔드는 이 파일(표준 라이브러리만)만 import 한다.
 univ_us_local/backend/app/eclass_data.py 의 e클래스 동기화와 같은 방식:
   - 이 서버가 띄운 실행은 _state 로, 예약 작업·수동 실행은 state/sync.lock(pid) 으로 안다.
   - 이미 돌고 있으면 새로 띄우지 않는다 (진짜 중복 방지는 pipeline 의 잠금이 한다 → exit 3).
@@ -57,31 +57,17 @@ def _command(keys: Optional[list[str]]) -> list[str]:
     extra: list[str] = ["--by", "button"]
     for k in keys or []:
         extra += ["--source", k]
-    if sys.platform == "win32" and not C.FROZEN:
-        return ["cmd", "/c", str(C.RUN_SYNC_CMD), *extra]
-    # 맥·리눅스 → .venv python (_prepare 가 만든다) / 묶인 데스크톱 앱 → 같은 실행 파일 --run-module
-    return C.module_cmd(C.ROOT / ".venv", "bachelor", "sync", "--log", str(C.LOG_FILE), *extra)
-
-
-def _prepare() -> None:
-    """수집용 .venv(requests·bs4) 준비. Windows 는 run-sync.cmd 가 하고, 그 외 OS 는 여기서 한다
-    (C0 osenv — 처음엔 1분쯤, requirements.txt 가 바뀌면 다시 설치. pip 출력은 sync.log 로)."""
-    if sys.platform == "win32" or C.FROZEN:           # 묶인 앱은 requests·bs4 가 실행 파일 안에 있다
-        return
-    from osenv.venv import ensure                    # C0 — config 가 sys.path 에 붙여 두었다
-    C.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(C.LOG_FILE, "a", encoding="utf-8") as log:
-        ensure(C.ROOT / ".venv", C.ROOT / "requirements.txt", log=log)
+    # 지금 도는 python(개발 모드) / 묶인 데스크톱 앱 → 같은 실행 파일 --run-module (C0 osenv.module_cmd)
+    return C.module_cmd("bachelor", "sync", "--log", str(C.LOG_FILE), *extra)
 
 
 def _run(keys: Optional[list[str]]) -> None:
     try:
-        _prepare()
         proc = subprocess.run(_command(keys), cwd=str(C.ROOT), capture_output=True, timeout=20 * 60)
         code = proc.returncode
     except subprocess.TimeoutExpired:
         code = -1
-    except Exception:                                # .venv 를 못 만든 경우 포함 — 이유는 sync.log 에
+    except Exception:                                # 띄우지 못함 — 이유는 sync.log 에
         code = -2
     with _lock:
         _state.update(running=False, finished_at=datetime.now().isoformat(timespec="seconds"), exit_code=code)
@@ -89,8 +75,6 @@ def _run(keys: Optional[list[str]]) -> None:
 
 def start_sync(keys: Optional[list[str]] = None) -> dict:
     """수집을 백그라운드로 시작. 이미 돌고 있으면 띄우지 않고 already_running 을 붙인다."""
-    if sys.platform == "win32" and not C.FROZEN and not C.RUN_SYNC_CMD.exists():
-        return {**sync_state(), "error": f"run-sync.cmd 가 없습니다: {C.RUN_SYNC_CMD}"}
     st = sync_state()
     if st["running"]:
         return {**st, "already_running": True}
@@ -142,8 +126,8 @@ def task_info(force: bool = False) -> dict:
     if isinstance(t, dict):
         args = str(t.get("args") or "").lower()
         info.update(registered=True, state=t.get("state"), nextRun=t.get("next"), lastRun=t.get("last"),
-                    lastResult=t.get("result"), pathOk=(sys.executable if C.FROZEN else str(C.ROOT)).lower() in args,
-                    scheduled="run-scheduled.cmd" in args)        # 예전 등록(06·18시 run-sync.cmd)이면 False → 다시 등록
+                    lastResult=t.get("result"), pathOk=sys.executable.lower() in args,
+                    scheduled="bachelor tick" in args)            # 예전 등록(06·18시 run-sync.cmd 등)이면 False → 다시 등록
     _task_cache.update(at=_t.time(), value=info)
     return info
 
@@ -168,22 +152,15 @@ def _launchd_info() -> dict:
 def _launchd_register() -> dict:
     from osenv import launchd
     from .schedule import _at
-    try:
-        _prepare()                                   # 예약 실행이 쓸 .venv 를 지금 만들어 둔다 (처음 1분쯤)
-    except Exception as e:                           # noqa: BLE001
-        return {"ok": False, "output": str(e)[-800:], "error": "수집용 .venv 를 만들지 못했습니다 — sync.log 확인"}
     env = {k: os.environ[k] for k in _PASS_ENV if os.environ.get(k)}
-    return launchd.register(C.LAUNCHD_LABEL, C.module_cmd(C.ROOT / ".venv", "bachelor", "tick", "--log", str(C.LOG_FILE)),
+    return launchd.register(C.LAUNCHD_LABEL, C.module_cmd("bachelor", "tick", "--log", str(C.LOG_FILE)),
                             workdir=C.ROOT, times=[_at()], env=env, log=C.STATE_DIR / "launchd.log")
 
 
-def _frozen_task_args(module: str, log) -> list[str]:
-    """묶인 데스크톱 앱이면 작업이 run-scheduled.cmd(venv) 대신 앱 실행 파일을 부른다 (register-task.ps1 -Command).
+def _task_args() -> list[str]:
+    """작업이 부를 명령 (register-task.ps1 -Command) — 묶인 앱이면 앱 실행 파일 --run-module bachelor tick.
     작업은 환경변수 없이 돈다 — 앱 실행 파일이 --run-module 일 때 앱 데이터 폴더를 스스로 잡는다 (desktop.py)."""
-    if not C.FROZEN:
-        return []
-    q = lambda s: str(s).replace("'", "''")                  # noqa: E731 — PowerShell 작은따옴표 문자열
-    return ["-Command", f"& '{q(sys.executable)}' --run-module {module} tick --log '{q(log)}'"]
+    return ["-Command", C.task_command("bachelor", "tick", "--log", str(C.LOG_FILE))]
 
 
 def _task_script(*extra: str) -> dict:
@@ -206,7 +183,7 @@ def register_task() -> dict:
         res = _launchd_register()
         _task_cache.update(at=0.0, value=None)
         return res
-    return _task_script("-At", C.SCHEDULE_AT, *_frozen_task_args("bachelor", C.LOG_FILE))
+    return _task_script("-At", C.SCHEDULE_AT, *_task_args())
 
 
 def unregister_task() -> dict:

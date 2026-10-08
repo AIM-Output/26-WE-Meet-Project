@@ -64,7 +64,7 @@ def _keyring():
     try:
         import keyring                                   # C3_Login_agent/requirements.txt (맥에서만 설치)
     except ImportError as e:
-        raise CredsError("keyring 이 설치되어 있지 않습니다 — C3_Login_agent 의 setup.command 를 다시 실행하세요") from e
+        raise CredsError("keyring 이 설치되어 있지 않습니다 — desktop/sidecar/requirements.txt 를 다시 설치하세요 (개발 모드)") from e
     return keyring
 
 

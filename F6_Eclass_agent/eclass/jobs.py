@@ -1,8 +1,8 @@
-"""대시보드 백엔드 쪽 실행 관리 — 표준 라이브러리만 (백엔드 .venv 에서 돈다).
+"""대시보드 백엔드 쪽 실행 관리 — 표준 라이브러리만 (백엔드 프로세스 안에서 돈다).
 
-  동기화 버튼   C3 .venv python 으로 `-m eclass sync --source button` 을 띄운다 (F6-R50~R52)
+  동기화 버튼   osenv.module_cmd 로 `-m eclass sync --source button` 을 띄운다 (F6-R50~R52)
                 이미 누가 돌고 있으면(이 서버 · 잠금 파일의 살아 있는 pid · 잠금 없는 eclass 프로세스) 새로 띄우지 않는다 (R53·R54)
-  로그인 창     C3 .venv python 으로 `-m login` (브라우저 창) → 로그인되면 곧바로 수집 (F6-S10)
+  로그인 창     osenv.module_cmd 로 `-m login` (브라우저 창) → 로그인되면 곧바로 수집 (F6-S10)
   예약 작업     작업 스케줄러 등록 상태 읽기 · 주기를 바꾸면 register-task.ps1 로 다시 등록 (F6-R10·R18)
 
 환경변수 F6_TASKS=off 면 작업 스케줄러를 건드리지 않는다(격리 테스트 서버).
@@ -76,9 +76,9 @@ def problem() -> Optional[str]:
 def _sync_processes() -> list[int]:
     """`-m eclass sync|tick` 을 돌리는 python 프로세스 pid — 잠금 파일이 없어도(지웠거나 막 시작) 잡아낸다.
     Windows 는 PowerShell CIM 으로 명령줄을 본다 (1초쯤 걸리므로 버튼을 누를 때만 부른다)."""
-    # 묶인 데스크톱 앱이면 python 대신 앱 실행 파일이 `--run-module eclass sync` 로 돈다
+    # 수집은 지금 도는 python(개발 모드 venv) / 묶인 앱 실행 파일(`--run-module eclass sync`)로 돈다 — 같은 폴더의 실행 파일만 센다
     name = Path(sys.executable).name if C.FROZEN else "python%"
-    prefix = str(Path(sys.executable).parent) if C.FROZEN else str(C.C3_AGENT_DIR)
+    prefix = str(Path(sys.executable).parent)
     if sys.platform == "win32":
         script = (f"Get-CimInstance Win32_Process -Filter \"Name like '{name}'\" | Where-Object {{ "
                   "$_.CommandLine -match '(-m|--run-module)\\s+eclass\\s+(sync|tick)' -and "
@@ -119,7 +119,7 @@ def sync_state() -> dict:
 
 
 def _run_sync() -> None:
-    cmd = C.module_cmd(C.C3_VENV, "eclass", "sync", "--source", "button", "--log", str(C.LOG_FILE))
+    cmd = C.module_cmd("eclass", "sync", "--source", "button", "--log", str(C.LOG_FILE))
     try:
         proc = subprocess.run(cmd, cwd=str(C.ROOT), env=_env(), capture_output=True, timeout=SYNC_TIMEOUT,
                               creationflags=NO_WINDOW)
@@ -168,7 +168,7 @@ def login_state() -> dict:
 
 
 def _run_login(then_sync: bool) -> None:
-    cmd = C.module_cmd(C.C3_VENV, "login")
+    cmd = C.module_cmd("login")
     log = C.STATE_DIR / "login.log"
     try:
         with open(log, "a", encoding="utf-8") as f:
@@ -213,13 +213,10 @@ def tasks_enabled() -> bool:
 _PASS_ENV = ("C0_AGENT_DIR", "C3_AGENT_DIR", "C3_STATE_DIR", "F6_DATA_DIR", "F6_STATE_DIR")
 
 
-def _frozen_task_args(module: str, log) -> list[str]:
-    """묶인 데스크톱 앱이면 작업이 run-scheduled.cmd(venv) 대신 앱 실행 파일을 부른다 (register-task.ps1 -Command).
+def _task_args() -> list[str]:
+    """작업이 부를 명령 (register-task.ps1 -Command) — 묶인 앱이면 앱 실행 파일 --run-module eclass tick.
     작업은 환경변수 없이 돈다 — 앱 실행 파일이 --run-module 일 때 앱 데이터 폴더를 스스로 잡는다 (desktop.py)."""
-    if not C.FROZEN:
-        return []
-    q = lambda s: str(s).replace("'", "''")                  # noqa: E731 — PowerShell 작은따옴표 문자열
-    return ["-Command", f"& '{q(sys.executable)}' --run-module {module} tick --log '{q(log)}'"]
+    return ["-Command", C.task_command("eclass", "tick", "--log", str(C.LOG_FILE))]
 
 
 def _launchd_info() -> dict:
@@ -235,12 +232,10 @@ def _launchd_info() -> dict:
 
 def _launchd_register(interval: int) -> dict:
     from osenv import launchd
-    if not C.C3_PYTHON.exists():
-        return {"ok": False, "error": f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {C.script('setup')} 를 먼저 실행하세요"}
     env = {k: os.environ[k] for k in _PASS_ENV if os.environ.get(k)}
     env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or str(C.C3_BROWSERS)
     C.ensure_dirs()
-    return launchd.register(C.LAUNCHD_LABEL, C.module_cmd(C.C3_VENV, "eclass", "tick", "--log", str(C.LOG_FILE)),
+    return launchd.register(C.LAUNCHD_LABEL, C.module_cmd("eclass", "tick", "--log", str(C.LOG_FILE)),
                             workdir=C.ROOT, times=[(h, 0) for h in range(0, 24, interval)], env=env,
                             log=C.STATE_DIR / "launchd.log")
 
@@ -273,7 +268,7 @@ def task_info(force: bool = False) -> dict:
     except Exception as e:                           # noqa: BLE001
         return {"available": False, "registered": False, "error": f"작업 스케줄러를 읽지 못했습니다: {e}"[:200]}
     found = found if isinstance(found, list) else [found]
-    root = (sys.executable if C.FROZEN else str(C.ROOT)).lower()        # 묶인 앱이면 작업이 앱 실행 파일을 부른다
+    root = sys.executable.lower()                                     # 작업이 지금 이 실행 파일(앱 / 개발 venv python)을 부르는가
     info: dict[str, Any] = {"available": True, "registered": False, "name": C.TASK_NAME, "legacy": []}
     for t in found:
         path_ok = root in str(t.get("args") or "").lower()
@@ -296,7 +291,7 @@ def register_task(interval: int) -> dict:
         return res
     script = C.ROOT / "register-task.ps1"
     cmd = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script),
-           "-IntervalHours", str(interval), *_frozen_task_args("eclass", C.LOG_FILE)]
+           "-IntervalHours", str(interval), *_task_args()]
     try:
         p = subprocess.run(cmd, capture_output=True, timeout=60, creationflags=NO_WINDOW)
         text = (p.stdout + p.stderr).decode("utf-8", "replace").strip()

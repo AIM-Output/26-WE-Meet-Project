@@ -12,17 +12,15 @@ from osenv import venv as V  # noqa: E402
 
 @pytest.fixture
 def fake(monkeypatch, tmp_path):
-    """명령을 기록하고, venv 생성·chromium 설치를 흉내 낸다."""
+    """명령을 기록하고, venv 생성을 흉내 낸다."""
     calls = []
 
-    def run(cmd, log, env=None):
+    def run(cmd, log):
         calls.append(cmd)
         if cmd[1:3] == ["-m", "venv"]:
             py = osenv.venv_python(cmd[3])
             py.parent.mkdir(parents=True, exist_ok=True)
             py.write_text("")
-        if cmd[1:4] == ["-m", "playwright", "install"]:
-            (Path(env["PLAYWRIGHT_BROWSERS_PATH"]) / "chromium-1234").mkdir(parents=True)
         return 0
 
     monkeypatch.setattr(V, "_run", run)
@@ -32,16 +30,16 @@ def fake(monkeypatch, tmp_path):
 
 
 def kinds(calls):
-    return [c[2] for c in calls]                            # venv · pip · playwright
+    return [c[2] for c in calls]                            # venv · pip
 
 
 def test_creates_installs_then_skips(fake):
     calls, venv, req = fake
-    py = V.ensure(venv, req, chromium=True)
+    py = V.ensure(venv, req)
     assert py == osenv.venv_python(venv)
-    assert kinds(calls) == ["venv", "pip", "playwright"]
+    assert kinds(calls) == ["venv", "pip"]
     calls.clear()
-    V.ensure(venv, req, chromium=True)                      # 두 번째: 할 일 없음
+    V.ensure(venv, req)                                     # 두 번째: 할 일 없음
     assert calls == []
 
 
@@ -57,14 +55,7 @@ def test_reinstalls_when_requirements_change(fake):
 def test_pip_failure_raises_and_keeps_stamp_unset(fake, monkeypatch):
     calls, venv, req = fake
     V.ensure(venv, None)                                    # venv 만
-    monkeypatch.setattr(V, "_run", lambda cmd, log, env=None: 1)
+    monkeypatch.setattr(V, "_run", lambda cmd, log: 1)
     with pytest.raises(V.VenvError):
         V.ensure(venv, req)
     assert not (venv / V.STAMP).exists()                    # 다음 실행에서 다시 시도
-
-
-def test_script_names(monkeypatch):
-    monkeypatch.setattr(osenv, "IS_WINDOWS", True)
-    assert osenv.script("setup") == "setup.cmd"
-    monkeypatch.setattr(osenv, "IS_WINDOWS", False)
-    assert osenv.script("login") == "login.command"

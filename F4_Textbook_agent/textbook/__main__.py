@@ -1,10 +1,10 @@
 """명령줄 — 자료 목록을 눈으로 확인할 때. (대시보드 없이도 돈다)
 
-    run.cmd scan [--force]     수집 폴더를 훑어 목록을 맞춘다 (--force: 쪽수·해시 다시 읽기)
-    run.cmd list [과목]        자료 목록 (과목 이름 일부로 거를 수 있다)
-    run.cmd courses            과목별 자료 수·쪽수
-    run.cmd status             요약 한 줄 + 수집 폴더 위치
-    run.cmd path <검색어>      파일 경로를 찍는다 (탐색기에서 열 때)
+    cli.py textbook scan [--force]     수집 폴더를 훑어 목록을 맞춘다 (--force: 쪽수·해시 다시 읽기)
+    cli.py textbook list [과목]        자료 목록 (과목 이름 일부로 거를 수 있다)
+    cli.py textbook courses            과목별 자료 수·쪽수
+    cli.py textbook status             요약 한 줄 + 수집 폴더 위치
+    cli.py textbook path <검색어>      파일 경로를 찍는다 (탐색기에서 열 때)
 """
 from __future__ import annotations
 

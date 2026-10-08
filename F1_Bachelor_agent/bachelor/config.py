@@ -15,11 +15,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent            # F1_Bachelor_agent/
 
-# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+# C0 OS 공통 계층 (osenv) — 자식 프로세스 명령·프로세스 확인이 OS 마다 다르다
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or ROOT.parent / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import FROZEN, module_cmd, pid_alive, venv_python  # noqa: E402,F401 — runner·pipeline 이 쓴다
+from osenv import FROZEN, module_cmd, pid_alive, task_command  # noqa: E402,F401 — runner·pipeline 이 쓴다
 
 
 def _load_env(path: Path) -> None:
@@ -44,11 +44,10 @@ DB_PATH = DATA_DIR / "academic.db"
 LOCK_FILE = STATE_DIR / "sync.lock"              # 수집이 도는 동안 {pid, started_at}
 LAST_RUN_FILE = STATE_DIR / "sync.last.json"     # 마지막 수집 결과 {…, finished_at, exit_code, sources}
 LOG_FILE = STATE_DIR / "sync.log"
-RUN_SYNC_CMD = ROOT / "run-sync.cmd"             # 대시보드 버튼이 부르는 런처
 RETRY_FILE = STATE_DIR / "retry.json"            # 예약 수집이 네트워크 오류로 재시도를 기다리는 중 {pid, attempt, next_at, slot}
 
 # ── 예약 수집 (e클래스 F6 와 같은 규칙) ─────────────────────────
-# 작업 스케줄러가 매일 SCHEDULE_AT + 로그인할 때 + 놓쳤으면 켜지는 대로 `python -m bachelor tick`(run-scheduled.cmd)을 부른다.
+# 작업 스케줄러가 매일 SCHEDULE_AT + 로그인할 때 + 놓쳤으면 켜지는 대로 `bachelor tick`(앱 실행 파일 --run-module)을 부른다.
 # tick 은 가장 최근 SCHEDULE_AT 이후 성공한 수집이 있으면 건너뛴다 → 하루 한 번. 전부 실패(코드 4, 대개 네트워크)면
 # 5 → 15 → 45분 뒤 다시(최대 3회). 그 사이 누가 '지금 수집'으로 성공하면 남은 재시도는 그만둔다.
 SCHEDULE_AT = os.environ.get("F1_SCHEDULE_AT", "08:00")
@@ -56,7 +55,6 @@ RETRY_WAITS_MIN = (5, 15, 45)
 CATCHUP_AFTER_MIN = 10           # 예약 시각에서 이만큼 넘게 지나 돌면 '놓친 수집 따라잡기'(catchup)로 기록
 TASK_NAME = "UnivUs-F1-Academic-Sync"              # Windows 작업 스케줄러 (register-task.ps1)
 LAUNCHD_LABEL = "kr.univus.f1-academic-sync"       # 맥 launchd 사용자 에이전트 (~/Library/LaunchAgents/<이름>.plist)
-RUN_SCHEDULED_CMD = ROOT / "run-scheduled.cmd"
 
 
 def tasks_enabled() -> bool:

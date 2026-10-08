@@ -1,16 +1,15 @@
 ﻿<#
   Windows 작업 스케줄러에 e클래스 자동 수집(F6)을 등록/해제한다.
-  정각 기준 N시간마다(기본 4시간: 00·04·08·12·16·20시) + 로그인할 때 run-scheduled.cmd 를 부른다 (F6-R10).
+  정각 기준 N시간마다(기본 4시간: 00·04·08·12·16·20시) + 로그인할 때 앱 실행 파일(--run-module eclass tick)을 부른다 (F6-R10).
   - 그 시각에 PC 가 꺼져 있었거나 절전이었으면 켜지는 대로 한 번 실행한다(StartWhenAvailable, F6-R11).
     밀린 여러 주기를 몰아서 돌리지 않는다 — tick 이 '가장 최근 정각 이후 실행이 있으면 건너뜀'으로 막는다.
   - 네트워크 오류 재시도(5·15·45분)는 tick 이 직접 한다 → 작업 스케줄러의 재시작 옵션은 쓰지 않는다 (F6-R12).
   "사용자가 로그인되어 있을 때만" 실행 → Windows 비밀번호를 저장할 필요가 없다. 창은 숨김, 출력은 state\sync.log.
   예전 eclass_agent 가 등록한 작업(eClass-Agent-Sync)이 있으면 지운다.
 
-  등록 (주기는 state\settings.json → 없으면 4시간):
-      powershell -ExecutionPolicy Bypass -File .\register-task.ps1
-  주기 지정 (2·4·6·12 — 대시보드 '수집 원천'에서 바꾸면 이것을 부른다):
-      powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -IntervalHours 6
+  앱의 '수집 원천' 화면(예약 실행 켜기·주기 바꾸기)이 앱 번들 안의 이 파일을 부른다 (eclass/jobs.py register_task):
+      powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -IntervalHours 6 -Command "& '<앱 실행 파일>' --run-module eclass tick --log '…'"
+  (주기를 빼면 state\settings.json → 없으면 4시간)
   해제:
       powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove
 #>
@@ -59,13 +58,9 @@ if (Test-Path $settingsFile) {
 $cur["intervalHours"] = $IntervalHours
 [IO.File]::WriteAllText($settingsFile, ($cur | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
 
-# 부를 명령 — 기본은 run-scheduled.cmd. 묶인 데스크톱 앱은 -Command 로 앱 실행 파일을 준다
+# 부를 명령 — 앱이 -Command 로 앱 실행 파일을 준다 (C0 osenv.task_command)
 #   (예: & '<앱 실행 파일>' --run-module eclass tick --log '<앱 데이터 폴더>\F6_Eclass_agent\state\sync.log')
-if (-not $Command) {
-  $runner = Join-Path $dir "run-scheduled.cmd"
-  if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
-  $Command = "& '$runner'"
-}
+if (-not $Command) { throw "-Command 가 필요합니다 — 앱의 수집 원천 화면에서 예약 실행을 켜세요" }
 
 # 창을 띄우지 않도록 숨긴 powershell 로 호출
 $psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$Command`""

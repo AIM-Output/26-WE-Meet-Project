@@ -6,7 +6,7 @@
     F6 e클래스 수집 · C2 프로필 가져오기 · F2 기이수성적 · F11 장학 카탈로그(notice_agent) …
 
 이 폴더가 가진 것 (다른 기능은 **빌려 쓰기만** 한다)
-  - .venv                  playwright · beautifulsoup4 + Chromium(.venv/pw-browsers). 브라우저가 필요한 기능은 이 python 으로 돈다
+  - Chromium               앱 데이터 폴더/pw-browsers (개발 모드는 desktop/sidecar/.venv/pw-browsers) — desktop.py 가 처음 실행 때 받는다
   - state/storage_state.json  SSO 쿠키 + 신뢰 기기 쿠키(RathonSSO_TrustDevice_*, 약 1년 → 2차 인증 면제)
   - state/cred.bin         DPAPI(이 Windows 계정 전용)로 암호화한 아이디·비밀번호 — 완전 무인 재로그인용(선택)
                            맥은 비밀을 로그인 키체인에 두고 state/cred.keychain.json(항목 이름만)을 표시로 남긴다 (auth.py)
@@ -25,11 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent            # C3_Login_agent/
 PROJECT_ROOT = ROOT.parent
 
-# C0 OS 공통 계층 (osenv) — venv python 자리·프로세스 확인이 OS 마다 다르다
+# C0 OS 공통 계층 (osenv) — Chromium 자리·프로세스 확인이 OS 마다 다르다
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import FROZEN, IS_WINDOWS, browsers_dir, chromium_state, script, venv_python  # noqa: E402,F401
+from osenv import FROZEN, IS_WINDOWS, browsers_dir, chromium_state, module_cmd  # noqa: E402,F401
 
 STATE_DIR = Path(os.environ.get("C3_STATE_DIR") or ROOT / "state")
 STATE_FILE = STATE_DIR / "storage_state.json"   # 세션 (쿠키 전부 — 신뢰 기기 쿠키를 골라내면 신뢰 인식이 깨진다)
@@ -37,11 +37,9 @@ STATE_FILE = STATE_DIR / "storage_state.json"   # 세션 (쿠키 전부 — 신�
 CRED_FILE = STATE_DIR / ("cred.bin" if IS_WINDOWS else "cred.keychain.json")
 DEBUG_SHOT = STATE_DIR / "login_debug.png"      # 무인 로그인이 실패했을 때의 화면
 
-# 브라우저가 필요한 기능이 쓰는 python 과 Chromium (setup.cmd 가 만든다)
-VENV_DIR = ROOT / ".venv"
-# 묶인 데스크톱 앱이면 venv 가 없다 — 같은 실행 파일이 --run-module 로 대신한다 (osenv.module_cmd)
-PYTHON = Path(sys.executable) if FROZEN else venv_python(VENV_DIR)
-BROWSERS = browsers_dir(VENV_DIR)                # 앱 데이터 폴더를 쓰면 PLAYWRIGHT_BROWSERS_PATH 쪽
+# 브라우저가 필요한 기능이 쓰는 Chromium — 기능별 venv 는 없다. 로그인 창·수집기는 지금 도는 python(묶인 앱이면 같은
+# 실행 파일)을 osenv.module_cmd 로 다시 띄운다
+BROWSERS = browsers_dir()                        # 앱 데이터 폴더를 쓰면 PLAYWRIGHT_BROWSERS_PATH 쪽
 
 # ── 전남대 SSO ──
 ECLASS_BASE = "https://sel.jnu.ac.kr"

@@ -1,7 +1,7 @@
 """예약 수집 — 하루 한 번(SCHEDULE_AT, 기본 08:00) + 놓치면 켜지는 대로 + 네트워크 오류면 5·15·45분 뒤 재시도.
 e클래스(F6_Eclass_agent/eclass/runner.py tick)와 같은 규칙이다.
 
-    python -m bachelor tick [--force] [--log FILE]      작업 스케줄러가 부른다(run-scheduled.cmd)
+    python -m bachelor tick [--force] [--log FILE]      작업 스케줄러가 부른다(앱 실행 파일 --run-module bachelor tick)
 
 작업 스케줄러는 매일 08:00 + 로그인할 때(2분 지연) + 놓친 시각은 켜지는 대로(StartWhenAvailable) tick 을 부른다.
 tick 은 '가장 최근 08:00 이후 성공한 수집'(대시보드 버튼 포함)이 있으면 아무것도 하지 않는다 → 하루 한 번만 돈다.

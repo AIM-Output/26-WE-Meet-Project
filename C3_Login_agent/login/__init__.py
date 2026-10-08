@@ -1,6 +1,6 @@
 """C3 포털 자동 로그인 — 전남대 SSO 세션을 여러 기능이 같이 쓴다.
 
-빌려 쓰는 법 (C3_Login_agent/.venv 의 python 으로 도는 코드에서):
+빌려 쓰는 법 (playwright 가 있는 python — 앱 실행 파일 / 개발 venv — 으로 도는 코드에서):
 
     sys.path.insert(0, r"...\\C3_Login_agent")
     import login
@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import config
-from .config import BROWSERS, CRED_FILE, PYTHON, ROOT, STATE_DIR, STATE_FILE, USER_AGENT, browser_env
+from .config import BROWSERS, CRED_FILE, ROOT, STATE_DIR, STATE_FILE, USER_AGENT, browser_env
 
 _LAZY = {"session_ok", "refresh_via_sso", "auto_login", "reauthenticate", "interactive_login"}
 
@@ -38,7 +38,7 @@ def status() -> dict:
             return None
 
     return {
-        "installed": PYTHON.exists(),
+        "installed": True,                       # 기능별 venv 가 없어진 뒤로 늘 참 (화면 타입 호환)
         "browsers": config.chromium_state(BROWSERS) == "ready",
         "hasSession": STATE_FILE.exists(),
         "sessionSavedAt": mtime(STATE_FILE),
@@ -49,16 +49,14 @@ def status() -> dict:
 
 def problem(need_login_record: bool = True) -> str | None:
     """브라우저가 필요한 기능을 시작할 수 없는 이유 (없으면 None). C2·F2·F6 가 같은 문구를 쓴다."""
-    if not PYTHON.exists():
-        return f"C3_Login_agent 가 설치되어 있지 않습니다 — C3_Login_agent 의 {config.script('setup')} 를 먼저 실행하세요"
     if config.chromium_state(BROWSERS) == "installing":
         return "브라우저 엔진을 내려받는 중입니다 — 몇 분 뒤 다시 시도하세요"
     if not BROWSERS.exists():
-        return f"브라우저 엔진이 없습니다 — C3_Login_agent 의 {config.script('setup')} 를 다시 실행하세요"
+        return "브라우저 엔진이 없습니다 — 앱을 다시 실행하면 내려받습니다"
     if need_login_record and not (STATE_FILE.exists() or CRED_FILE.exists()):
-        return f"학교 로그인 기록이 없습니다 — '로그인 창 열기'로 한 번 로그인하세요 (C3_Login_agent 의 {config.script('login')})"
+        return "학교 로그인 기록이 없습니다 — '로그인 창 열기'로 한 번 로그인하세요"
     return None
 
 
-__all__ = ["config", "BROWSERS", "CRED_FILE", "PYTHON", "ROOT", "STATE_DIR", "STATE_FILE", "USER_AGENT",
+__all__ = ["config", "BROWSERS", "CRED_FILE", "ROOT", "STATE_DIR", "STATE_FILE", "USER_AGENT",
            "browser_env", "status", "problem", *sorted(_LAZY)]

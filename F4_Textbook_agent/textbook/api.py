@@ -8,7 +8,7 @@
     DELETE /api/materials/{id}                  직접 추가한 파일만 삭제 (F4-R08)
     GET    /api/materials/{id}/file?download=1  원문 열기 / 내려받기 (F4-S05)
 
-업로드가 multipart 가 아닌 이유: 백엔드 .venv 에 python-multipart 를 더 깔지 않으려고 **본문에 파일을 그대로**
+업로드가 multipart 가 아닌 이유: 사이드카에 python-multipart 를 더 묶지 않으려고 **본문에 파일을 그대로**
 받는다(`fetch(url, {method:'POST', body: file})`). 파일 이름·과목은 쿼리로 온다. 설치할 것이 없다는 규칙이 먼저다.
 
 요약·예상 문제·질문(F4-R10~R34)은 아직 없다. 자리를 비워 두었을 뿐이므로 `analysis.available = false` 로 알린다.

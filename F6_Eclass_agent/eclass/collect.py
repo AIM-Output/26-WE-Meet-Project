@@ -1,6 +1,6 @@
 """e클래스 수집기 — 저장된 SSO 세션으로 본인 수강 과목의 자료·공지·과제·마감 일정을 모은다. (F6-R01~R07)
 
-**C3_Login_agent/.venv 의 python 으로 돈다** (playwright · bs4). 직접 부르지 말고 runner(`python -m eclass sync`)를 거친다
+**playwright · bs4 가 있는 python 으로 돈다** (앱 실행 파일 / 개발 venv). 직접 부르지 말고 runner(`python -m eclass sync`)를 거친다
 — 잠금·실행 이력·재시도·원장 반영(reconcile)이 거기 있다.
 
 - 브라우저를 띄우지 않고 HTTP 요청만 사용 (서버 부하 최소화)
@@ -751,7 +751,7 @@ def run(dry_run: bool = False, courses_only: list[str] | None = None, only: set[
     from playwright.sync_api import sync_playwright
 
     if not login.STATE_FILE.exists() and not login.CRED_FILE.exists():
-        print(f"학교 로그인 기록이 없습니다. C3_Login_agent 의 {C.script('login')}(또는 화면의 '로그인 창 열기')를 먼저 실행하세요.")
+        print("학교 로그인 기록이 없습니다. 화면의 '로그인 창 열기'로 먼저 로그인하세요.")
         return Result(C.EXIT_LOGIN, error="로그인 기록 없음")
     C.ensure_dirs()
     s = None
@@ -772,7 +772,7 @@ def run(dry_run: bool = False, courses_only: list[str] | None = None, only: set[
                 print("e클래스 세션 만료 → 재인증 시도 (C3_Login_agent)...")
                 if not login.reauthenticate(p):
                     _probe(p)        # 재인증 도중 네트워크가 끊긴 것이면 로그인 문제로 알리지 않는다
-                    print(f"자동 재인증 실패. '로그인 창 열기'(C3_Login_agent 의 {C.script('login')})로 한 번 로그인하세요.")
+                    print("자동 재인증 실패. '로그인 창 열기'로 한 번 로그인하세요.")
                     return Result(C.EXIT_LOGIN, error="세션 만료 — 자동 재인증 실패 (로그인 필요)")
                 req = new_req()
             c = Client(req)

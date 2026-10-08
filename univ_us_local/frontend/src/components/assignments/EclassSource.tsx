@@ -8,6 +8,7 @@ import { Banner } from "@/components/ui/Feedback";
 import { useToast } from "@/components/ui/Toast";
 import { useAppData } from "@/components/app/AppData";
 import { EclassSyncBanner, LoginButton } from "./EclassSyncBanner";
+import { LoginCredsButton } from "./LoginCreds";
 import { api } from "@/lib/api";
 import { RUN_SOURCE_LABEL, fmtDuration, runResult, type EclassSource, type RunRecord } from "@/lib/assignments";
 import { fmtRelative, fmtShortStamp, fmtTime, parseLocal } from "@/lib/dates";
@@ -186,12 +187,13 @@ export function EclassSourceSection() {
         hint={
           login
             ? `${login.hasSession ? `세션 저장 ${login.sessionSavedAt ? fmtRelative(login.sessionSavedAt) : ""}` : "세션 없음"} · ${
-                login.hasCreds ? "자격증명 저장됨 — 세션이 만료돼도 창 없이 다시 로그인합니다" : "자격증명 없음 — 세션이 만료되면 로그인 창이 필요합니다 (C3_Login_agent\\setup-creds.cmd)"
+                login.hasCreds ? "자동 로그인 정보 저장됨 — 세션이 만료돼도 창 없이 다시 로그인합니다" : "자동 로그인 정보 없음 — 세션이 만료되면 로그인 창이 필요합니다"
               }`
             : "확인 중"
         }
       >
         {login && <Chip square>{login.hasCreds ? "완전 무인" : "반자동"}</Chip>}
+        {login && <LoginCredsButton saved={login.hasCreds} onChanged={() => void load()} />}
         <LoginButton />
       </Row>
 

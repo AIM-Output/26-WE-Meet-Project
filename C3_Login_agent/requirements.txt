@@ -1,6 +1,6 @@
 # C3_Login_agent — 전남대 SSO 로그인 + 브라우저가 필요한 기능이 같이 쓰는 .venv
 #
-#   .\setup.cmd   (venv + 아래 패키지 + Chromium 을 .venv\pw-browsers 에)
+#   참고용 — 실제로 설치하는 목록은 desktop/sidecar/requirements.txt (저장소의 유일한 venv)
 #
 # 이 .venv 를 빌려 쓰는 곳: F6 e클래스 수집(playwright·bs4) · C2 프로필 가져오기 · F2 기이수성적 (학사정보시스템)
 playwright>=1.45

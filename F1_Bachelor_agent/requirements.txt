@@ -1,6 +1,6 @@
 # F1_Bachelor_agent — 학사 일정 자동 등록·알림 (수집기 전용 .venv)
 #
-#   .\setup.cmd        (또는 python -m venv .venv && .venv\Scripts\python -m pip install -r requirements.txt)
+#   참고용 — 실제로 설치하는 목록은 desktop/sidecar/requirements.txt (저장소의 유일한 venv)
 #
 # 버전 표기는 notice_agent/requirements.txt 와 같은 세대로 맞춘다.
 # 대시보드 백엔드(univ_us_local)는 이 목록이 필요 없다 — store·service·api 는 표준 라이브러리 + fastapi 만 쓴다.

@@ -1,5 +1,5 @@
 import type { AcademicEvent, AcademicOverview, AcademicPatch } from "./academic";
-import type { AssignmentList, AssignmentView, EclassSource, FeedItem, FeedList, FeedSettings, FeedSummary, LoginJob, ReminderSettings } from "./assignments";
+import type { AssignmentList, AssignmentView, EclassSource, FeedItem, FeedList, FeedSettings, FeedSummary, LoginCreds, LoginJob, ReminderSettings } from "./assignments";
 import type {
   AttAlert,
   AttCourse,
@@ -54,8 +54,8 @@ import type { MaterialDetail, MaterialItem, MaterialKind, MaterialsOverview, Mat
 import type { DeptEntry, ImportState, JobState, MasterSummary, ProfileDoc, ProfilePatch } from "./profile";
 import type { AcademicSchedule, AcademicSync, CalEvent, Course, NotificationList, SourceRowApi, SourcesResponse, Status, SyncState, UserEventInput } from "./types";
 
-// 개발 중에는 next.config.ts 의 rewrites 가 /api → 127.0.0.1:8000 으로 넘기고,
-// 정적 export 를 FastAPI 가 서빙할 때는 같은 origin 이라 그대로 /api 가 통한다.
+// 개발 모드(npm run dev)에서는 next.config.ts 의 rewrites 가 /api → 127.0.0.1:8020 으로 넘기고,
+// 설치본은 정적 export 를 사이드카(FastAPI)가 서빙해 같은 origin 이라 그대로 /api 가 통한다.
 const BASE = "/api";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -105,6 +105,10 @@ export const api = {
   patchEclassSource: (body: { intervalHours?: number; scheduled?: boolean }) => req<EclassSource>("/sources/eclass", json("PATCH", body)),
   /** 로그인 창(C3) — 이 PC 화면에 브라우저 창이 뜬다. 로그인되면 바로 수집한다. */
   startLogin: () => req<LoginJob>("/sync/login", json("POST", { thenSync: true })),
+  // C3 자동 로그인 정보 — 세션이 만료되면 창 없이 다시 로그인하는 데 쓴다 (비밀번호는 이 PC 의 암호화 저장소에만)
+  loginCreds: () => req<LoginCreds>("/login/creds"),
+  saveLoginCreds: (body: { username: string; password: string }) => req<LoginCreds>("/login/creds", json("PUT", body)),
+  clearLoginCreds: () => req<LoginCreds>("/login/creds", { method: "DELETE" }),
   // E클래스 새 글·자료 (공지 · 자료실 글 · 강의자료) — 수집기가 받아 둔 것에서 만든다
   eclassFeed: () => req<FeedList>("/eclass/feed"),
   eclassFeedItem: (id: string) => req<FeedItem>(`/eclass/feed/${enc(id)}`),

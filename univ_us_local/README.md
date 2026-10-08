@@ -1,13 +1,17 @@
-# univ_us_local — 유니버스(Univ-Us) 개인 로컬 서버 웹
+# univ_us_local — 유니버스(Univ-Us) 데스크톱 앱의 백엔드·화면
 
-내 PC에서 도는 대시보드. e클래스 과제·마감(F6)·학사 일정(F1)·수업(F3)을 캘린더(C1)에 띄우고, 내 일정을 등록·수정한다.
+데스크톱 앱(`../desktop/`) 안에서 도는 대시보드. 브라우저로 여는 웹 실행 방식은 없앴다(2026-10-08) — 앱 창으로만 연다.
+ e클래스 과제·마감(F6)·학사 일정(F1)·수업(F3)을 캘린더(C1)에 띄우고, 내 일정을 등록·수정한다.
 자격증명·강의자료·세션은 전부 PC 안에 남는다 (설계 배경: `../WE-Meet_서버_플랫폼_검토.md` 8·10절 "안 B").
 **기능 코드는 전부 기능 폴더에 있고**(`../C1_Calendar_agent` · `../F6_Eclass_agent` · …) 이 서버는 그 API 를 붙이는 곳이다.
+이 백엔드는 PyInstaller 로 묶여 앱의 사이드카(`univus-backend`)가 되고, `frontend/out`(정적 export)을 같은 origin 에서 서빙한다.
 
 ```
 univ_us_local/
-├── backend/            FastAPI (127.0.0.1:8000) — /api + 프론트 정적 서빙
-│   ├── app/main.py     라우트 (courses / status / sync) + C1·F6·C2·F1·F2·F3·F4·F5 라우터 include + 캘린더 소스 배선
+├── backend/            FastAPI (127.0.0.1:<빈 포트>, 개발 모드 8020) — /api + 프론트 정적 서빙
+│   ├── desktop.py      사이드카 진입점 — 앱 데이터 폴더·빈 포트·세션 쿠키·Chromium 첫 실행 내려받기 · --run-module
+│   ├── app/main.py     라우트 (courses / status / sync) + C1·F6·C3·C2·F1·F2·F3·F4·F5 라우터 include + 캘린더 소스 배선 · 앱 세션 확인
+│   ├── app/login_creds.py ../C3_Login_agent 의 API(login.api)를 붙인다 — 자동 로그인 정보 저장·지우기 (C3)
 │   ├── app/calendar_events.py ../C1_Calendar_agent 의 API(calendar_core.api)를 붙인다 — /api/events · 내 일정·할 일 (C1)
 │   ├── app/eclass_data.py ../F6_Eclass_agent 의 API(eclass.api)를 붙인다 — 과제 마감·수집 실행·로그인 창·마감 알림 (F6)
 │   ├── app/academic.py ../F1_Bachelor_agent 의 API(bachelor.api)를 붙인다 — 학사 일정·수집 원천·알림 (F1)
@@ -18,11 +22,10 @@ univ_us_local/
 │   ├── app/exams.py    ../F5_Test_agent 의 API(exams.api)를 붙인다 — 시험·학습 계획·학습 블록 (F5)
 │   ├── app/priority.py ../F7_Task_agent 의 API(tasks.api)를 붙인다 — 과제 우선순위·오늘 남은 시간 (F7)
 │   ├── app/placement.py ../F8_Plan_agent 의 API(placement.api)를 붙인다 — 낮 공강 배치·학습 블록(kind=study)·공부 캘린더의 공강 공부 (F8)
-│   ├── app/config.py   기능 폴더 경로·포트·허용 Origin·과목 색
-│   ├── requirements.txt · run.cmd
-│   └── .venv/          (run.cmd 가 처음 실행 때 만든다)
+│   ├── app/config.py   기능 폴더 경로·포트·허용 Origin·과목 색·세션 쿠키
+│   └── tests/          사이드카 세션(실행 코드·쿠키·앱 데이터 폴더) — 개발 venv 로 pytest
 ├── frontend/           Next.js 16 + Tailwind 4 + FullCalendar 7 + motion + lucide-react
-│   ├── DESIGN.md       디자인 시스템 v2 (토큰·글자·치수·공용 부품)
+│   ├── DESIGN.md       디자인 시스템 v3 Paper & Pine (토큰·글자·치수·공용 부품 — 라이트만)
 │   ├── src/app/        라우트 17개 (Frontend-Route 2-1) — 각 page.tsx 는 Suspense 로 감싼 클라이언트 화면
 │   ├── src/components/ app(헤더·공용 데이터) · ui(공용 부품) · dashboard · events(상세·새 일정 모달) · pages(기능 화면)
 │   └── src/lib/        api · useQueryState(모달=push/탭=replace) · priority·usePriority(F7, 서버 순위를 여러 부품이 나눠 씀) · demo/(예시 데이터)
@@ -31,34 +34,17 @@ univ_us_local/
 
 ## 실행
 
-### 사용 (Node 불필요 — 백엔드 하나로 끝)
+이 폴더만 따로 띄우지 않는다 — 앱으로 연다. 자세히는 [desktop/README.md](../desktop/README.md).
 
-```powershell
-cd univ_us_local\backend
-.\run.cmd
-```
-
-→ http://localhost:8000 . `frontend/out`(빌드된 정적 프론트)이 있으면 그대로 서빙한다.
-프론트를 고쳤으면 `frontend` 에서 `npm run build` 로 `out/` 을 다시 만든 뒤 백엔드를 재시작한다.
-
-### 개발 (핫리로드)
-
-```powershell
-# 터미널 1
-cd univ_us_local\backend
-.\run.cmd --reload
-
-# 터미널 2
-cd univ_us_local\frontend
-npm install      # 최초 1회
-npm run dev      # http://localhost:3000  (/api 는 next.config.ts rewrites 로 8000 에 전달)
-```
-
-Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-frontend` 로 같은 것을 띄운다.
+- **개발**: `desktop/` 에서 `npm run dev` — 앱 창이 `next dev`(127.0.0.1:3000, 화면 즉시 반영)를 열고, `/api`·`/desktop/launch` 는
+  `next.config.ts` rewrites 로 이 백엔드(127.0.0.1:8020, `desktop/sidecar/.venv` python 으로 `backend/desktop.py --dev`)에 간다. 데이터는 `desktop/.dev-data`.
+- **설치본**: `py -3.12 desktop/sidecar/build.py`(화면 `npm run build` → PyInstaller) → `desktop/` 에서 `npx tauri build`.
+- 앱 창 밖(브라우저·다른 프로그램)에서 부르면 모든 요청이 403 이다 — 세션 쿠키는 앱 창만 가진다.
+- 테스트: `backend` 에서 개발 venv 로 `python -m pytest tests -q`.
 
 ## 화면 (Frontend-Route · Frontend-Screens 기준, 2026-09-27 전면 재작성)
 
-디자인은 `frontend/DESIGN.md` (Flat Design + Micro-interactions, 주색 틸 · 할 일 주황, Pretendard). 상단 메뉴(GNB)는 없고 **대시보드가 허브**다.
+디자인은 `frontend/DESIGN.md` (v3 Paper & Pine — 베이지 · 다크그린, 라이트만, Pretendard). 상단 메뉴(GNB)는 없고 **대시보드가 허브**다.
 
 | 라우트 | 화면 | 데이터 |
 |---|---|---|
@@ -91,6 +77,7 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 | GET / PATCH | `/api/assignments/{id}` | F6 과제 상세(변경 이력) · `{userDone}` 내가 체크함 · `{estimatedHours}` 소요시간. 목록 `GET /api/assignments?tab=`, 알림 시점 `GET/PUT /api/assignments/settings` — 나머지는 [F6_Eclass_agent/README.md](../F6_Eclass_agent/README.md) |
 | GET / PATCH | `/api/sources/eclass` | e클래스 수집 원천 — 주기·예약 작업·최근 실행·연속 실패·로그인 상태 · `{intervalHours}` 주기 변경(작업 스케줄러 재등록) · `{scheduled}` 예약 켜기/끄기 |
 | POST / GET | `/api/sync/login` | 로그인 창 열기 (C3 — 이 PC 화면에 브라우저 창) → 로그인되면 바로 수집 |
+| GET / PUT / DELETE | `/api/login/creds` | 자동 로그인 정보 (C3) — `{saved, username, store}`. PUT `{username, password}` 저장(Windows DPAPI · 맥 키체인), 비밀번호는 돌려주지 않는다 |
 | GET / POST | `/api/eclass/feed` · `/api/eclass/feed/{id}` · `/api/eclass/feed/read` · `/api/eclass/feed/settings` | E클래스 새 글·자료 (공지·자료실 글·강의자료) · 본문 · 읽음 · 알림 켜고 끄기 — `status.eclass.feed` 에 안 읽은 수 |
 | GET / PATCH / DELETE | `/api/profile` | C2 프로필 (C2_Profile_agent/data/profile.db). 항목별 자동/입력 출처, 필수 채움 여부. 이름·학번은 받지 않는다 — 나머지는 [C2_Profile_agent/README.md](../C2_Profile_agent/README.md) |
 | GET / POST | `/api/master/departments` · `/api/master/departments/sync` | 학과 선택기 목록 · 교육과정검색 재수집 |
@@ -100,7 +87,7 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 | GET | `/api/academic/upcoming?days=3` · `/api/academic/status` · `/api/academic/settings`(PUT) | 브리핑용 · 원천 상태 · 알림 기준 시각 |
 | GET | `/api/sources` | 학사 수집 원천 4곳 (`jnu_calendar` 학사일정 표 · `jnu_notice` 학사안내 · `my_dept` 내 학부 · `my_college` 내 단과대학) — ③·④ 는 프로필 소속으로 찾은 홈페이지·게시판과 상태(`resolve`·`stale`)를 같이 준다 |
 | PATCH | `/api/sources/{key}` | `{enabled}` 켜고 끄기 (끄면 그 원천에서만 온 일정이 목록·캘린더에서 빠지고, 다시 켜면 돌아온다) · `{overrideUrl}` ③·④ 게시판 직접 지정 (`null` = 자동으로) |
-| POST | `/api/sources/{key}/sync` | 지금 수집 (`academic` 이면 켜진 학사 원천 전부) — `F1_Bachelor_agent/run-sync.cmd` 를 백그라운드로 |
+| POST | `/api/sources/{key}/sync` | 지금 수집 (`academic` 이면 켜진 학사 원천 전부) — `-m bachelor sync` 를 백그라운드로 (앱 실행 파일 / 개발 venv python) |
 | GET | `/api/notifications` | 알림 (때가 된 것을 먼저 배달, 놓친 알림 표시) · `POST /{id}/read` · `POST /read-all` |
 | GET | `/api/graduation/status?track=` | F2 졸업요건 — 판정·영역별·인증·이수 과목·기준. 과목 추가·구분 지정·가정 계산·룰셋 수정 등 나머지는 [F2_Graduation_agent/README.md](../F2_Graduation_agent/README.md) |
 | POST / GET | `/api/graduation/sync` | 학사정보시스템 기이수성적 가져오기 (C3_Login_agent 세션) · 진행 상태, 로그인 기록 없으면 409 |
@@ -132,9 +119,9 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 
 ## 지키는 선
 
-- `127.0.0.1` 에만 바인딩. Host 가 localhost/127.0.0.1 이 아니면 400, 변경 요청의 Origin 이 허용 목록 밖이면 403 (DNS 리바인딩·CSRF 대비). LAN 에 열려면 인증·HTTPS 를 먼저.
+- `127.0.0.1` 에만 바인딩. 앱 창의 세션 쿠키(`/desktop/launch` 의 한 번 쓰는 코드로만 받는다)가 없으면 403, Host 가 localhost/127.0.0.1 이 아니면 400, 변경 요청의 Origin 이 허용 목록 밖이면 403 (DNS 리바인딩·CSRF 대비). LAN 에 열려면 인증·HTTPS 를 먼저.
 - 캘린더(C1)는 `C1_Calendar_agent` 의 코드·DB(`data/univus.db`). `/api/events` 라우터가 거기 있고, 이 서버는 다른 기능의 일정(F6 마감·F1 학사·F3 수업)을 소스로 넘겨주기만 한다. 그 폴더가 없으면 `/api/events` 가 붙지 않고 `/api/status` 의 `calendar.available=false`.
-- e클래스 과제·마감(F6)은 `F6_Eclass_agent` 의 코드·원장(`data/eclass.db`). 수집(playwright)은 이 서버가 아니라 `C3_Login_agent/.venv` 의 python 으로 따로 돈다. 학교 로그인·자격증명은 `C3_Login_agent` 몫이다. F6 폴더가 없으면 과제가 빠진 채 나머지는 동작한다(`/api/status` 의 `eclass.available=false`).
+- e클래스 과제·마감(F6)은 `F6_Eclass_agent` 의 코드·원장(`data/eclass.db`). 수집(playwright)은 이 서버가 아니라 자식 프로세스(앱 실행 파일 `--run-module eclass` / 개발 venv python)로 따로 돈다. 학교 로그인·자격증명은 `C3_Login_agent` 몫이다. F6 폴더가 없으면 과제가 빠진 채 나머지는 동작한다(`/api/status` 의 `eclass.available=false`).
 - 학사 일정(F1)은 `F1_Bachelor_agent` 의 코드·DB(`data/academic.db`)를 그대로 쓴다. 그 폴더가 없거나 못 불러와도 나머지 화면은 동작한다(`/api/status` 의 `academic.available=false`).
 - 프로필(C2)은 `C2_Profile_agent` 의 코드·DB(`data/profile.db`). F1·F2 는 여기서 프로필을 읽는다. 그 폴더가 없으면 '프로필 없음'으로 동작한다.
 - 졸업요건(F2)은 `F2_Graduation_agent` 의 코드·DB(`data/graduation.db`). 계산은 그쪽 규칙 코드 한 곳에서만 하고 화면은 결과만 그린다. 그 폴더가 없으면 `/api/status` 의 `graduation.available=false`.
@@ -143,7 +130,7 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 - 시험·학습 계획(F5)은 `F5_Test_agent` 의 코드·DB(`data/exams.db`). 시험은 e클래스 공지(F6 가 모아 둔 글)에서 찾고 분량은 F4 의 쪽수를 읽는다 — 둘 다 읽기만 한다. 계산은 규칙 기반이고 LLM 호출이 없다. 그 폴더가 없으면 `/api/status` 의 `exams.available=false`.
 - 과제 우선순위(F7)는 `F7_Task_agent` 의 코드 + 설정(`data/settings.json`)뿐. 과제는 F6 원장을 읽고, 오늘 남은 시간에는 C1 내 일정·F3 수업·F5 시험·학습 분량을 백엔드가 넘겨준다. 순위는 저장하지 않는다. 그 폴더가 없으면 `/api/status` 의 `priority.available=false` 이고 과제 화면은 마감 순으로 보인다.
 - 공강 학습 플랜(F8)은 `F8_Plan_agent` 의 코드·DB(`data/placement.db` — 등록된 블록) + 설정(`data/settings.json`). 수업(F3)·내 일정·할 일(C1)·학사(F1)·시험·공부 진도율(F5 `study_targets`)·과제 순위(F7)는 백엔드가 넘겨준다(읽기만). 과제·할 일 블록은 `/api/events` 에 `kind=study` 로 섞이고, **공부 블록은 전체 캘린더에 넣지 않고 F5 공부 캘린더에만** 섞인다(`exams.router(extra_blocks=placement.study_source(_busy_events))`). 저녁(19~24시)은 F5 시험 공부 계획 전용이다. 그 폴더가 없으면 `/api/status` 의 `placement.available=false`.
-- `data/`·`.venv/`·`node_modules/` 는 커밋하지 않는다. `frontend/out/`(빌드 결과)은 **커밋한다** — 팀원이 Node 없이 실행하기 위해. 프론트를 고쳤으면 `npm run build` 후 `out/` 도 함께 커밋.
+- `data/`·`.venv/`·`node_modules/`·`frontend/out/`(빌드 결과 — 사이드카 빌드가 매번 만든다)은 커밋하지 않는다. 데이터는 앱 데이터 폴더(`%LOCALAPPDATA%\kr.univus.desktop\data` / `~/Library/Application Support/kr.univus.desktop/data`)에 기능 폴더와 같은 모양으로 있다.
 
 ## 다음 단계 (아래 Features 칸 순서)
 
@@ -151,6 +138,6 @@ Claude Code 에서는 `.claude/launch.json` 의 `univus-backend` / `univus-front
 
 ## 알아둘 것
 
-- 백엔드는 HTML 에 `Cache-Control: no-cache`, `_next/static` 에 영구 캐시 헤더를 붙인다(빌드 뒤 옛 화면이 남지 않게). 이 헤더가 생기기 전에 열어 본 브라우저는 **한 번만 Ctrl+F5** 로 새로고침하면 된다.
+- 백엔드는 HTML 에 `Cache-Control: no-cache`, `_next/static` 에 영구 캐시 헤더를 붙인다(앱을 새로 설치한 뒤 옛 화면이 남지 않게).
 - FullCalendar 7 은 클래스명이 해시라 CSS 로 직접 스타일하지 않고, 테마 변수(`--fc-breezy-*`)와 `eventContent`/`className` 옵션으로 만진다.
 - 콘솔의 `inert` 경고는 FullCalendar 내부가 React 19 에 빈 문자열을 넘겨서 나는 것으로, 이 코드 문제는 아니다.

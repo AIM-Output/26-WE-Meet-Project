@@ -30,7 +30,7 @@ const HIDDEN_ARG: &str = "--hidden"; // 로그인할 때 자동 실행이면 창
 struct Sidecar(Mutex<Option<Child>>);
 
 /// 사이드카를 띄울 명령 — 설치본은 resources/sidecar/ 의 실행 파일.
-/// 디버그 빌드(`npm run dev` = tauri dev)는 저장소 소스를 univ_us_local/backend/.venv 의 python 으로 바로 띄운다 (개발 모드).
+/// 디버그 빌드(`npm run dev` = tauri dev)는 저장소 소스를 desktop/sidecar/.venv(사이드카 빌드와 같은 venv)의 python 으로 바로 띄운다.
 /// UNIVUS_SIDECAR=<실행 파일> 이면 그것을 쓴다 — 묶은 사이드카(desktop/sidecar/dist)를 dev 껍데기로 시험할 때.
 fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
     if let Ok(p) = std::env::var("UNIVUS_SIDECAR") {
@@ -63,7 +63,7 @@ fn dev_command() -> Result<Command, String> {
     let desktop = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().map(PathBuf::from).unwrap_or_default();
     let repo = desktop.parent().map(PathBuf::from).unwrap_or_default();
     let backend = repo.join("univ_us_local").join("backend");
-    let venv = backend.join(".venv");
+    let venv = desktop.join("sidecar").join(".venv");
     let py = if cfg!(windows) { venv.join("Scripts").join("python.exe") } else { venv.join("bin").join("python") };
     if !py.exists() {
         return Err(format!("개발 모드: {} 이(가) 없습니다 — desktop/README.md 의 개발 준비를 먼저 하세요", py.display()));

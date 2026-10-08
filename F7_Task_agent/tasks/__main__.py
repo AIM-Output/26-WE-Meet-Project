@@ -1,11 +1,11 @@
-"""F7 명령줄 — run.cmd 가 부른다 (표준 라이브러리만, fastapi 없이 돈다).
+"""F7 명령줄 — `desktop/cli.py tasks` 로 부른다 (개발 venv · 표준 라이브러리만, fastapi 없이 돈다).
 
-    run.cmd list [--course 운영체제] [--now 2026-10-06T14:00] [--all]   급한 순 목록 (그룹 · 이유 · 소요시간)
-    run.cmd top [-n 3]                                                  먼저 할 것 N건 + 총 소요시간 (브리핑에 실리는 것)
-    run.cmd today [--now …]                                             오늘 남은 시간 (취침 − 지금 − 수업·일정 − 학습 분량)
-    run.cmd settings                                                    설정 보기
-    run.cmd settings --safety 1.5 --hours quiz=0.5 project=6 --bed 01:00   설정 바꾸기 (--reset 으로 전부 기본값)
-    run.cmd json [--now …]                                              /api/priority 응답 그대로 (JSON)
+    cli.py tasks list [--course 운영체제] [--now 2026-10-06T14:00] [--all]   급한 순 목록 (그룹 · 이유 · 소요시간)
+    cli.py tasks top [-n 3]                                                  먼저 할 것 N건 + 총 소요시간 (브리핑에 실리는 것)
+    cli.py tasks today [--now …]                                             오늘 남은 시간 (취침 − 지금 − 수업·일정 − 학습 분량)
+    cli.py tasks settings                                                    설정 보기
+    cli.py tasks settings --safety 1.5 --hours quiz=0.5 project=6 --bed 01:00   설정 바꾸기 (--reset 으로 전부 기본값)
+    cli.py tasks json [--now …]                                              /api/priority 응답 그대로 (JSON)
 
 과제·내가 체크함·소요시간은 F6 원장(F6_Eclass_agent/data/eclass.db)을 읽기만 한다. 과제별 소요시간 수정은 화면이나
 F6 의 PATCH /api/assignments/{id} 로 한다 — F7 은 설정 파일(data/settings.json) 말고는 아무것도 쓰지 않는다.
@@ -136,7 +136,7 @@ def cmd_json(args) -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    ap = argparse.ArgumentParser(prog="run.cmd", description="F7 과제 우선순위 (급한 순 · 오늘 남은 시간 · 설정)")
+    ap = argparse.ArgumentParser(prog="cli.py tasks", description="F7 과제 우선순위 (급한 순 · 오늘 남은 시간 · 설정)")
     sub = ap.add_subparsers(dest="cmd")
 
     p = sub.add_parser("list", help="급한 순 목록")

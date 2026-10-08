@@ -1,10 +1,10 @@
 """F6 e클래스 명령줄.
 
-수집 (C3_Login_agent/.venv 의 python — sync.cmd · run-sync.cmd · run-scheduled.cmd 가 부른다)
+수집 (playwright 가 있는 python — 앱 실행 파일 --run-module eclass · 개발 venv `desktop/cli.py eclass`)
     python -m eclass sync [--dry-run] [--course ID ...] [--only files,boards,assign,deadlines] [--source manual|button] [--log FILE]
     python -m eclass tick [--force] [--log FILE]          작업 스케줄러용 — 이번 주기를 이미 돌았으면 건너뛰고, 네트워크 오류면 재시도
 
-보기 (아무 python 3.10+ — run.cmd)
+보기 (표준 라이브러리만 — `desktop/cli.py eclass`)
     python -m eclass list [--tab open|done|past]          과제 목록
     python -m eclass runs [-n 10]                         실행 이력
     python -m eclass status                               요약 · 연속 실패 · 다음 주기 · 앞으로 울릴 알림

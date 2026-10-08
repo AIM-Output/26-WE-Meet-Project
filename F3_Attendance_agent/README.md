@@ -25,33 +25,31 @@ F3_Attendance_agent/
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 74개 (파서 · 조회 응답 · 공지 휴강 · 회차 · 계산 규칙과 6절 예시 · 사용자 조작 · 경고 · 이전 · 가져오기 배관)
-├── run.cmd
 └── data/  state/            (gitignore) 내 출결 기록 · 시간표 가져오기 로그
 ```
 
 ## 쓰는 법
 
-대시보드(`유니버스 열기.cmd`) → 기능 타일 **출결** → `시간표 설정` 탭 → **`시간표 자동으로 가져오기`**.
+앱 대시보드 → 기능 타일 **출결** → `시간표 설정` 탭 → **`시간표 자동으로 가져오기`**.
 e클래스 과목 목록(`F6_Eclass_agent/data/courses.json`)을 먼저 받아 두어야 한다(대시보드의 e클래스 동기화). 학기 범위·휴업일은 F1 학사일정에서, 휴강 공지는 e클래스 동기화가 받은 게시판 글에서 읽는다.
 
 그다음은 `과목별 현황` 에서 과목을 펼쳐 회차마다 **출석 · 결석 · 지각 · 공결 · 휴강** 칩을 누르거나, `이번 주` 탭에서 몰아서 입력한다. 캘린더(주·목록 보기)의 수업을 눌러도 같은 기록이다.
 학사일정 휴업일과 e클래스 공지의 휴강은 **휴강 칩이 미리 켜져** 있다(근거 한 줄 + 공지 링크). 틀렸으면 칩을 다시 눌러 푼다.
 
-명령줄 (`run.cmd` = 백엔드 .venv 의 python 으로 `python -m attendance`):
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m attendance` 를 돌린다, `--app` 이면 앱 데이터):
 
-```powershell
-cd F3_Attendance_agent
-.\run.cmd status                         # 과목별 총 횟수 · 결석/허용 · 남은 여유 · 상태 · 근거 · 공지 확인 필요
-.\run.cmd import                         # 시간표 자동으로 가져오기 (공개 조회, 로그인 불필요)
-.\run.cmd notices                        # e클래스 공지에서 찾은 휴강
-.\run.cmd sessions 운영체제               # 회차 목록과 회차 id
-.\run.cmd mark "cl:74245:2026-09-07" absent     # present·absent·late·excused·none · canceled(휴강)·scheduled(휴강 풀기)
-.\run.cmd semester                       # 학기 범위 · 휴업일 · 학교 지정 보강일
-.\run.cmd parse 화5목5                    # 강의시간 해석 (시각)
-.\run.cmd clear                          # 출결 기록·시간표·설정 전부 지우기
+```bash
+python desktop/cli.py attendance status                         # 과목별 총 횟수 · 결석/허용 · 남은 여유 · 상태 · 근거 · 공지 확인 필요
+python desktop/cli.py attendance import                         # 시간표 자동으로 가져오기 (공개 조회, 로그인 불필요)
+python desktop/cli.py attendance notices                        # e클래스 공지에서 찾은 휴강
+python desktop/cli.py attendance sessions 운영체제               # 회차 목록과 회차 id
+python desktop/cli.py attendance mark "cl:74245:2026-09-07" absent     # present·absent·late·excused·none · canceled(휴강)·scheduled(휴강 풀기)
+python desktop/cli.py attendance semester                       # 학기 범위 · 휴업일 · 학교 지정 보강일
+python desktop/cli.py attendance parse 화5목5                    # 강의시간 해석 (시각)
+python desktop/cli.py attendance clear                          # 출결 기록·시간표·설정 전부 지우기
 ```
 
-테스트: `..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q` (pytest 가 있는 아무 파이썬. 임시 data · 가짜 학사일정 DB · 가짜 e클래스 게시판을 쓴다 — 내 기록·학교 사이트 무접촉)
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv `desktop/sidecar/.venv`. 임시 data · 가짜 학사일정 DB · 가짜 e클래스 게시판을 쓴다 — 내 기록·학교 사이트 무접촉)
 
 ## 원천 (2026-09-28 · 29 실측)
 

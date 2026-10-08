@@ -7,19 +7,18 @@
 - **이 폴더가 저장하는 것은 내 일정·할 일**(`kind: "user"`)뿐이다. 학사(F1)·과제 마감(F6)·수업 회차(F3)는
   각 기능 폴더가 갖고 있고, 백엔드가 소스 함수로 넘겨주면 `/api/events` 에서 **한 배열로 합쳐진다**(C1-R10).
   캘린더에 새로 쓰는 기능이 생기면 `univ_us_local/backend/app/main.py` 의 `CALENDAR_SOURCES` 에 한 줄 더한다.
-- **설치할 것이 없다** — 표준 라이브러리 + fastapi(라우터만). 백엔드 `.venv` 에 더 넣을 것이 없고, 명령줄은 아무 파이썬 3.10+ 로 돈다.
-- 내 일정·할 일은 `data/univus.db` 에만 있다. 밖으로 나가지 않는다.
+- **설치할 것이 없다** — 표준 라이브러리 + fastapi(라우터만). 개발 venv(`desktop/sidecar/.venv`)에 더 넣을 것이 없다.
+- 내 일정·할 일은 앱 데이터 폴더의 `C1_Calendar_agent/data/univus.db` 에만 있다. 밖으로 나가지 않는다.
 
 ```
 C1_Calendar_agent/
 ├── calendar_core/           파이썬 패키지
-│   ├── config.py            경로(data/univus.db) · 내 일정 분류 색 · 옛 DB 자리
-│   ├── store.py             SQLite — user_events(일정 + 할 일 한 표) · 옛 DB 옮기기 · kv(옛 프로필)
+│   ├── config.py            경로(data/univus.db) · 내 일정 분류 색
+│   ├── store.py             SQLite — user_events(일정 + 할 일 한 표) · kv(옛 프로필)
 │   ├── service.py           합치는 규칙 — 소스 모으기 · 기간 겹침 · 날짜 검사 (fastapi 를 부르지 않는다)
 │   ├── api.py               FastAPI 라우터 build_router(sources) — univ_us_local 이 include
 │   └── __main__.py          명령줄
-├── run.cmd
-└── data/                    (gitignore) univus.db — 내 일정·할 일
+└── data/                    (gitignore, 개발 모드 기본값이 아닐 때만) univus.db — 앱은 앱 데이터 폴더에 둔다
 ```
 
 > 패키지 이름이 `calendar` 가 아닌 이유: 백엔드가 이 폴더를 `sys.path` 에 넣기 때문에 `calendar/` 로 두면
@@ -27,20 +26,20 @@ C1_Calendar_agent/
 
 ## 쓰는 법
 
-대시보드(`유니버스 열기.cmd`) → 가운데 캘린더. 빈 칸을 클릭·드래그하면 새 일정, 내 일정은 드래그로 옮긴다(C1-R30·R31).
+앱 대시보드 → 가운데 캘린더. 빈 칸을 클릭·드래그하면 새 일정, 내 일정은 드래그로 옮긴다(C1-R30·R31).
 다른 소스에서 온 항목(마감·학사·수업)은 잠겨 있고, 끌면 제자리로 돌아온다.
 
-명령줄 (`run.cmd` = 백엔드 .venv 의 python 으로 `python -m calendar_core`):
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m calendar_core` 를 돌린다, `--app` 이면 앱 데이터):
 
 ```powershell
-.\run.cmd list                                   # 내 일정·할 일 (--todo · --from · --to)
-.\run.cmd add "스터디" 2026-10-06T19:00 --end 2026-10-06T21:00 --category team --todo
-.\run.cmd done 3                                 # 할 일 완료 토글
-.\run.cmd rm 3
-.\run.cmd count                                  # 건수 · DB 자리
+python desktop/cli.py calendar_core list                                   # 내 일정·할 일 (--todo · --from · --to)
+python desktop/cli.py calendar_core add "스터디" 2026-10-06T19:00 --end 2026-10-06T21:00 --category team --todo
+python desktop/cli.py calendar_core done 3                                 # 할 일 완료 토글
+python desktop/cli.py calendar_core rm 3
+python desktop/cli.py calendar_core count                                  # 건수 · DB 자리
 ```
 
-명령줄은 **내 일정만** 본다. 캘린더에 함께 뜨는 학사·마감·수업은 각 기능의 `run.cmd`(F1·F6·F3)로 본다.
+명령줄은 **내 일정만** 본다. 캘린더에 함께 뜨는 학사·마감·수업은 각 기능의 명령줄(`cli.py bachelor` · `eclass` · `attendance`)로 본다.
 
 ## API
 

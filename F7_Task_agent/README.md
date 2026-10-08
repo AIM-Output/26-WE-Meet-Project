@@ -26,7 +26,6 @@ F7_Task_agent/
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include — 재료는 백엔드가 함수로 넘겨준다)
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 60개 (5절 예시 표 · 그룹 경계 · 이유 문구 · 자정 마감 · 오늘 남은 시간 · 설정 · 성능)
-├── run.cmd / run.command    보기·설정 명령 (list · top · today · settings · json)
 └── data/                    (gitignore) — 내 설정
     └── settings.json
 ```
@@ -80,15 +79,15 @@ F7_Task_agent/
 ## 명령줄
 
 ```
-run.cmd list                          급한 순 목록 (그룹 · 이유 · 소요시간 · 여유) — --course 운영체제 · --now 2026-10-06T14:00 · --all
-run.cmd top                           먼저 할 것 3건 + 총 소요시간 (아침 브리핑에 실리는 것)
-run.cmd today                         오늘 남은 시간과 그 안의 수업·일정
-run.cmd settings                      설정 보기
-run.cmd settings --safety 2 --hours quiz=1 project=8 --bed 01:00     설정 바꾸기 (--reset 으로 전부 기본값)
-run.cmd json                          /api/priority 응답 그대로
+python desktop/cli.py tasks list                          급한 순 목록 (그룹 · 이유 · 소요시간 · 여유) — --course 운영체제 · --now 2026-10-06T14:00 · --all
+python desktop/cli.py tasks top                           먼저 할 것 3건 + 총 소요시간 (아침 브리핑에 실리는 것)
+python desktop/cli.py tasks today                         오늘 남은 시간과 그 안의 수업·일정
+python desktop/cli.py tasks settings                      설정 보기
+python desktop/cli.py tasks settings --safety 2 --hours quiz=1 project=8 --bed 01:00     설정 바꾸기 (--reset 으로 전부 기본값)
+python desktop/cli.py tasks json                          /api/priority 응답 그대로
 ```
 
-맥은 `./run.command list`. 백엔드 `.venv` 의 python 을 쓰고, 없으면 시스템 python 으로 돈다(표준 라이브러리만).
+저장소 루트에서 개발 venv 를 켜고 실행한다 — `desktop/cli.py` 가 개발 데이터로 `python -m tasks` 를 돌린다(`--app` 이면 앱 데이터).
 
 ## API (대시보드 백엔드가 붙인다 — Frontend-Route 12-4)
 
@@ -111,7 +110,7 @@ run.cmd json                          /api/priority 응답 그대로
 
 ```
 cd F7_Task_agent
-..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q
+python -m pytest tests -q          # 개발 venv(desktop/sidecar/.venv)
 ```
 
 임시 `data/` 를 쓰고, 다른 기능 폴더는 없는 자리를 가리키게 한다 — 내 설정·F6 원장을 건드리지 않는다.

@@ -1,7 +1,7 @@
 """F1 학사 일정 — 명령줄.
 
-    python -m bachelor sync [--source KEY ...] [--pages N] [--dry-run] [--log FILE]   수집 (run-sync.cmd 가 부른다)
-    python -m bachelor tick [--force] [--log FILE]                                    예약 수집 — 매일 08시 한 번 + 실패 시 재시도 (run-scheduled.cmd)
+    python -m bachelor sync [--source KEY ...] [--pages N] [--dry-run] [--log FILE]   수집 (대시보드 버튼이 부른다)
+    python -m bachelor tick [--force] [--log FILE]                                    예약 수집 — 매일 08시 한 번 + 실패 시 재시도 (작업 스케줄러 · launchd)
     python -m bachelor list [--semester 2026-2] [--tab all|mine|review|hidden]         학사 일정 목록
     python -m bachelor approve|hide|restore <event_id>                                 확인 필요 승인 · 숨김 · 복원
     python -m bachelor notify                                                          때가 된 알림 배달 + 목록

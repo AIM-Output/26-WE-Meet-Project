@@ -16,39 +16,31 @@
 
 ### 신뢰 기기가 만료되면 (약 1년 뒤, 또는 학교가 재인증 요구 시)
 
-수집이 `exit 2`(로그인 필요)로 멈추고 **알림 센터 + 노랑 띠**로 알린다. 수집 원천에서 **`로그인 창 열기`**(= `C3_Login_agent\login.cmd`)로
+수집이 `exit 2`(로그인 필요)로 멈추고 **알림 센터 + 노랑 띠**로 알린다. 수집 원천에서 **`로그인 창 열기`**로
 한 번 휴대폰 인증을 통과하면(아이디·비밀번호는 자동 입력) 신뢰 기기가 갱신되고 곧바로 수집이 이어진다.
 
 ---
 
 ## 설정
 
-```powershell
-cd <프로젝트 폴더>\C3_Login_agent
-.\setup.cmd           # 1) .venv + Chromium
-.\login.cmd           # 2) 로그인 창 — 2차 인증 통과 + 신뢰 기기 등록 (state 저장)
-.\setup-creds.cmd     # 3) 아이디/비밀번호 저장 (화면에 안 보임, DPAPI 암호화) — 완전 무인
-.\login.cmd --auto    # 4) 무인 로그인 검증 → "성공. 세션 저장됨."
-```
+앱 **설정 → 수집 원천 → e클래스 → 학교 로그인** 줄에서:
+
+1. `로그인 창 열기` — 2차 인증 통과 + 신뢰 기기 등록 (세션 저장)
+2. `자동 로그인 정보 저장` — 아이디/비밀번호를 이 PC 에만 암호화해 저장 (Windows DPAPI · 맥 키체인) — 완전 무인
+3. (개발 모드에서 확인) `python desktop/cli.py login --auto` → "성공. 세션 저장됨." 
 
 ### 예약 등록
 
-대시보드 **수집 원천 → e클래스 → 예약 실행 `켜기`** 가 아래 명령과 같다. 주기를 바꾸면(2·4·6·12시간) 다시 등록한다.
-
-```powershell
-cd <프로젝트 폴더>\F6_Eclass_agent
-powershell -ExecutionPolicy Bypass -File .\register-task.ps1                   # state\settings.json 의 주기 (없으면 4시간)
-powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -IntervalHours 6  # 00·06·12·18시
-powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove           # 해제
-```
+앱 **수집 원천 → e클래스 → 예약 실행 `켜기`** 가 앱 번들 안의 `register-task.ps1` 에 앱 실행 파일을 넘겨 등록한다
+(`-Command "& '<앱 실행 파일>' --run-module eclass tick --log '…'"`). 주기를 바꾸면(2·4·6·12시간) 다시 등록하고, `끄기` 가 해제한다.
+개발 모드(`npm run dev`)에서는 설치본 등록을 덮어쓰지 않게 예약 실행이 꺼져 있다.
 
 - 작업 이름 `UnivUs-F6-Eclass-Sync`. 예전 `eClass-Agent-Sync`(eclass_agent 시절)가 있으면 등록할 때 지운다.
 - **정각 트리거** 00·04·08·12·16·20시 + **로그인할 때**(2분 뒤) + 놓쳤으면 **켜지는 대로**(StartWhenAvailable)
 - 로그인되어 있을 때만 실행 → **Windows 비밀번호는 저장하지 않음**, 창도 안 뜸. 로그: `state\sync.log`
 - 즉시 한 번: `Start-ScheduledTask -TaskName UnivUs-F6-Eclass-Sync` / 상태: `Get-ScheduledTaskInfo -TaskName UnivUs-F6-Eclass-Sync`
 
-> 폴더를 옮기거나 이름을 바꾸면 작업이 옛 경로를 가리켜 실패한다(`0x8007010B`). 수집 원천 화면에 '경로 확인'이 뜨면 `다시 등록`
-> (또는 새 위치에서 `register-task.ps1` 을 다시 실행).
+> 앱을 다른 곳에 다시 설치하면 작업이 옛 경로를 가리켜 실패한다(`0x8007010B`). 수집 원천 화면에 '경로 확인'이 뜨면 `다시 등록`.
 
 ### 맥 — launchd (2026-10-04)
 
@@ -56,12 +48,12 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove           #
 
 - **정각** 00·04·08·12·16·20시(`StartCalendarInterval`) — 그 시각에 잠자기였으면 깨어나는 대로 한 번(launchd 가 묶어 한 번만)
 - **로그인할 때 · 켠 직후** 한 번(`RunAtLoad`) — 아래 tick 이 '이번 주기에 이미 돌았으면 건너뜀'이라 겹쳐도 한 번
-- 부르는 것: `C3_Login_agent/.venv/bin/python -m eclass tick --log state/sync.log` (재시도·잠금·이력은 Windows 와 같은 tick)
+- 부르는 것: `<앱 실행 파일> --run-module eclass tick --log …/state/sync.log` (재시도·잠금·이력은 Windows 와 같은 tick)
 - 이 맥 사용자가 로그인해 있을 때만 돈다. 시작 자체가 실패한 출력은 `state/launchd.log`
 - 상태: `launchctl print gui/$(id -u)/kr.univus.f6-eclass-sync` · 즉시 한 번: `launchctl kickstart gui/$(id -u)/kr.univus.f6-eclass-sync`
-- 무인 재로그인용 자격증명은 `C3_Login_agent/setup-creds.command` → 맥 로그인 키체인. 처음 읽을 때 키체인 허용 창이 뜨면 **항상 허용**(안 그러면 예약 실행 때마다 묻는다)
+- 무인 재로그인용 자격증명은 앱의 `자동 로그인 정보 저장` → 맥 로그인 키체인. 처음 읽을 때 키체인 허용 창이 뜨면 **항상 허용**(안 그러면 예약 실행 때마다 묻는다)
 
-### 작업 스케줄러가 부르는 것 — `run-scheduled.cmd` → `python -m eclass tick`
+### 작업 스케줄러가 부르는 것 — 앱 실행 파일 `--run-module eclass tick`
 
 1. **이번 주기를 이미 돌았나** — 가장 최근 정각(예: 12:00) 이후에 시작한 실행이 있으면 아무것도 하지 않는다.
    그래서 정각 트리거·로그인 트리거·따라잡기가 겹쳐도 **한 번만** 돌고, PC 가 꺼져 있던 동안 밀린 여러 주기를 몰아서 돌리지 않는다(최근 한 주기만).
@@ -73,7 +65,7 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove           #
 
 ### 겹쳐 실행되면
 
-대시보드 버튼·예약 실행·`sync.cmd` 가 전부 `state\sync.lock`(pid) 으로 서로를 확인한다. 뒤의 것이 `exit 3` 으로 물러나고 로그에 "이미 실행 중" 한 줄만 남는다.
+대시보드 버튼·예약 실행·명령줄(`cli.py eclass sync`)이 전부 `state\sync.lock`(pid) 으로 서로를 확인한다. 뒤의 것이 `exit 3` 으로 물러나고 로그에 "이미 실행 중" 한 줄만 남는다.
 예약 실행이 도는 동안 대시보드는 "예약 동기화 진행 중…" 으로 보여 주고, 끝나면 결과(`state\runs.jsonl`)를 읽는다.
 
 > 작업 스케줄러의 `LastTaskResult` 는 `powershell -Command` 래퍼 때문에 0 아니면 **1** 로만 보인다. 실제 결과는 수집 원천의 **최근 실행**(= `state\runs.jsonl`)을 본다.
@@ -90,6 +82,6 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove           #
 
 ## 보안 트레이드오프
 
-- 비밀번호는 **암호화된 형태로만** 이 PC에 존재(평문은 파일·로그 어디에도 없음). DPAPI CurrentUser 범위라 **이 Windows 계정에서만** 복호화된다.
-- 무인을 끄려면 `C3_Login_agent\setup-creds.cmd --clear`. 그러면 세션이 죽었을 때 로그인 창이 필요해진다(반자동).
+- 비밀번호는 **암호화된 형태로만** 이 PC에 존재(평문은 파일·로그·API 응답 어디에도 없음). DPAPI CurrentUser 범위라 **이 Windows 계정에서만** 복호화된다(맥은 로그인 키체인).
+- 무인을 끄려면 앱의 `자동 로그인 정보 바꾸기` → `지우기`. 그러면 세션이 죽었을 때 로그인 창이 필요해진다(반자동).
 - 신뢰 기기 등록은 이 PC 한정이다. 다른 PC 에서는 처음에 휴대폰 2차 인증을 다시 거쳐야 신뢰 기기가 된다.

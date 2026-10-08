@@ -1,4 +1,4 @@
-"""F8 공강 학습 플랜 명령줄 — `python -m placement <명령>` (run.cmd 가 부른다).
+"""F8 공강 학습 플랜 명령줄 — `python -m placement <명령>` (`desktop/cli.py placement` 로 부른다).
 
     preview  [--days 14] [--json]       배치 미리보기 (캘린더는 바뀌지 않는다)
     apply    [--days 14]                미리보기 그대로 등록 (자동 배치분만 새로 바뀐다)

@@ -19,13 +19,10 @@ def mac(monkeypatch, tmp_path):
 
     monkeypatch.delenv("F6_TASKS", raising=False)
     monkeypatch.setattr(sys, "platform", "darwin")
-    monkeypatch.setattr(osenv, "IS_WINDOWS", False)            # venv_python·script 도 맥처럼
+    monkeypatch.setattr(osenv, "IS_WINDOWS", False)
     monkeypatch.setattr(launchd, "AGENTS_DIR", tmp_path / "LaunchAgents")
     monkeypatch.setattr(launchd, "_uid", lambda: 501)
     monkeypatch.setattr(launchd, "_run", run)
-    py = tmp_path / "c3py"
-    py.write_text("")
-    monkeypatch.setattr(C, "C3_PYTHON", py)
     jobs._task_cache.update(at=0.0, value=None)
     return jobs, C, launchd, calls
 
@@ -47,11 +44,3 @@ def test_register_info_unregister(mac):
 
     assert jobs.unregister_task()["ok"]
     assert jobs.task_info(force=True)["registered"] is False
-
-
-def test_register_needs_c3(mac, tmp_path, monkeypatch):
-    jobs, C, launchd, calls = mac
-    monkeypatch.setattr(C, "C3_PYTHON", tmp_path / "없음")
-    res = jobs.register_task(4)
-    assert not res["ok"] and "setup.command" in res["error"]
-    assert calls == []

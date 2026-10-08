@@ -184,7 +184,8 @@ server/                    얇은 서버 (나중에)
 - [x] 트레이 상주(창 닫기 = 숨기기) · 로그인할 때 실행(autostart, `--hidden`) · 단일 인스턴스 · 바깥 링크는 기본 브라우저 · 종료 시 사이드카 정리(stdin 닫기 → 5초 뒤 강제)
 - [ ] 코드 서명(Windows SmartScreen · 맥 공증) — 인증서·Apple 개발자 계정이 필요해 사용자 결정
 - [ ] 자동 업데이트(tauri-plugin-updater) — 서명 키·배포 위치(GitHub Releases) 결정 필요
-- [ ] CI 에서 설치 파일 빌드(Windows·맥), 그다음 `frontend/out` 커밋 중단
+- [x] `frontend/out` 커밋 중단 — 사이드카 빌드(`build.py`)가 `npm run build` 부터 한다 (2026-10-08)
+- [ ] CI 에서 설치 파일 빌드(Windows·맥) — 지금 CI 는 맥에서 테스트 + 사이드카 빌드·실행까지
 
 ### 5단계 — 얇은 서버 + 데스크톱 클라이언트
 - [ ] `shared/schema` 업로드 형식, `server/` 별도 앱(FastAPI + Postgres)
@@ -230,3 +231,16 @@ server/                    얇은 서버 (나중에)
     **실제 앱 실행**(임시 LOCALAPPDATA): UnivUs.exe → 사이드카 자식 프로세스, 로그에 '앱 창이 연결됨', 바깥 요청 403, DB 가 앱 데이터 폴더에, 앱을 강제 종료하면 사이드카도 끝남.
   - 확인 못 한 것: 창 안 화면을 눈으로 보기(데스크톱 창 캡처 도구 없음), 트레이 메뉴·창 닫기→숨기기·자동 실행 클릭, 맥 Tauri 빌드, 설치 파일로 설치해 보기, 첫 실행 Chromium 다운로드(시험에서는 껐다).
   - 남은 것: 코드 서명 · 자동 업데이트 · CI 설치 파일 빌드(사용자 결정 필요 — 4단계 체크리스트).
+- 2026-10-08 — **데스크톱 앱 전용으로 전환** (사용자 결정: 로컬 서버 웹·저장소 실행 방식은 없앤다). 브랜치 `feat/desktop-only-dev`.
+  - 데이터: 저장소 `data/`·`state/` → 설치된 앱의 데이터 폴더로 복사(`migrate-data`), **앱 데이터 폴더가 원본**. 저장소 원본은 저장소 밖 백업 폴더로 옮김(삭제는 사용자).
+    Claude 데스크톱 앱(MSIX) 안에서 띄운 프로세스가 `%LOCALAPPDATA%` 에 쓰는 것은 패키지 가상 폴더로 가서, 이전·설치는 WMI 로 패키지 밖에서 다시 했다.
+  - 예약 작업(F6·F1)을 앱 실행 파일로 다시 등록(사용자가 앱에서 `켜기`). spec 이 `.ps1` 을 전부 빼서 앱의 `켜기`가 실패하던 것 수정(`register-task.ps1` 만 넣음).
+  - **개발 모드** `desktop/` 에서 `npm run dev` — 디버그 빌드가 `desktop.py --dev --port 8020 --frontend-url http://127.0.0.1:3000 --data-root desktop/.dev-data` 를 띄우고
+    창은 next dev(즉시 반영)를 연다(`/desktop/launch`·`/api` rewrites). 식별자 `kr.univus.desktop.dev`, 예약 실행 꺼짐.
+  - **venv 하나**: `desktop/sidecar/.venv`(빌드·개발·테스트). `osenv.module_cmd(mod, …)` 는 지금 도는 python(묶인 앱이면 같은 실행 파일), `browsers_dir()` 는 앱 데이터 폴더 / venv 의 `pw-browsers`,
+    `osenv.task_command` 로 작업 스케줄러 명령 공용화. `python_ready`·`script()`·C3 `PYTHON`·C2/F2/F6 `C3_PYTHON`·`C3_VENV`·F1 `_prepare`·C1 옛 DB 옮기기·`migrate-data`(→ `copy-data --to`) 제거.
+  - 없앤 것: 런처 43개(`유니버스 열기/종료`, 기능별 `run`·`setup`·`sync`·`login`·`setup-creds`·`run-sync`·`run-scheduled`, `univus.sh`), `univ_us_local/backend/requirements.txt`,
+    `.claude/launch.json`(브라우저 미리보기), `frontend/out` 추적(.gitignore). `register-task.ps1` 은 `-Command` 필수. `notice_agent` 는 참고 코드로 그대로 둠.
+  - 새로 만든 것: 앱의 **자동 로그인 정보** 저장·지우기(`C3_Login_agent/login/api.py` `/api/login/creds` + 수집 원천 화면 모달 `?creds=1`) — 비밀번호는 돌려주지 않는다.
+    개발용 명령줄 `desktop/cli.py <패키지> …`(개발 데이터 / `--app`). macOS CI 를 런처 검사 → 단일 venv 테스트 + 사이드카 빌드·실행(준비 줄·403)으로.
+  - F1 `task_info.scheduled` 가 `run-scheduled.cmd` 문자열을 찾아, 앱이 등록한 작업을 늘 '옛 등록'으로 보던 것 수정(`bachelor tick`).

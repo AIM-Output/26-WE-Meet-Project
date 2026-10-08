@@ -4,7 +4,7 @@
 
 설치할 것이 없다
   - 표준 라이브러리 + fastapi 만 쓴다. 대시보드 백엔드(univ_us_local)가 그대로 import 한다.
-    명령줄(run.cmd)은 fastapi 없이도 도는 부분(store·service)만 쓴다.
+    명령줄(desktop/cli.py)은 fastapi 없이도 도는 부분(store·service)만 쓴다.
 
 다른 기능이 캘린더에 얹는 일정 (C1 3절)
   - 이 폴더는 **내 일정·할 일**(kind=user)만 저장한다. 학사(F1)·마감(F6)·수업(F3)·학습 블록(F5)은
@@ -25,9 +25,6 @@ PROJECT_ROOT = ROOT.parent                               # 26 WE-Meet Project/
 # UNIVUS_* 는 이 코드가 univ_us_local/backend 에 있던 시절의 이름 — 쓰던 사람을 위해 계속 받는다.
 DATA_DIR = Path(os.environ.get("C1_DATA_DIR") or os.environ.get("UNIVUS_DATA_DIR") or ROOT / "data")
 DB_PATH = Path(os.environ.get("C1_DB") or os.environ.get("UNIVUS_DB") or DATA_DIR / "univus.db")
-
-# 2026-09-30 이전 위치. 남아 있으면 store.init() 이 **한 번만** 위 자리로 옮긴다.
-LEGACY_DB = Path(os.environ.get("C1_LEGACY_DB") or PROJECT_ROOT / "univ_us_local" / "data" / "univus.db")
 
 # 내 일정 분류 (C1 3절 '내 일정' — 색은 분류별. 소스 구분은 색만으로 하지 않는다, C1-R12)
 CATEGORIES = {

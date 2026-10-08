@@ -1,9 +1,9 @@
-"""실행기 — 잠금 → 수집(collect) → 원장 반영(reconcile) → 실행 이력. **C3_Login_agent/.venv 의 python 으로 돈다.**
+"""실행기 — 잠금 → 수집(collect) → 원장 반영(reconcile) → 실행 이력. **playwright 가 있는 python(앱 실행 파일 / 개발 venv)으로 돈다.**
 
     python -m eclass sync [--source button|manual] [--dry-run] [--course ID] [--only PARTS] [--log FILE]
-        한 번 수집. 대시보드 버튼(run-sync.cmd)·명령줄(sync.cmd). 실패해도 재시도하지 않는다(사람이 보고 있다).
+        한 번 수집. 대시보드 버튼·명령줄(cli.py eclass sync). 실패해도 재시도하지 않는다(사람이 보고 있다).
     python -m eclass tick [--log FILE]
-        작업 스케줄러가 부른다(run-scheduled.cmd). 가장 최근 정각 이후 실행이 없을 때만 돌고(schedule/catchup),
+        작업 스케줄러·launchd 가 부른다(앱 실행 파일 --run-module eclass tick). 가장 최근 정각 이후 실행이 없을 때만 돌고(schedule/catchup),
         네트워크 오류면 5 → 15 → 45분 뒤 다시(최대 3회, source=retry). 기다리는 동안 잠금을 잡지 않는다 —
         그 사이 누가 '지금 수집'을 누르면 그것이 우선하고, 성공하면 남은 재시도는 그만둔다 (F6 5절).
 
@@ -46,7 +46,7 @@ def run_once(source: str, attempt: int = 1, dry_run: bool = False, courses: Opti
     rec = {"pid": os.getpid(), "started_at": started.isoformat(timespec="seconds"), "source": source,
            "attempt": attempt, "slot": slot, "dryRun": dry_run, "args": sys.argv[1:]}
     try:
-        from . import collect                  # playwright · bs4 — C3 .venv 에서만
+        from . import collect                  # playwright · bs4 — 수집 프로세스에서만
         res = collect.run(dry_run=dry_run, courses_only=courses, only=only)
         code, counts, error, full = res.code, res.counts, res.error, res.full
     except Exception as e:                      # noqa: BLE001 — 무엇이 터져도 이력은 남긴다

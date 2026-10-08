@@ -1,10 +1,12 @@
 """완전 무인 모드용 자격증명 저장. 본인이 직접 입력하며, 비밀번호는 화면에 표시되지 않는다.
 Windows: state/cred.bin 을 DPAPI(이 계정 전용)로 암호화. 맥: 로그인 키체인 (auth.py · C0 osenv.creds).
 
-    setup-creds.cmd            저장/갱신
-    setup-creds.cmd --show     저장된 아이디만 표시 (비번은 표시 안 함)
-    setup-creds.cmd --clear    삭제 (반자동 모드로 되돌리기)
-    (맥은 setup-creds.command)
+앱에서는 설정 → 연결 소스의 '자동 로그인 정보'(univ_us_local/backend/app/login_creds.py)가 같은 auth.save·clear 를 부른다.
+명령줄(개발 모드 venv python, C3_Login_agent 폴더에서):
+
+    python -m login creds            저장/갱신
+    python -m login creds --show     저장된 아이디만 표시 (비번은 표시 안 함)
+    python -m login creds --clear    삭제 (반자동 모드로 되돌리기)
 """
 from __future__ import annotations
 
@@ -44,6 +46,6 @@ def run(argv: list[str]) -> int:
     except store.CredsError as e:
         print(f"저장하지 못했습니다: {e}")
         return 1
-    print(f"저장 완료. 이제 `{C.script('login')} --auto` 로 무인 로그인을 시험해 보세요.")
-    print(f"  (처음 한 번은 {C.script('login')} 를 수동으로 실행해 신뢰 기기 쿠키를 만들어 두면 2차 인증이 생략됩니다.)")
+    print("저장 완료. 이제 `python -m login --auto` 로 무인 로그인을 시험해 보세요.")
+    print("  (처음 한 번은 앱의 '로그인 창 열기'로 직접 로그인해 신뢰 기기 쿠키를 만들어 두면 2차 인증이 생략됩니다.)")
     return 0

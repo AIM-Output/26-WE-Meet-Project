@@ -89,13 +89,11 @@ def test_migrate_legacy(db):
     assert doc["profile"]["deptPath"] == "AI융합대학 › 인공지능학부 › 인공지능전공"                # 옛 화면은 전공 코드를 deptCode 에 넣었다
 
 
-def test_import_problem_without_c3(monkeypatch, tmp_path):
+def test_import_problem(monkeypatch, tmp_path):
     from student import config as C, jobs
-    monkeypatch.setattr(C, "C3_PYTHON", tmp_path / "none" / "python.exe")
-    assert "C3_Login_agent" in jobs.import_problem(False)
-    monkeypatch.setattr(C, "C3_PYTHON", tmp_path / "python.exe")
+    monkeypatch.setattr(C, "C3_BROWSERS", tmp_path / "pw-browsers")
+    assert "브라우저" in jobs.import_problem(False)           # Chromium 아직 없음 (앱이 처음 실행 때 받는다)
     monkeypatch.setattr(C, "C3_BROWSERS", tmp_path)
-    (tmp_path / "python.exe").write_text("")
     for attr in ("C3_STATE", "C3_CRED", "HAKSTD_STATE"):
         monkeypatch.setattr(C, attr, tmp_path / f"{attr}.missing")
     assert "로그인" in jobs.import_problem(False)          # 로그인 기록 없음 → 409 needLogin

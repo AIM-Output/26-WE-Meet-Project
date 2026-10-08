@@ -1,26 +1,26 @@
-"""F5 명령줄 — run.cmd 가 부른다 (표준 라이브러리만, fastapi 없이 돈다).
+"""F5 명령줄 — `desktop/cli.py exams` 로 부른다 (개발 venv · 표준 라이브러리만, fastapi 없이 돈다).
 
-    run.cmd status                          시험 목록 · D-day · 계획 상태 · 오늘 분량
-    run.cmd sync                            e클래스 공지에서 시험 찾기 (넣거나 갱신)
-    run.cmd notices                         공지에서 읽힌 것만 보기 (저장하지 않는다)
-    run.cmd show ex:74261:...                시험 하나 — 범위·근거·계획 옵션 기본값
-    run.cmd add 소프트웨어공학론 midterm 2026-10-22 --time 15:00 --place 박물관   시험 직접 추가
-    run.cmd scope 소프트웨어공학론 --weeks 1-5   범위 안 자료 쪽수 (F4) — ✔ = 공부 완료 체크
-    run.cmd ready ex:78570:... [--undo]       발표 준비 완료 (발표는 공부 계획 없이 이것만)
-    run.cmd studied ex:74261:... [자료id ...] [--undo]   서비스 밖에서 공부한 자료 체크 (id 없으면 목록)
-    run.cmd preview ex:74261:... --days 3 --day 2026-10-15=3h --day 2026-10-16=5h   날마다 공부 시간 정하기
-    run.cmd preview ex:74261:... --difficulty hard --exclude 2026-10-15
+    cli.py exams status                          시험 목록 · D-day · 계획 상태 · 오늘 분량
+    cli.py exams sync                            e클래스 공지에서 시험 찾기 (넣거나 갱신)
+    cli.py exams notices                         공지에서 읽힌 것만 보기 (저장하지 않는다)
+    cli.py exams show ex:74261:...                시험 하나 — 범위·근거·계획 옵션 기본값
+    cli.py exams add 소프트웨어공학론 midterm 2026-10-22 --time 15:00 --place 박물관   시험 직접 추가
+    cli.py exams scope 소프트웨어공학론 --weeks 1-5   범위 안 자료 쪽수 (F4) — ✔ = 공부 완료 체크
+    cli.py exams ready ex:78570:... [--undo]       발표 준비 완료 (발표는 공부 계획 없이 이것만)
+    cli.py exams studied ex:74261:... [자료id ...] [--undo]   서비스 밖에서 공부한 자료 체크 (id 없으면 목록)
+    cli.py exams preview ex:74261:... --days 3 --day 2026-10-15=3h --day 2026-10-16=5h   날마다 공부 시간 정하기
+    cli.py exams preview ex:74261:... --difficulty hard --exclude 2026-10-15
                                             계획 미리보기 (저장하지 않는다)
-    run.cmd plan ex:74261:... [같은 옵션]     계획 등록 (캘린더에 학습 블록 생성)
-    run.cmd progress                        진행 중 계획의 진도 · 밀림
-    run.cmd done pl:1 2026-10-13            그날 블록 완료 체크 (--undo 로 되돌리기)
-    run.cmd rebalance pl:1                  재조정 미리보기
-    run.cmd cancel pl:1                     계획 취소 (미완료 블록만 지운다)
-    run.cmd events [--from 2026-10-01 --to 2026-10-31]   캘린더에 나갈 일정 (kind=exam·study)
-    run.cmd courses                         과목별 시험 유무 + 중간·기말 상태 (임의 일정 포함)
-    run.cmd course 산학협력 --no-midterm --no-final   시험을 안 보는 과목 끄기 (--midterm/--final 로 다시 켜기)
-    run.cmd defaults [--date 2026-10-24]    임의 시험 일정을 지금 맞춘다 (날짜를 주면 그날인 것처럼)
-    run.cmd clear                           시험·계획·진도 전부 지우기
+    cli.py exams plan ex:74261:... [같은 옵션]     계획 등록 (캘린더에 학습 블록 생성)
+    cli.py exams progress                        진행 중 계획의 진도 · 밀림
+    cli.py exams done pl:1 2026-10-13            그날 블록 완료 체크 (--undo 로 되돌리기)
+    cli.py exams rebalance pl:1                  재조정 미리보기
+    cli.py exams cancel pl:1                     계획 취소 (미완료 블록만 지운다)
+    cli.py exams events [--from 2026-10-01 --to 2026-10-31]   캘린더에 나갈 일정 (kind=exam·study)
+    cli.py exams courses                         과목별 시험 유무 + 중간·기말 상태 (임의 일정 포함)
+    cli.py exams course 산학협력 --no-midterm --no-final   시험을 안 보는 과목 끄기 (--midterm/--final 로 다시 켜기)
+    cli.py exams defaults [--date 2026-10-24]    임의 시험 일정을 지금 맞춘다 (날짜를 주면 그날인 것처럼)
+    cli.py exams clear                           시험·계획·진도 전부 지우기
 """
 from __future__ import annotations
 
@@ -150,7 +150,7 @@ def cmd_status(a) -> int:
           + (f"   |  가장 가까운 시험 {today['nextExam']['course']} {today['nextExam']['typeLabel']} "
              f"{today['nextExam']['ddayLabel']}" if today["nextExam"] else ""))
     if not o["exams"] and not o["past"]:
-        print("등록된 시험이 없습니다 — `run.cmd sync` 로 공지에서 찾거나 `run.cmd add` 로 직접 넣으세요")
+        print("등록된 시험이 없습니다 — `cli.py exams sync` 로 공지에서 찾거나 `cli.py exams add` 로 직접 넣으세요")
     for e in o["exams"] + o["past"]:
         flag = " ⚠확인필요" if e["needsReview"] else ""
         when = f"{e['date']}({e['weekday']}) {e['time'] or '시각미정'}"
@@ -165,7 +165,7 @@ def cmd_status(a) -> int:
             if e["plan"]["behind"]:
                 print(f"         ⚠ {e['plan']['behindMessage']}")
         else:
-            print(f"         계획 없음 — `run.cmd preview {e['id']}`")
+            print(f"         계획 없음 — `cli.py exams preview {e['id']}`")
         if e["changed"]:
             ch = e["changed"]
             print(f"         ⚠ 공지에서 날짜가 바뀌었습니다: {ch.get('from')} → {ch.get('to')}")
@@ -333,7 +333,7 @@ def cmd_progress(a) -> int:
             print(f"  진도 {pr['donePages']}/{pr['plannedPages']}쪽 ({pr['percent']}%) · "
                   f"완료 {pr['doneDays']}/{pr['totalDays']}일 · 오늘 {pr['todayPages']}쪽")
             if v["behind"]:
-                print(f"  ⚠ {v['behindMessage']}  → `run.cmd rebalance {v['id']}`")
+                print(f"  ⚠ {v['behindMessage']}  → `cli.py exams rebalance {v['id']}`")
     return 0
 
 
@@ -358,7 +358,7 @@ def cmd_rebalance(a) -> int:
           f"남은 학습일 {out['studyDays']}일 · 하루 {out['dailyPages']}쪽 "
           f"(이미 마친 {out['carried']['pages']}쪽은 뺐습니다)")
     _print_days(out["days"], out["warnings"], out["adjustments"], out["verdictLabel"])
-    print(f"  적용: run.cmd plan {out['examId']}")
+    print(f"  적용: cli.py exams plan {out['examId']}")
     return 0
 
 

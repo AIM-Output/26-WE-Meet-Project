@@ -207,7 +207,7 @@ def hakstd_page(interactive: bool = False):
                 time.sleep(1)
         if not ok:
             close()
-            raise LoginRequired(f"학사정보시스템 로그인이 필요합니다 — C3_Login_agent 의 {C.script('login')} 를 실행하거나 '로그인 창 열기'로 가져오세요")
+            raise LoginRequired("학사정보시스템 로그인이 필요합니다 — '로그인 창 열기'로 가져오세요")
         C.STATE_DIR.mkdir(parents=True, exist_ok=True)
         try:
             yield state["page"]

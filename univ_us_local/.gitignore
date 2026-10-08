@@ -1,10 +1,7 @@
-# univ_us_local
-# 내 일정 DB(univus.db)는 2026-09-30 에 ../C1_Calendar_agent/data/ 로 옮겼다. 옛 파일이 남아도 커밋되지 않게 둔다.
-data/
-backend/.venv/
-backend/server.log
+# univ_us_local — 데스크톱 앱(desktop/)의 백엔드·화면 소스
 __pycache__/
 *.pyc
 frontend/node_modules/
 frontend/.next/
-# frontend/out/ 은 커밋한다 — 팀원이 Node 없이 실행하도록 (프론트 수정 후 npm run build 로 갱신)
+# 정적 export 결과 — 사이드카 빌드(desktop/sidecar/build.py)가 npm run build 로 만들어 묶는다. 커밋하지 않는다
+frontend/out/

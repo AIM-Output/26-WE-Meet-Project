@@ -1,4 +1,5 @@
-# 사이드카(univus-backend) 빌드용 — desktop/sidecar/build.py 가 desktop/sidecar/.venv 에 설치한다.
+# 사이드카(univus-backend) 빌드용 + 개발 모드(npm run dev)·테스트용 — 저장소의 유일한 python venv (desktop/sidecar/.venv).
+# desktop/sidecar/build.py 가 설치한다 (처음 한 번은 py -3.12 desktop/sidecar/build.py — 또는 C0 에서 python -m osenv venv …).
 # 런타임에 묶여 들어가는 것 = 백엔드(fastapi·uvicorn) + C3(playwright·bs4) + F1(requests·lxml·truststore·pypdf) + 맥 키체인
 pyinstaller>=6.10,<7
 fastapi>=0.115
@@ -10,3 +11,6 @@ requests>=2.32,<3
 truststore>=0.9,<1
 pypdf>=6.0,<7
 keyring>=25; sys_platform == "darwin"
+# 개발·테스트용 — 사이드카에는 묶이지 않는다 (spec 이 tests/ 를 빼고 pytest 는 excludes)
+pytest>=8.4,<10
+httpx>=0.27

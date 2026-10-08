@@ -31,7 +31,7 @@ F8_AGENT_DIR = Path(os.environ.get("F8_AGENT_DIR") or PROJECT_ROOT / "F8_Plan_ag
 FRONTEND_OUT = ROOT / "frontend" / "out"                     # `npm run build` 결과 (정적 export)
 
 HOST = os.environ.get("UNIVUS_HOST", "127.0.0.1")
-PORT = int(os.environ.get("UNIVUS_PORT", "8000"))
+PORT = int(os.environ.get("UNIVUS_PORT", "8020"))                 # desktop.py 가 정한다 (설치본 빈 포트 · 개발 모드 8020)
 
 # 브라우저에서 오는 변경 요청(POST/PATCH/DELETE)은 이 Origin 에서만 받는다 (DNS 리바인딩·CSRF 대비).
 ALLOWED_ORIGINS = {
@@ -41,7 +41,7 @@ ALLOWED_ORIGINS = {
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 # ── 데스크톱 앱 세션 (univ_us_local/backend/desktop.py 가 띄울 때만) ──
-# 실행마다 새로 만든 값. 저장소 실행(.cmd/.command)에서는 비어 있어 아무 검사도 하지 않는다.
+# 실행마다 새로 만든 값. desktop.py 없이 띄우면(테스트) 비어 있어 아무 검사도 하지 않는다.
 # 환경변수에서 pop 하는 것은 이 서버가 띄우는 자식 프로세스(수집기)에 물려주지 않으려는 것이다.
 SESSION_TOKEN = os.environ.pop("UNIVUS_SESSION_TOKEN", "") or None
 SESSION_COOKIE = "univus_session"

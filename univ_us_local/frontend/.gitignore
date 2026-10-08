@@ -15,7 +15,7 @@
 
 # next.js
 /.next/
-# /out/ 은 커밋한다 (상위 .gitignore 참고)
+# /out/ 은 빌드 결과 — 커밋하지 않는다 (상위 .gitignore)
 
 # production
 /build

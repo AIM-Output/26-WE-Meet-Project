@@ -1,4 +1,4 @@
-"""C3 포털 자동 로그인 명령줄 (C3_Login_agent/.venv 의 python 으로):
+"""C3 포털 자동 로그인 명령줄 (`desktop/cli.py login …` 로 — 개발 venv, 앱 실행 파일은 --run-module login):
 
     python -m login                  로그인 창 — 직접 SSO 로그인 (+휴대폰 2차 인증) → 세션·신뢰 기기 저장
     python -m login --auto           무인 로그인 시험 (저장된 자격증명 + 신뢰 기기)

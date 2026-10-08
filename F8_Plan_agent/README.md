@@ -32,7 +32,6 @@ F8_Plan_agent/
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include — 재료는 백엔드가 함수로 넘겨준다)
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 91개 (공강 · 배치 규칙 · 할 일 · 공부 채우기 · 미배치 이유 · 고정 · 등록 검증 · 충돌 · 설정 · 성능)
-├── run.cmd / run.command    명령 (preview · apply · list · today · conflicts · clear · settings)
 └── data/                    (gitignore) — 내 블록 · 설정
 ```
 
@@ -115,16 +114,16 @@ F8_Plan_agent/
 ## 명령줄
 
 ```
-run.cmd preview [--days 14] [--json]     배치 미리보기 (캘린더는 바뀌지 않는다) — 공부 과목 순서도 보인다
-run.cmd apply   [--days 14]              미리보기 그대로 등록 (자동 배치분만 새로 바뀐다)
-run.cmd list    [--all]                  등록된 블록 (자동 · 고정 · 완료)
-run.cmd today                            오늘 블록
-run.cmd conflicts                        겹친 블록
-run.cmd clear   [--from D] [--to D]      자동 배치 블록 지우기 (고정·완료 제외)
-run.cmd settings --day 08:00-18:00 --weekend on --lunch off --buffer 15 --block 30-90 --range 14 --study off    (--reset)
+python desktop/cli.py placement preview [--days 14] [--json]     배치 미리보기 (캘린더는 바뀌지 않는다) — 공부 과목 순서도 보인다
+python desktop/cli.py placement apply   [--days 14]              미리보기 그대로 등록 (자동 배치분만 새로 바뀐다)
+python desktop/cli.py placement list    [--all]                  등록된 블록 (자동 · 고정 · 완료)
+python desktop/cli.py placement today                            오늘 블록
+python desktop/cli.py placement conflicts                        겹친 블록
+python desktop/cli.py placement clear   [--from D] [--to D]      자동 배치 블록 지우기 (고정·완료 제외)
+python desktop/cli.py placement settings --day 08:00-18:00 --weekend on --lunch off --buffer 15 --block 30-90 --range 14 --study off    (--reset)
 ```
 
-맥은 `./run.command preview`.
+저장소 루트에서 개발 venv 를 켜고 실행한다 — `desktop/cli.py` 가 개발 데이터로 `python -m placement` 를 돌린다(`--app` 이면 앱 데이터).
 
 ## API (대시보드 백엔드가 붙인다 — Frontend-Route 13-6)
 
@@ -148,7 +147,7 @@ run.cmd settings --day 08:00-18:00 --weekend on --lunch off --buffer 15 --block 
 
 ```
 cd F8_Plan_agent
-..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q
+python -m pytest tests -q          # 개발 venv(desktop/sidecar/.venv)
 ```
 
 임시 `data/` 를 쓰고, 다른 기능 폴더는 없는 자리를 가리키게 한다. 계산 규칙 테스트는 conftest `spec()` 에 설정을 다 적어 기본값과 떼어 두었다.

@@ -5,16 +5,15 @@
     venv_python(dir)   가상환경 안의 python   Windows .venv\\Scripts\\python.exe / 그 외 .venv/bin/python
     pid_alive(pid)     그 pid 가 살아 있는 python 프로세스인가   Windows tasklist / 그 외 os.kill(pid, 0)
     NO_WINDOW          subprocess creationflags — Windows 는 콘솔 창을 띄우지 않고, 그 외는 0
-    script(name)       이 OS 의 런처 파일 이름 (안내 문구용)   Windows setup.cmd / 맥 setup.command
-    venv.ensure(...)   가상환경 만들기·패키지·Chromium (osenv/venv.py — setup.cmd 가 하던 일)
+    venv.ensure(...)   가상환경 만들기·패키지·Chromium (osenv/venv.py — 사이드카 빌드·개발용 desktop/sidecar/.venv)
 
-데스크톱 앱(PyInstaller 로 묶은 실행 파일 하나 — FROZEN)에서는 기능마다 .venv 가 없다. 자식 프로세스는
-'같은 실행 파일을 다른 모드로' 띄운다 (univ_us_local/backend/desktop.py 의 --run-module).
-    FROZEN                          묶인 실행 파일로 도는 중인가
-    module_cmd(venv, mod, *args)    venv python -X utf8 -m mod … / 묶였으면 <실행 파일> --run-module mod …
-    python_ready(venv)              그 명령을 띄울 수 있는가 (venv python 이 있거나 묶였거나)
-    browsers_dir(venv)              Playwright Chromium 자리 — PLAYWRIGHT_BROWSERS_PATH 가 있으면 그것(앱 데이터 폴더)
-    appdata                         앱 데이터 폴더 (osenv/appdata.py)
+기능마다 .venv 를 두지 않는다 — 데스크톱 앱(PyInstaller 로 묶은 실행 파일 하나 — FROZEN)이든 개발 모드(desktop/sidecar/.venv
+의 python 으로 desktop.py)든, 자식 프로세스(수집기·로그인 창·예약 실행)는 **지금 도는 python 을 다른 모드로** 띄운다.
+    FROZEN                    묶인 실행 파일로 도는 중인가
+    module_cmd(mod, *args)    <python> -X utf8 -m mod … / 묶였으면 <실행 파일> --run-module mod … (univ_us_local/backend/desktop.py)
+    task_command(mod, *args)  작업 스케줄러용 PowerShell 명령 (register-task.ps1 -Command)
+    browsers_dir()            Playwright Chromium 자리 — PLAYWRIGHT_BROWSERS_PATH(앱 데이터 폴더) 또는 지금 python 의 venv/pw-browsers
+    appdata                   앱 데이터 폴더 (osenv/appdata.py)
 
 빌려 쓰는 법 (다른 기능 폴더를 빌리는 기존 방식과 같다 — 폴더 경로 환경변수 + sys.path):
 
@@ -28,6 +27,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -44,22 +44,27 @@ def venv_python(venv_dir: str | os.PathLike) -> Path:
     return d / "Scripts" / "python.exe" if IS_WINDOWS else d / "bin" / "python"
 
 
-def module_cmd(venv_dir: str | os.PathLike, module: str, *args: str) -> list[str]:
-    """`python -m module args` 를 띄울 명령. 묶인 앱이면 venv 대신 같은 실행 파일(--run-module).
-    -m 처럼 현재 폴더(cwd)를 import 경로 맨 앞에 두므로, 부르는 쪽은 지금처럼 cwd 를 기능 폴더로 준다."""
+def module_cmd(module: str, *args: str) -> list[str]:
+    """`python -m module args` 를 지금 도는 python 으로 띄울 명령. 묶인 앱이면 같은 실행 파일(--run-module).
+    -m 처럼 현재 폴더(cwd)를 import 경로 맨 앞에 두므로, 부르는 쪽은 cwd 를 기능 폴더로 준다."""
     if FROZEN:
         return [sys.executable, "--run-module", module, *args]
-    return [str(venv_python(venv_dir)), "-X", "utf8", "-m", module, *args]
+    return [sys.executable, "-X", "utf8", "-m", module, *args]
 
 
-def python_ready(venv_dir: str | os.PathLike) -> bool:
-    return FROZEN or venv_python(venv_dir).exists()
+def task_command(module: str, *args: str) -> str:
+    """Windows 작업 스케줄러(register-task.ps1 -Command)가 부를 PowerShell 명령 — module_cmd 를 `& '<실행 파일>' …` 로.
+    묶인 앱이면 `& '<앱 실행 파일>' --run-module <mod> …`. 작업은 환경변수 없이 돌고 WorkingDirectory 가 기능 폴더다."""
+    exe, *rest = module_cmd(module, *args)
+    q = lambda s: "'" + str(s).replace("'", "''") + "'"   # noqa: E731 — PowerShell 작은따옴표 문자열
+    return " ".join(["&", q(exe), *(a if re.fullmatch(r"[\w.-]+", a) else q(a) for a in rest)])
 
 
-def browsers_dir(venv_dir: str | os.PathLike) -> Path:
-    """Playwright Chromium 폴더. 앱 데이터 폴더를 쓰면(appdata.apply) PLAYWRIGHT_BROWSERS_PATH 가 그곳을 가리킨다."""
+def browsers_dir() -> Path:
+    """Playwright Chromium 폴더. 앱·개발 모드는 desktop.py 가 PLAYWRIGHT_BROWSERS_PATH 를 정한다(앱 데이터 폴더 / venv).
+    명령줄에서 python -m … 으로 바로 부르면 그 python 의 venv 안 pw-browsers."""
     env = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-    return Path(env) if env and env != "0" else Path(venv_dir) / "pw-browsers"
+    return Path(env) if env and env != "0" else Path(sys.prefix) / "pw-browsers"
 
 
 INSTALLING_MARK = ".univus-installing"                     # 데스크톱 앱이 첫 실행 때 Chromium 을 받는 동안 둔다
@@ -71,11 +76,6 @@ def chromium_state(path: str | os.PathLike) -> str:
     if (p / INSTALLING_MARK).exists():
         return "installing"
     return "ready" if p.is_dir() else "missing"
-
-
-def script(name: str) -> str:
-    """런처 파일 이름 — 안내 문구가 Windows 사용자에게는 .cmd, 맥 사용자에게는 .command 를 말하게."""
-    return f"{name}.cmd" if IS_WINDOWS else f"{name}.command"
 
 
 def pid_alive(pid: int) -> bool:
@@ -102,6 +102,5 @@ def pid_alive(pid: int) -> bool:
     return True
 
 
-__all__ = ["IS_WINDOWS", "IS_MAC", "NO_WINDOW", "FROZEN", "venv_python", "module_cmd", "python_ready", "browsers_dir",
-           "INSTALLING_MARK", "chromium_state",
-           "script", "pid_alive"]
+__all__ = ["IS_WINDOWS", "IS_MAC", "NO_WINDOW", "FROZEN", "venv_python", "module_cmd", "task_command", "browsers_dir",
+           "INSTALLING_MARK", "chromium_state", "pid_alive"]

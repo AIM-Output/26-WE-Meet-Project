@@ -1,6 +1,6 @@
 """저장소 — SQLite 한 파일 (data/academic.db). 표준 라이브러리만 쓴다.
 
-수집기(이 폴더의 .venv)와 대시보드 백엔드(univ_us_local)가 같은 파일을 연다 → WAL + busy_timeout.
+수집기(자식 프로세스)와 대시보드 백엔드(univ_us_local)가 같은 파일을 연다 → WAL + busy_timeout.
 
 표
   sources        원천 4곳 (학교 학사일정 표 · 학사안내 · 내 학부 · 내 단과대학). 켜짐, 마지막 수집 시각·결과·건수 (F1-R04),

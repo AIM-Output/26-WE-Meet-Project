@@ -1,6 +1,6 @@
 """과제 원장 — SQLite 한 파일 (data/eclass.db). 표준 라이브러리만 쓴다.
 
-수집기(runner, C3 .venv)가 수집 직후 반영(reconcile)하고, 대시보드 백엔드가 같은 파일을 읽고 '내가 체크함'을 쓴다
+수집기(runner)가 수집 직후 반영(reconcile)하고, 대시보드 백엔드가 같은 파일을 읽고 '내가 체크함'을 쓴다
 → WAL + busy_timeout.
 
 표

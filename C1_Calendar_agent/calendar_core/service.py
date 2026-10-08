@@ -3,7 +3,7 @@
 /api/events 는 모든 소스를 **한 배열**로 내려준다 (C1-R10). 소스별 수집·저장 코드는 각 기능 폴더에 있고
 여기서는 합치는 규칙만 갖는다 — 순서 · 기간 겹침 · 종일 end exclusive (C1-R14).
 
-fastapi 를 부르지 않는다 — 명령줄(run.cmd)에서도 그대로 쓰기 위해서다. 오류는 문자열로 돌려주고
+fastapi 를 부르지 않는다 — 명령줄(desktop/cli.py)에서도 그대로 쓰기 위해서다. 오류는 문자열로 돌려주고
 HTTP 상태로 바꾸는 일은 api.py 가 한다.
 """
 from __future__ import annotations

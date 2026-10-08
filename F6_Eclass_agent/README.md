@@ -4,15 +4,15 @@ e클래스의 **과제·퀴즈·동영상 시청 기한을 창 없이 주기적�
 강의자료·공지 글도 함께 받아 둔다(F4 요약·F3 휴강 공지가 쓴다).
 요구사항은 [요구사항정의서.md](../요구사항정의서.md) F6 절, 화면·라우트는 [Frontend-Route.md](../Frontend-Route.md) 11절.
 
-- **학교 로그인은 [C3_Login_agent](../C3_Login_agent/README.md) 것을 빌린다** — 세션 · 재인증 · `.venv`(playwright·bs4) · Chromium. 이 폴더에는 설치할 것이 없다.
-- 수집은 C3 의 python 으로, 나머지(원장·알림·API)는 **표준 라이브러리 + fastapi** 로 돈다 — 대시보드 백엔드가 그대로 import 한다.
-- 수집물·원장은 `data/` 에만 있다. 밖으로 보내지 않는다 (F6-R05).
+- **학교 로그인은 [C3_Login_agent](../C3_Login_agent/README.md) 것을 빌린다** — 세션 · 재인증 · Chromium. 이 폴더에는 설치할 것이 없다.
+- 수집은 자식 프로세스(앱 실행 파일 `--run-module eclass` / 개발 venv python)로, 나머지(원장·알림·API)는 **표준 라이브러리 + fastapi** 로 돈다 — 대시보드 백엔드가 그대로 import 한다.
+- 수집물·원장은 앱 데이터 폴더의 `F6_Eclass_agent/data/` 에만 있다. 밖으로 보내지 않는다 (F6-R05).
 
 ```
 F6_Eclass_agent/
 ├── eclass/                  파이썬 패키지
 │   ├── config.py            경로 · e클래스 주소 · 요청 간격 · 종료 코드 · 주기·재시도 · 알림 규칙
-│   ├── collect.py           수집기 (C3 .venv) — 과목·활동·자료·게시판·과제·퀴즈 마감·캘린더 → data/*.json
+│   ├── collect.py           수집기 (자식 프로세스) — 과목·활동·자료·게시판·과제·퀴즈 마감·캘린더 → data/*.json
 │   ├── runner.py            잠금 → 수집 → 원장 반영 → 실행 이력 · tick(예약: 주기 판정 + 5·15·45분 재시도)
 │   ├── runs.py              잠금 파일 · 실행 이력(runs.jsonl) · 연속 실패 · 재시도 대기 · 주기 설정
 │   ├── schedule.py          정각 N시간 주기 · '이번 주기 돌았나' 판정 — 순수 함수
@@ -25,35 +25,30 @@ F6_Eclass_agent/
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 58개 (날짜·캘린더·퀴즈 해석 · 원장 반영 · 알림 시점 · 주기·잠금·재시도 사슬 · 새 글·자료 피드 · 앱 모드 실행 인자)
-├── sync.cmd                 이 창에서 수집 (진행 상황이 보임)
-├── run-sync.cmd             창 없이 수집 → state\sync.log (대시보드 버튼과 같은 실행)
-├── run-scheduled.cmd        작업 스케줄러가 부른다 (tick)
-├── register-task.ps1        작업 스케줄러 등록·해제 (주기 2·4·6·12시간)
-├── run.cmd                  보기 명령 (list · runs · status · interval)
+├── register-task.ps1        작업 스케줄러 등록·해제 (주기 2·4·6·12시간 — 앱이 -Command 로 앱 실행 파일을 넘긴다)
 ├── AUTOMATION.md            예약 수집 자세히
-└── data/  state/            (gitignore) 수업자료 · 원장 · 실행 로그 — 절대 공유 금지
+└── data/  state/            (gitignore, 개발 기본값) 수업자료 · 원장 · 실행 로그 — 절대 공유 금지. 앱은 앱 데이터 폴더에
 ```
 
 ## 쓰는 법
 
-1. [C3_Login_agent](../C3_Login_agent/README.md) 를 한 번 설치하고 로그인해 둔다 (`setup.cmd` → `login.cmd` → 선택 `setup-creds.cmd`).
+1. 앱 **수집 원천 → e클래스 → `로그인 창 열기`** 로 한 번 로그인해 둔다 (선택: 같은 줄 `자동 로그인 정보 저장` — [C3_Login_agent](../C3_Login_agent/README.md)).
 2. 대시보드 **`e클래스 동기화`** 버튼(빠른 실행 · 수집 원천 · 과제 목록 어디서 눌러도 같은 실행)으로 첫 수집.
 3. 수집 원천 → e클래스 → **예약 실행 `켜기`** — 정각 4시간마다(00·04·08·12·16·20시) 창 없이 돈다. 주기는 2·4·6·12시간 중에서.
 
-명령줄:
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m eclass` 를 돌린다, `--app` 이면 앱 데이터):
 
-```powershell
-cd F6_Eclass_agent
-.\sync.cmd --dry-run               # 내려받지 않고 과목·자료 목록만 (메타데이터 JSON 은 갱신)
-.\sync.cmd                         # 전체 수집 (이미 받은 파일·글은 건너뜀, F6-R06)
-.\sync.cmd --only assign,deadlines # 과제·마감만 빠르게 (요청 ~15회)
-.\sync.cmd --course 74261          # 특정 과목만 (부분 수집 — '사라진 과제' 판정은 안 한다)
-.\run.cmd list                     # 과제 목록 (✓ 제출 · ☑ 내가 체크함)
-.\run.cmd runs                     # 실행 이력
-.\run.cmd status                   # 요약 · 연속 실패 · 다음 주기 · 앞으로 울릴 알림
+```bash
+python desktop/cli.py eclass sync --dry-run               # 내려받지 않고 과목·자료 목록만 (메타데이터 JSON 은 갱신)
+python desktop/cli.py eclass sync                         # 전체 수집 (이미 받은 파일·글은 건너뜀, F6-R06)
+python desktop/cli.py eclass sync --only assign,deadlines # 과제·마감만 빠르게 (요청 ~15회)
+python desktop/cli.py eclass sync --course 74261          # 특정 과목만 (부분 수집 — '사라진 과제' 판정은 안 한다)
+python desktop/cli.py eclass list                     # 과제 목록 (✓ 제출 · ☑ 내가 체크함)
+python desktop/cli.py eclass runs                     # 실행 이력
+python desktop/cli.py eclass status                   # 요약 · 연속 실패 · 다음 주기 · 앞으로 울릴 알림
 ```
 
-테스트: `..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q` (pytest·bs4 가 있는 아무 파이썬. 임시 data·state 를 쓰고 e클래스·작업 스케줄러에 닿지 않는다)
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv `desktop/sidecar/.venv`. 임시 data·state 를 쓰고 e클래스·작업 스케줄러에 닿지 않는다)
 
 ## 종료 코드 (sync · tick)
 

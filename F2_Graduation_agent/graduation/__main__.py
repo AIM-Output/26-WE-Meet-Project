@@ -1,13 +1,13 @@
-"""F2 명령줄 — run.cmd 가 부른다 (백엔드 .venv 의 python, 표준 라이브러리만).
+"""F2 명령줄 — `desktop/cli.py graduation` 로 부른다 (개발 venv · 표준 라이브러리만).
 
-    run.cmd status [--track single]     졸업까지 남은 학점 · 영역별 · 인증 (프로필은 C2 에서 읽는다)
-    run.cmd courses                     이수 과목 (영역·제외 이유)
-    run.cmd rulesets                    저장소의 기본 룰셋
-    run.cmd import [--interactive]      학사정보시스템 기이수성적 가져오기 (C3_Login_agent 의 .venv·로그인 세션)
-    run.cmd curriculum                  내 학과·전공·입학년도 교육과정 받기
-    run.cmd curriculum 30001229 30001265 2024   단과대·학과(전공) 코드·연도를 직접
-    run.cmd add "교내 AI 캠프(학점인정)" 2 --area free --year 2025 --semester 1
-    run.cmd clear                       이수 내역·내 지정·수정본 전부 지우기
+    cli.py graduation status [--track single]     졸업까지 남은 학점 · 영역별 · 인증 (프로필은 C2 에서 읽는다)
+    cli.py graduation courses                     이수 과목 (영역·제외 이유)
+    cli.py graduation rulesets                    저장소의 기본 룰셋
+    cli.py graduation import [--interactive]      학사정보시스템 기이수성적 가져오기 (C3_Login_agent 의 로그인 세션)
+    cli.py graduation curriculum                  내 학과·전공·입학년도 교육과정 받기
+    cli.py graduation curriculum 30001229 30001265 2024   단과대·학과(전공) 코드·연도를 직접
+    cli.py graduation add "교내 AI 캠프(학점인정)" 2 --area free --year 2025 --semester 1
+    cli.py graduation clear                       이수 내역·내 지정·수정본 전부 지우기
 """
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ def cmd_curriculum(a) -> int:
         st = service.curriculum_state(_profile())
         college, codes, year = st["collegeCode"], st["codes"], st["year"]
     if not (college and codes and year):
-        print("프로필에 단과대·학과·입학년도가 없습니다 — 코드를 직접 주세요: run.cmd curriculum <단과대> <학과> <연도>")
+        print("프로필에 단과대·학과·입학년도가 없습니다 — 코드를 직접 주세요: cli.py graduation curriculum <단과대> <학과> <연도>")
         return 2
     http = curriculum.Http()
     for code in codes:

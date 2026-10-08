@@ -3,11 +3,11 @@
     default_root()          <OS 사용자 데이터 폴더>/kr.univus.desktop/data
                               Windows %LOCALAPPDATA%\\kr.univus.desktop\\data · 맥 ~/Library/Application Support/kr.univus.desktop/data
     apply(root)             기능마다 DATA/STATE 환경변수를 root 아래로 맞춘다 (이미 정해져 있으면 그대로)
-    migrate(src, root)      저장소 폴더(src)의 data/·state/ 를 root 로 한 번 복사 (명령줄: python -m osenv migrate-data)
+    migrate(src, root)      다른 데이터 폴더(src, 같은 모양)의 data/·state/ 를 root 로 복사 (명령줄: python -m osenv copy-data)
 
-root 아래는 저장소와 **같은 모양**으로 둔다 — <root>/F6_Eclass_agent/data, <root>/C3_Login_agent/state …
+root 아래는 기능 폴더와 **같은 모양**으로 둔다 — <root>/F6_Eclass_agent/data, <root>/C3_Login_agent/state …
 F6 가 manifest 에 'data\\<과목>\\…' 처럼 기능 폴더 기준 상대경로를 적고 F3·F4·F5 가 F6_DATA_DIR 의 부모 기준으로 읽기 때문에,
-폴더 이름(data)과 깊이를 지키면 그 규칙이 그대로 산다. 저장소 실행(.cmd/.command)은 이 모듈을 쓰지 않는다 — 지금 그대로.
+폴더 이름(data)과 깊이를 지키면 그 규칙이 그대로 산다. 개발 모드는 같은 모양으로 desktop/.dev-data 를 쓴다.
 
 왜 앱 식별자(kr.univus.desktop) 폴더인가: Windows 설치 파일(NSIS, 현재 사용자 설치)은 프로그램을 %LOCALAPPDATA%\\<제품 이름>
 (= UnivUs)에 깐다. 데이터를 거기 두면 프로그램 파일과 성적·로그인 세션이 한 폴더에 섞이고, 제거할 때 '앱 데이터 삭제'를
@@ -67,8 +67,8 @@ def apply(root: str | os.PathLike, env: Optional[dict] = None) -> dict[str, str]
 
 
 def migrate(src: str | os.PathLike, root: str | os.PathLike, log: Callable[[str], None] = print) -> list[str]:
-    """저장소에서 쓰던 data/·state/ 를 앱 데이터 폴더로 복사. 이미 있는 폴더는 건드리지 않는다(덮어쓰지 않음).
-    하드링크가 아니라 복사인 이유: SQLite(WAL)를 두 실행 방식이 같이 열면 깨질 수 있다. 원본은 남긴다."""
+    """src(앱 데이터 폴더 등, 같은 모양)의 data/·state/ 를 root 로 복사. 이미 있는 폴더는 건드리지 않는다(덮어쓰지 않음).
+    하드링크가 아니라 복사인 이유: SQLite(WAL)를 앱과 개발 모드가 같이 열면 깨질 수 있다. 원본은 남긴다."""
     src, root = Path(src), Path(root)
     skip = ("*.lock",)                                     # 실행 중 잠금은 옮기지 않는다
     done: list[str] = []

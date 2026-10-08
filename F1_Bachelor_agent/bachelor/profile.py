@@ -2,7 +2,7 @@
 
 대시보드 화면은 백엔드가 프로필을 직접 넘겨주므로 이 파일을 쓰지 않는다. 수집(③·④ 내 소속 원천 — 소속으로 홈페이지를 찾는다)과
 CLI(`python -m bachelor list`)가 쓴다.
-C2 쪽 store·service 는 표준 라이브러리만 써서 이 .venv 에서도 import 된다.
+C2 쪽 store·service 는 표준 라이브러리만 써서 수집 프로세스에서도 import 된다.
 """
 from __future__ import annotations
 

@@ -104,7 +104,7 @@ export default function Header() {
             style={{ background: "var(--danger-soft)", borderColor: "color-mix(in oklab, var(--danger) 35%, transparent)" }}
           >
             <WifiOff className="size-4 flex-none" aria-hidden />
-            백엔드에 연결할 수 없습니다. <code className="rounded bg-surface px-1">유니버스 열기</code> 로 로컬 서버를 켰는지 확인하세요.
+            로컬 서버에 연결할 수 없습니다 — 트레이에서 유니버스를 종료한 뒤 다시 실행하세요.
           </div>
         )}
         {!error && <EclassFailureStrip />}

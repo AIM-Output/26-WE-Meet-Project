@@ -1,6 +1,6 @@
 """실행 기록 — 잠금 파일 · 실행 이력 · 재시도 대기 · 설정 (표준 라이브러리만).
 
-수집 프로세스(runner, C3 .venv)와 대시보드 백엔드가 같은 파일을 본다.
+수집 프로세스(runner)와 대시보드 백엔드가 같은 파일을 본다.
   state/sync.lock     도는 동안 {pid, started_at, source, attempt, args} — 살아 있는 pid 면 다른 실행은 물러난다 (F6-R14·R53)
   state/runs.jsonl    한 번 돌 때마다 한 줄 {started_at, finished_at, duration_s, exit_code, source, attempt, counts, error, ledger}
   state/sync.last.json 마지막 실행 (예전 eclass_agent 모양 + 위 필드)

@@ -35,22 +35,21 @@ def test_migrate_copies_once(tmp_path):
 
 
 def test_module_cmd(monkeypatch, tmp_path):
-    monkeypatch.setattr(osenv, "FROZEN", False)
-    monkeypatch.setattr(osenv, "IS_WINDOWS", False)
-    assert osenv.module_cmd(tmp_path / ".venv", "eclass", "sync") == [
-        str(tmp_path / ".venv" / "bin" / "python"), "-X", "utf8", "-m", "eclass", "sync"]
+    monkeypatch.setattr(osenv, "FROZEN", False)                                  # 개발 모드 — 지금 도는 python 그대로
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "desktop" / "sidecar" / ".venv" / "bin" / "python"))
+    assert osenv.module_cmd("eclass", "sync") == [sys.executable, "-X", "utf8", "-m", "eclass", "sync"]
     monkeypatch.setattr(osenv, "FROZEN", True)
     monkeypatch.setattr(sys, "executable", "/Applications/UnivUs.app/univus-backend")
-    assert osenv.module_cmd(tmp_path / ".venv", "eclass", "sync") == [
+    assert osenv.module_cmd("eclass", "sync") == [
         "/Applications/UnivUs.app/univus-backend", "--run-module", "eclass", "sync"]
-    assert osenv.python_ready(tmp_path / "없는 venv")                             # 묶인 앱은 venv 가 없어도 된다
 
 
 def test_browsers_dir_and_state(monkeypatch, tmp_path):
     monkeypatch.delenv("PLAYWRIGHT_BROWSERS_PATH", raising=False)
-    assert osenv.browsers_dir(tmp_path / ".venv") == tmp_path / ".venv" / "pw-browsers"
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / ".venv"))
+    assert osenv.browsers_dir() == tmp_path / ".venv" / "pw-browsers"           # 명령줄에서 바로 — 그 python 의 venv
     monkeypatch.setenv("PLAYWRIGHT_BROWSERS_PATH", str(tmp_path / "app" / "pw-browsers"))
-    b = osenv.browsers_dir(tmp_path / ".venv")
+    b = osenv.browsers_dir()
     assert b == tmp_path / "app" / "pw-browsers"
     assert osenv.chromium_state(b) == "missing"
     b.mkdir(parents=True)

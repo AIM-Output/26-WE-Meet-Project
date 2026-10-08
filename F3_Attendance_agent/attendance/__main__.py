@@ -1,14 +1,14 @@
-"""F3 명령줄 — run.cmd 가 부른다 (표준 라이브러리만).
+"""F3 명령줄 — `desktop/cli.py attendance` 로 부른다 (개발 venv · 표준 라이브러리만).
 
-    run.cmd status [--semester 2026-2]      과목별 총 횟수 · 유효 결석 / 허용 · 남은 여유 · 상태 · 근거
-    run.cmd sessions 운영체제                회차 목록 (과목 이름 일부 또는 id)
-    run.cmd semester                        학기 범위 · 휴업일 · 학교 지정 보강일 (학사일정 F1 에서)
-    run.cmd import                          시간표 자동으로 가져오기 (학사정보시스템 공개 조회, 로그인 불필요)
-    run.cmd mark <회차 id> absent            출결 적기 (present·absent·late·excused·none) · canceled/scheduled = 휴강/되돌리기
-    run.cmd notices                         e클래스 공지에서 찾은 휴강 (자동 휴강 원천)
-    run.cmd parse 월5월6수5                  강의시간 원문 해석 (시각 포함)
-    run.cmd periods                         교시 ↔ 시각 (학교 시간표 모듈)
-    run.cmd clear                           출결 기록·시간표·설정 전부 지우기
+    cli.py attendance status [--semester 2026-2]      과목별 총 횟수 · 유효 결석 / 허용 · 남은 여유 · 상태 · 근거
+    cli.py attendance sessions 운영체제                회차 목록 (과목 이름 일부 또는 id)
+    cli.py attendance semester                        학기 범위 · 휴업일 · 학교 지정 보강일 (학사일정 F1 에서)
+    cli.py attendance import                          시간표 자동으로 가져오기 (학사정보시스템 공개 조회, 로그인 불필요)
+    cli.py attendance mark <회차 id> absent            출결 적기 (present·absent·late·excused·none) · canceled/scheduled = 휴강/되돌리기
+    cli.py attendance notices                         e클래스 공지에서 찾은 휴강 (자동 휴강 원천)
+    cli.py attendance parse 월5월6수5                  강의시간 원문 해석 (시각 포함)
+    cli.py attendance periods                         교시 ↔ 시각 (학교 시간표 모듈)
+    cli.py attendance clear                           출결 기록·시간표·설정 전부 지우기
 """
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def cmd_status(a) -> int:
         s = c["summary"]
         tag = " [제외]" if c["excluded"] else ""
         if not c["timetable"]["meetings"]:
-            print(f"- {c['short']}{tag}: 시간표 없음 — `run.cmd import` 또는 화면에서 요일·교시 입력")
+            print(f"- {c['short']}{tag}: 시간표 없음 — `cli.py attendance import` 또는 화면에서 요일·교시 입력")
             continue
         print(f"- {c['short']}{tag} ({c['timetable']['text']}, {'자동' if c['timetable']['filledBy'] == 'auto' else '내가 고침'})")
         print(f"    {s['levelLabel']:<3} 결석 {s['effectiveAbsent']}회 / 허용 {_n(s['allowed'])}회 · 더 빠질 수 있는 횟수 "

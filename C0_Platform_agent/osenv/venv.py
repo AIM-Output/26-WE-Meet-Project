@@ -1,8 +1,9 @@
-"""가상환경 만들기·패키지 맞추기·Chromium 받기 — Windows setup.cmd 가 하던 일을 OS 무관하게.
+"""가상환경 만들기·패키지 맞추기 — OS 무관하게.
 
-    ensure(venv_dir, requirements, chromium=False, log=None)   없으면 만들고, requirements 가 바뀌었으면 다시 설치
+    ensure(venv_dir, requirements, log=None)   없으면 만들고, requirements 가 바뀌었으면 다시 설치
 
-맥 런처(*.command)와 대시보드(F1 학사일정 동기화 버튼)가 같이 쓴다. 다시 불러도 안전하다 — 이미 된 단계는 건너뛴다.
+사이드카 빌드(desktop/sidecar/build.py)가 desktop/sidecar/.venv 를 맞출 때 쓴다 — 개발 모드도 같은 venv 를 쓴다.
+다시 불러도 안전하다 — 이미 된 단계는 건너뛴다. Chromium 은 desktop.py 가 처음 실행 때 받는다.
 requirements 는 내용 해시를 .venv/.univus-requirements 에 적어 두고, `git pull` 로 목록이 바뀌었을 때만 pip 를 다시 돌린다.
 """
 from __future__ import annotations
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import IO, Optional
 
-from . import NO_WINDOW, browsers_dir, venv_python
+from . import NO_WINDOW, venv_python
 
 STAMP = ".univus-requirements"
 
@@ -23,33 +24,27 @@ class VenvError(RuntimeError):
     """사람이 읽을 이유를 담는다 (화면·로그에 그대로 쓴다)."""
 
 
-def has_chromium(venv_dir: str | os.PathLike) -> bool:
-    """Chromium 이 실제로 받아져 있는가 (chromium-* 폴더). 자리는 osenv.browsers_dir — C3 config.BROWSERS 와 같은 규칙."""
-    d = browsers_dir(venv_dir)
-    return d.is_dir() and any(p.name.startswith("chromium") for p in d.iterdir())
-
-
 def _req_hash(req: Path) -> str:
     return hashlib.sha256(req.read_bytes()).hexdigest()
 
 
-def _run(cmd: list[str], log: Optional[IO[str]], env: Optional[dict] = None) -> int:
+def _run(cmd: list[str], log: Optional[IO[str]]) -> int:
     if log is None:                                   # 터미널: 진행 상황을 그대로 보여 준다
-        return subprocess.run(cmd, env=env).returncode
+        return subprocess.run(cmd).returncode
     log.flush()
-    return subprocess.run(cmd, env=env, stdout=log, stderr=subprocess.STDOUT, creationflags=NO_WINDOW).returncode
+    return subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, creationflags=NO_WINDOW).returncode
 
 
 def _say(log: Optional[IO[str]], msg: str) -> None:
     print(msg, file=log or sys.stdout, flush=True)
 
 
-def ensure(venv_dir: str | os.PathLike, requirements: str | os.PathLike | None = None, *, chromium: bool = False,
+def ensure(venv_dir: str | os.PathLike, requirements: str | os.PathLike | None = None, *,
            log: Optional[IO[str]] = None, base_python: Optional[str] = None) -> Path:
     """venv 의 python 경로를 돌려준다. 실패하면 VenvError."""
     venv_dir = Path(venv_dir)
     py = venv_python(venv_dir)
-    steps = 1 + bool(requirements) + bool(chromium)
+    steps = 1 + bool(requirements)
     n = 0
 
     n += 1
@@ -73,11 +68,4 @@ def ensure(venv_dir: str | os.PathLike, requirements: str | os.PathLike | None =
                 raise VenvError("패키지 설치에 실패했습니다 — 인터넷 연결을 확인하고 다시 실행하세요")
             stamp.write_text(want, encoding="utf-8")
 
-    if chromium:
-        n += 1
-        if not has_chromium(venv_dir):
-            _say(log, f"[{n}/{steps}] 브라우저(Chromium) 내려받는 중... (수백 MB, 몇 분 걸릴 수 있음)")
-            env = {**os.environ, "PLAYWRIGHT_BROWSERS_PATH": str(browsers_dir(venv_dir))}
-            if _run([str(py), "-m", "playwright", "install", "chromium"], log, env) != 0:
-                raise VenvError("브라우저 내려받기에 실패했습니다 — 인터넷 연결을 확인하고 다시 실행하세요")
     return py

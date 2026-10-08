@@ -21,47 +21,41 @@ F1_Bachelor_agent/
 │   ├── notify.py             알림 시점 계산·배달·놓친 알림 · push()(다른 기능이 알림 센터에 바로 넣기 — F3 출결 경고)
 │   ├── store.py              SQLite (표준 라이브러리만)
 │   ├── pipeline.py           수집 한 번 (잠금·원천별 기록)
-│   ├── runner.py             대시보드 버튼 → run-sync.cmd 백그라운드 실행
+│   ├── runner.py             대시보드 버튼 → `-m bachelor sync` 백그라운드 실행 · 예약 수집 등록
 │   ├── sources_admin.py      원천 4곳 목록·상태 · 켜고 끄기 · ③·④ 게시판 직접 지정
 │   ├── api.py                FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py           명령줄
 ├── directory/homepages.json  단과대학·학부(과) 홈페이지 목록 스냅숏 (저장소에 넣어 둔다)
 ├── tests/                    pytest (날짜 파서·추출·병합·알림·LLM 검증·원천 4곳)
-├── setup.cmd  sync.cmd  run-sync.cmd  run.cmd  register-task.ps1
+├── register-task.ps1         예약 수집 등록 (앱이 -Command 로 앱 실행 파일을 넘긴다)
 ├── requirements.txt  .env.example
-└── data/  state/             (gitignore) 수집 결과 DB · 잠금·로그
+└── data/  state/             (gitignore, 개발 기본값) 수집 결과 DB · 잠금·로그 — 앱은 앱 데이터 폴더에
 ```
 
 ## 설치·실행
 
-대시보드만 쓸 거면 **따로 할 일이 없다.** `유니버스 열기.cmd` → 대시보드 왼쪽 **학사일정 동기화** 버튼을 처음 누르면
-이 폴더의 `.venv` 를 만들고 패키지를 설치한 뒤(1분쯤) 수집한다. 명령줄로 하려면:
+**따로 할 일이 없다.** 앱 대시보드 왼쪽 **학사일정 동기화** 버튼이 수집한다(requests·bs4 는 앱 실행 파일 안에 있다).
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m bachelor` 를 돌린다, `--app` 이면 앱 데이터):
 
-```powershell
-cd F1_Bachelor_agent
-.\setup.cmd                     # .venv + 패키지 (한 번)
-.\sync.cmd                      # 수집 (처음 1분쯤, 이후엔 새 글만이라 20초 안팎)
-.\sync.cmd --dry-run            # 저장하지 않고 무엇을 찾는지만
-.\run.cmd list                  # 이번 학기 학사 일정 (프로필은 대시보드에서 입력한 것을 읽는다)
-.\run.cmd list --tab review     # 확인 필요
-.\run.cmd sources               # 원천 4곳 상태 · 내 소속 홈페이지·게시판
-.\run.cmd disable my_college    # 원천 끄기 (enable 로 다시 켜기)
-.\run.cmd set-board my_dept https://aisw.jnu.ac.kr/bbs/aisw/64/artclList.do   # ③·④ 게시판 직접 지정 (주소 없이 → 자동으로)
-.\run.cmd directory-sync        # 단과대학·학부 홈페이지 목록 다시 받기 → data/directory/ (저장소 스냅숏보다 우선)
-.\run.cmd notify                # 때가 된 알림 배달 + 목록
+```bash
+python desktop/cli.py bachelor sync                      # 수집 (처음 1분쯤, 이후엔 새 글만이라 20초 안팎)
+python desktop/cli.py bachelor sync --dry-run            # 저장하지 않고 무엇을 찾는지만
+python desktop/cli.py bachelor list                  # 이번 학기 학사 일정 (프로필은 대시보드에서 입력한 것을 읽는다)
+python desktop/cli.py bachelor list --tab review     # 확인 필요
+python desktop/cli.py bachelor sources               # 원천 4곳 상태 · 내 소속 홈페이지·게시판
+python desktop/cli.py bachelor disable my_college    # 원천 끄기 (enable 로 다시 켜기)
+python desktop/cli.py bachelor set-board my_dept https://aisw.jnu.ac.kr/bbs/aisw/64/artclList.do   # ③·④ 게시판 직접 지정 (주소 없이 → 자동으로)
+python desktop/cli.py bachelor directory-sync        # 단과대학·학부 홈페이지 목록 다시 받기 → data/directory/ (저장소 스냅숏보다 우선)
+python desktop/cli.py bachelor notify                # 때가 된 알림 배달 + 목록
 ```
 
 자동 수집 — **매일 08:00 한 번** (e클래스와 같은 규칙, 2026-10-01): 작업 스케줄러가 08:00 + 로그인할 때 + 놓친 시각은 켜지는 대로
-`run-scheduled.cmd`(`python -m bachelor tick`)를 부르고, tick 은 오늘 08시 이후 성공한 수집(버튼 포함)이 있으면 건너뛴다.
+앱 실행 파일(`--run-module bachelor tick`)을 부르고, tick 은 오늘 08시 이후 성공한 수집(버튼 포함)이 있으면 건너뛴다.
 원천이 전부 실패하면(대개 인터넷) 5·15·45분 뒤 다시 시도한다(최대 3회, 그 사이 '지금 수집'이 성공하면 그만둠).
-대시보드 설정 › 수집 원천의 '예약 수집' 스위치로도 켜고 끈다. 로그인 중에만 실행, 창 숨김:
+앱 설정 › 수집 원천의 '예약 수집' 스위치로 켜고 끈다(`register-task.ps1` · 맥 launchd). 로그인 중에만 실행, 창 숨김.
+개발 모드(`npm run dev`)에서는 설치본 등록을 덮어쓰지 않게 예약 수집이 꺼져 있다.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\register-task.ps1            # 등록
-powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove    # 해제
-```
-
-테스트: `.venv\Scripts\python -m pytest tests -q`
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv `desktop/sidecar/.venv`)
 
 ## 원천 4곳 (D1) — 각각 켜고 끌 수 있다
 
@@ -72,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove    # 해제
 | `my_dept` | ④ **내 학부** 홈페이지 학사 공지 | 프로필(C2)의 학과 → 홈페이지 → 학사 공지 게시판(아래) → K2Web 게시판 수집. 대상 = 그 학과 | 0.5~0.9 |
 | `my_college` | ③ **내 단과대학** 홈페이지 학사 공지 | 프로필의 단과대학으로 같은 방식. 대상 = 그 단과대학 | 0.5~0.9 |
 
-- **켜고 끄기** (대시보드 설정 › 수집 원천 · `/academic` 머리의 알약 스위치 · `run.cmd enable|disable`): 끄면 새로 받지 않고,
+- **켜고 끄기** (대시보드 설정 › 수집 원천 · `/academic` 머리의 알약 스위치 · `cli.py bachelor enable|disable`): 끄면 새로 받지 않고,
   **그 원천에서만 온 일정은 목록·캘린더에서 빠지고 새 알림도 오지 않는다**(지우지 않는다). 다른 켜진 원천도 같은 일정을 말하면 그 원천으로 계속 보인다.
   다시 켜면 그대로 돌아오고, 한 번도 안 받은 원천이면 바로 수집을 시작한다.
 - **내 소속 → 홈페이지** (`homepages.py`): 전남대 대표 홈페이지의 '대학·학부(과)' 안내 표(2026-09-29: 단과대학 19곳 ·
@@ -119,8 +113,8 @@ powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove    # 해제
 ## 대시보드와 잇는 법
 
 `univ_us_local/backend/app/academic.py` 가 이 폴더를 `sys.path` 에 넣고 `bachelor.api.build_router()` 를 include 한다.
-`store`·`service`·`api` 는 표준 라이브러리 + fastapi 만 쓰므로 백엔드 `.venv` 에 더 설치할 것이 없다.
-수집(requests·bs4)은 버튼을 누르면 `run-sync.cmd` 가 이 폴더의 `.venv` 에서 돌린다 (e클래스 동기화와 같은 방식).
+`store`·`service`·`api` 는 표준 라이브러리 + fastapi 만 쓴다.
+수집(requests·bs4)은 버튼을 누르면 `runner.py` 가 자식 프로세스(`osenv.module_cmd("bachelor", "sync", …)` — 앱 실행 파일 / 개발 venv python)로 돌린다 (e클래스 동기화와 같은 방식).
 폴더 위치가 다르면 백엔드에 환경변수 `F1_AGENT_DIR` 를 준다.
 
 ## 지키는 선

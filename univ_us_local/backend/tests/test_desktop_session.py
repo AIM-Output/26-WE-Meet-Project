@@ -1,5 +1,5 @@
 """데스크톱 사이드카(desktop.py) — 준비 줄 · 세션 쿠키 · 한 번 쓰는 실행 코드 · 앱 데이터 폴더 · stdin 닫으면 종료.
-실제로 서버를 띄운다 (임시 데이터 폴더·빈 포트, 학교 사이트 접속 없음). 백엔드 .venv(fastapi·uvicorn) 로:
+실제로 서버를 띄운다 (임시 데이터 폴더·빈 포트, 학교 사이트 접속 없음). 개발 venv(desktop/sidecar/.venv — fastapi·uvicorn) 로:
     univ_us_local/backend/.venv/bin/python -m pytest univ_us_local/backend/tests -q
 """
 import json

@@ -4,7 +4,7 @@
   - 라우터(/api/academic/* · /api/sources* · /api/notifications*)를 include 하고
   - /api/events 에 학사 일정을 섞고, /api/status 에 학사 원천 상태를 싣는다.
 F1 쪽 모듈(store·service·api)은 표준 라이브러리 + fastapi 만 쓰므로 이 백엔드의 .venv 에 더 설치할 것이 없다.
-수집 자체(requests·bs4)는 F1_Bachelor_agent/run-sync.cmd 가 그 폴더의 .venv 에서 돌린다.
+수집 자체(requests·bs4)는 F1 runner 가 자식 프로세스(`-m bachelor sync` — 앱 실행 파일 / 개발 venv)로 돌린다.
 
 F1 폴더가 없거나 불러오지 못해도 나머지 화면은 그대로 동작해야 한다 → available=False 로 알리고 빈 값을 준다.
 """

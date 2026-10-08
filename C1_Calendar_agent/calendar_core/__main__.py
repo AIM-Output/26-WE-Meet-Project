@@ -1,11 +1,11 @@
-"""C1 명령줄 — run.cmd 가 부른다 (표준 라이브러리만, fastapi 불필요).
+"""C1 명령줄 — `desktop/cli.py calendar_core` 로 부른다 (개발 venv · 표준 라이브러리만, fastapi 불필요).
 
-    run.cmd list [--todo] [--from 2026-09-01] [--to 2026-12-31]   내 일정·할 일 (캘린더에 얹히는
-                                                                  학사·마감·수업은 각 기능의 run.cmd 로 본다)
-    run.cmd add "회의" 2026-10-02T19:00 --end 2026-10-02T21:00 --category team
-    run.cmd done <id>                                             할 일 완료 토글
-    run.cmd rm <id>                                               지우기
-    run.cmd count                                                 건수 · DB 자리
+    cli.py calendar_core list [--todo] [--from 2026-09-01] [--to 2026-12-31]   내 일정·할 일 (캘린더에 얹히는
+                                                                  학사·마감·수업은 각 기능의 cli.py 로 본다)
+    cli.py calendar_core add "회의" 2026-10-02T19:00 --end 2026-10-02T21:00 --category team
+    cli.py calendar_core done <id>                                             할 일 완료 토글
+    cli.py calendar_core rm <id>                                               지우기
+    cli.py calendar_core count                                                 건수 · DB 자리
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def _print(ev: dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="run.cmd", description="C1 서비스 캘린더 — 내 일정·할 일")
+    ap = argparse.ArgumentParser(prog="cli.py calendar_core", description="C1 서비스 캘린더 — 내 일정·할 일")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_list = sub.add_parser("list", help="내 일정·할 일 목록")

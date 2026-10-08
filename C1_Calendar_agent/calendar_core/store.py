@@ -13,9 +13,7 @@
 from __future__ import annotations
 
 import json
-import shutil
 import sqlite3
-import sys
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Iterator, Optional
@@ -58,30 +56,12 @@ BOOL_FIELDS = {"all_day", "is_todo", "done"}
 
 def init() -> None:
     C.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _adopt_legacy_db()
     with _conn() as con:
         con.executescript(SCHEMA)
         cols = {r["name"] for r in con.execute("PRAGMA table_info(user_events)")}
         for col, sql in MIGRATIONS.items():
             if col not in cols:
                 con.execute(sql)
-
-
-def _adopt_legacy_db() -> None:
-    """2026-09-30 이전에 쓰던 univ_us_local/data/univus.db 를 이 폴더로 **한 번만** 옮긴다.
-
-    옛 자리가 비어 있거나 새 자리에 이미 DB 가 있으면 아무것도 하지 않는다.
-    서버가 아직 옛 코드로 떠 있어 파일이 잠겨 있으면 옮기지 못하므로 복사만 하고 알린다
-    (그 서버를 끄고 다시 켜면 이 함수는 더 이상 할 일이 없다).
-    """
-    if C.DB_PATH.exists() or not C.LEGACY_DB.exists() or C.LEGACY_DB == C.DB_PATH:
-        return
-    try:
-        shutil.move(str(C.LEGACY_DB), str(C.DB_PATH))
-    except OSError as e:                          # 옛 서버가 파일을 붙잡고 있다 (Windows)
-        shutil.copy2(str(C.LEGACY_DB), str(C.DB_PATH))
-        print(f"[C1] 옛 일정 DB 를 복사했습니다(옮기지 못함: {e}). "
-              f"옛 서버를 끈 뒤 {C.LEGACY_DB} 를 지우세요.", file=sys.stderr)
 
 
 @contextmanager

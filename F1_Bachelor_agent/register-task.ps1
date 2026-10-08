@@ -1,15 +1,14 @@
 ﻿<#
   Windows 작업 스케줄러에 학사일정 자동 수집을 등록/해제한다 (F1 · F1-R05). e클래스(F6)와 같은 규칙:
-  매일 08:00 + 로그인할 때 run-scheduled.cmd(python -m bachelor tick)를 부른다.
+  매일 08:00 + 로그인할 때 앱 실행 파일(--run-module bachelor tick)을 부른다.
   - 그 시각에 PC 가 꺼져 있었거나 절전이었으면 켜지는 대로 한 번 실행한다(StartWhenAvailable).
     tick 이 '오늘 08시 이후 성공한 수집이 있으면 건너뜀'으로 하루 한 번만 돌게 막는다.
   - 실패 재시도(5·15·45분)는 tick 이 직접 한다 → 작업 스케줄러의 재시작 옵션은 쓰지 않는다.
   "사용자가 로그인되어 있을 때만" 실행 → Windows 비밀번호를 저장할 필요가 없다. 창은 숨김, 출력은 state\sync.log.
 
-  등록 (기본: 매일 08:00):
-      powershell -ExecutionPolicy Bypass -File .\register-task.ps1
-  시각 지정 (tick 의 기준 시각은 환경변수 F1_SCHEDULE_AT, 기본 08:00 — 함께 바꿀 것):
-      powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -At 08:00
+  앱의 '수집 원천' 화면(예약 수집 켜기)이 앱 번들 안의 이 파일을 부른다 (bachelor/runner.py register_task):
+      powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -At 08:00 -Command "& '<앱 실행 파일>' --run-module bachelor tick --log '…'"
+  (tick 의 기준 시각은 환경변수 F1_SCHEDULE_AT, 기본 08:00 — 함께 바꿀 것)
   해제:
       powershell -ExecutionPolicy Bypass -File .\register-task.ps1 -Remove
 #>
@@ -33,13 +32,9 @@ if ($Remove) {
   return
 }
 
-# 부를 명령 — 기본은 run-scheduled.cmd. 묶인 데스크톱 앱은 -Command 로 앱 실행 파일을 준다
-#   (예: & '<앱 실행 파일>' --run-module eclass tick --log '<앱 데이터 폴더>\F6_Eclass_agent\state\sync.log')
-if (-not $Command) {
-  $runner = Join-Path $dir "run-scheduled.cmd"
-  if (-not (Test-Path $runner)) { throw "run-scheduled.cmd 를 찾을 수 없습니다: $runner" }
-  $Command = "& '$runner'"
-}
+# 부를 명령 — 앱이 -Command 로 앱 실행 파일을 준다 (C0 osenv.task_command)
+#   (예: & '<앱 실행 파일>' --run-module bachelor tick --log '<앱 데이터 폴더>\F1_Bachelor_agent\state\sync.log')
+if (-not $Command) { throw "-Command 가 필요합니다 — 앱의 수집 원천 화면에서 예약 수집을 켜세요" }
 
 $psArg = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$Command`""
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $psArg -WorkingDirectory $dir

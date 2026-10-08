@@ -25,8 +25,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import (FROZEN, browsers_dir, module_cmd, pid_alive, script,  # noqa: E402,F401 — pid_alive 는 runs
-                   venv_python)
+from osenv import FROZEN, browsers_dir, module_cmd, pid_alive, task_command  # noqa: E402,F401 — pid_alive 는 runs
 
 # data/ 아래 경로는 manifest·assignments 에 'data\\<과목>\\…' 처럼 ROOT 기준 상대경로로 적힌다 (F3 공지 휴강이 같은 규칙으로 읽는다).
 DATA_DIR = Path(os.environ.get("F6_DATA_DIR") or ROOT / "data")
@@ -37,7 +36,7 @@ ASSIGNMENTS_FILE = DATA_DIR / "assignments.json"    # 과제 전체 (설명·첨
 DEADLINES_FILE = DATA_DIR / "deadlines.json"        # 마감 일정 (캘린더 '다가오는 일정' + 과제 + 퀴즈)
 DB_PATH = DATA_DIR / "eclass.db"                    # 과제 원장 — 신규·변경·삭제 이력, '내가 체크함', 소요시간 (5절 · 6절)
 
-LOG_FILE = STATE_DIR / "sync.log"                   # 실행 로그 (run-sync.cmd · 예약 실행)
+LOG_FILE = STATE_DIR / "sync.log"                   # 실행 로그 (대시보드 버튼 · 예약 실행)
 LOCK_FILE = STATE_DIR / "sync.lock"                 # 도는 동안 잡는 잠금 {pid, started_at, source, attempt} — 중복 실행 방지 (F6-R14)
 LAST_RUN_FILE = STATE_DIR / "sync.last.json"        # 마지막 실행 결과 (예전 모양 그대로 + source·attempt·counts·error)
 RUNS_FILE = STATE_DIR / "runs.jsonl"                # 실행 이력 한 줄씩 (F6-R16) — 최근 RUNS_KEEP 줄만 남긴다
@@ -47,9 +46,7 @@ RUNS_KEEP = 300
 
 # ── C3 포털 자동 로그인 (세션 · 재인증 · 브라우저 · python) ──
 C3_AGENT_DIR = Path(os.environ.get("C3_AGENT_DIR") or PROJECT_ROOT / "C3_Login_agent")
-C3_VENV = C3_AGENT_DIR / ".venv"
-C3_PYTHON = Path(sys.executable) if FROZEN else venv_python(C3_VENV)   # 묶인 데스크톱 앱이면 같은 실행 파일
-C3_BROWSERS = browsers_dir(C3_VENV)
+C3_BROWSERS = browsers_dir()                     # Chromium (앱 데이터 폴더 / 개발 모드 venv) — 가져오기는 osenv.module_cmd 로 띄운다
 
 # ── e클래스 (sel.jnu.ac.kr, Moodle/유비온) ──
 BASE_URL = "https://sel.jnu.ac.kr"

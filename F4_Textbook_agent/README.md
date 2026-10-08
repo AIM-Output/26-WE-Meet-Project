@@ -26,7 +26,6 @@ F4_Textbook_agent/
 │   ├── api.py               FastAPI 라우터 (univ_us_local 이 include)
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 57개 (쪽수 읽기 · 종류·주차 · 스캔 · 보관 · 중복 · 업로드 규칙 · 삭제 규칙)
-├── run.cmd                  보기 명령 (status · list · courses · scan · path)
 └── data/                    (gitignore) — 절대 공유 금지
     ├── materials/           **강의자료 보관함** — <과목>/<활동>/<파일> (하드링크, 안 되면 복사)
     ├── uploads/             직접 추가한 파일 — <과목 id>/<파일>
@@ -52,16 +51,15 @@ F4_Textbook_agent/
 
 명령줄:
 
-```powershell
-cd F4_Textbook_agent
-.\run.cmd status                   # 자료 수 · 쪽수 · 종류별 · 수집 폴더 위치
-.\run.cmd courses                  # 과목별 자료 수·쪽수
-.\run.cmd list 오픈소스            # 자료 목록 (과목·파일 이름 일부로 거르기)
-.\run.cmd scan --force             # 쪽수·해시까지 다시 읽기 (파일을 밖에서 바꿨을 때)
-.\run.cmd path 오리엔테이션        # 실제 파일 경로 (탐색기에서 열 때)
+```bash
+python desktop/cli.py textbook status                   # 자료 수 · 쪽수 · 종류별 · 수집 폴더 위치
+python desktop/cli.py textbook courses                  # 과목별 자료 수·쪽수
+python desktop/cli.py textbook list 오픈소스            # 자료 목록 (과목·파일 이름 일부로 거르기)
+python desktop/cli.py textbook scan --force             # 쪽수·해시까지 다시 읽기 (파일을 밖에서 바꿨을 때)
+python desktop/cli.py textbook path 오리엔테이션        # 실제 파일 경로 (탐색기에서 열 때)
 ```
 
-테스트: `..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q`
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv `desktop/sidecar/.venv`)
 (pytest 가 있는 아무 파이썬. 임시 폴더와 **가짜 수집 결과**를 쓰고 내 자료·e클래스에 닿지 않는다)
 
 ## 무엇을 자료로 보나
@@ -114,7 +112,7 @@ cd F4_Textbook_agent
 | `DELETE /api/materials/{id}` | 직접 추가분과 `내려감` 보관본만 삭제 (e클래스에 아직 있는 자료는 409) |
 | `GET /api/materials/{id}/file?download=1` | 원문 열기(inline) / 내려받기(attachment). Range 지원 |
 
-업로드가 multipart 가 아닌 이유: 백엔드 `.venv` 에 `python-multipart` 를 더 깔지 않으려고
+업로드가 multipart 가 아닌 이유: 사이드카(desktop/sidecar/requirements.txt)에 `python-multipart` 를 더 묶지 않으려고
 `fetch(url, {method:'POST', body: file})` 로 받는다. 파일 이름·과목은 쿼리로 온다.
 
 ## 지키는 선 (학교 공지 「저작권 유의사항 안내」 · F4-R40~R42)

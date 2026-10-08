@@ -1,391 +1,253 @@
 # WE-Meet · 유니버스(Univ-Us) — 팀원 시작 가이드
 
-전남대 e클래스에서 **내 과제·마감·강의자료를 자동으로 모아** 내 PC 안의 대시보드(캘린더·할 일)에 띄워 주는 프로젝트입니다.
+전남대 e클래스에서 **내 과제·마감·강의자료를 자동으로 모아** 내 PC 의 **데스크톱 앱**(캘린더·할 일·학사일정·졸업요건·출결·시험 공부)에 띄워 주는 프로젝트입니다.
 모든 것이 **내 컴퓨터 안에서만** 돕니다. 비밀번호·강의자료·로그인 세션은 어디에도 올라가지 않습니다.
 
-이 문서는 **처음 해 보는 사람** 이 순서대로 따라 하면 끝까지 되도록 썼습니다.
-막히면 맨 아래 [9. 문제 해결](#9-문제-해결-faq) 을 먼저 보고, 그래도 안 되면 팀 채팅에 **오류 메시지 화면을 캡처해서** 올려 주세요.
+> 2026-10-08 부터 **데스크톱 앱으로만** 실행합니다. 예전의 `유니버스 열기.cmd`(브라우저로 여는 로컬 서버 웹)·기능별 `setup.cmd`·`run.cmd`·`.venv` 는 없앴습니다.
+> 아직 배포하는 설치 파일이 없어서, 팀원은 이 가이드대로 **직접 빌드하거나 개발 모드로** 실행합니다.
+
+막히면 [8. 문제 해결](#8-문제-해결-faq) 을 먼저 보고, 그래도 안 되면 팀 채팅에 **오류 메시지 화면을 캡처해서** 올려 주세요.
 
 ```
 저장소 폴더/
 ├── README.md                 ← 지금 보는 문서
-├── C0_Platform_agent/        C0 OS 공통 계층(osenv) — Windows·macOS 차이(venv python 자리·프로세스 확인)만 모음 (설치할 것 없음)
+├── desktop/                  데스크톱 앱 (Tauri 껍데기 + 로컬 서버를 묶은 사이드카) · 개발 모드 · cli.py — desktop/README.md
+├── univ_us_local/            앱 안의 대시보드 — backend(FastAPI, 사이드카가 된다) + frontend(Next.js)
+├── C0_Platform_agent/        C0 OS 공통 계층(osenv) — Windows·macOS 차이 · 앱 데이터 폴더 · 자식 프로세스 명령
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
-├── C3_Login_agent/           학교(SSO) 자동 로그인 + 브라우저 — F6·C2·F2·F11 이 같이 씀 (Python)
-├── F6_Eclass_agent/          F6 e클래스 과제·마감·자료 수집 → 캘린더·할 일·마감 알림 (로그인은 C3 것을 빌림)
+├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11 이 같이 씀)
+├── C3_Login_agent/           C3 학교(SSO) 자동 로그인 — F6·C2·F2·F11 이 같이 씀 · 자동 로그인 정보(DPAPI/키체인)
 ├── F1_Bachelor_agent/        F1 학사일정 자동 등록·알림 (학교 공개 페이지 수집 — 로그인 불필요)
-├── C2_Profile_agent/         내 프로필·학과 목록 (F1·F2·F11 이 같이 씀 — 설치할 것 없음)
-├── F2_Graduation_agent/      F2 졸업요건·학점 트래커 (학사시스템 이수 내역 → 영역별 남은 학점 — 설치할 것 없음)
-├── F3_Attendance_agent/      F3 출결·학사경고 예방 (공개 시간표 조회 → 수업 회차·결석 한도 경고 — 설치할 것 없음)
-├── F4_Textbook_agent/        F4 강의자료 보관·열람 (F6 가 받은 자료를 보관함에 모아 과목별로 열기 — 설치할 것 없음)
-├── F5_Test_agent/            F5 시험 공부 일정 (공지에서 시험 찾고 분량을 날짜로 역산 → 학습 블록 — 설치할 것 없음)
-├── F7_Task_agent/            F7 과제 우선순위 (마감 + 예상 소요시간 → 지금 해야 함/이번 주/나중에 · 오늘 남은 시간 — 설치할 것 없음)
-├── F8_Plan_agent/            F8 공강 학습 플랜 (낮 09~18시 공강에 과제·할 일 → 남는 공강은 시험 공부 블록 — 설치할 것 없음)
-├── univ_us_local/            대시보드 로컬 서버 웹 (FastAPI + Next.js 빌드 결과)
-├── desktop/                  데스크톱 앱 (Tauri 껍데기 + 로컬 서버를 묶은 사이드카) — 설치 파일 빌드는 desktop/README.md
-├── notice_agent/             (선택) 장학 공지 매칭 도구 — 이 가이드에서는 다루지 않음
-├── 유니버스 열기.cmd          더블클릭 → 서버 켜고 브라우저로 대시보드 열기
-├── 유니버스 종료.cmd          더블클릭 → 서버 끄기
+├── F2_Graduation_agent/      F2 졸업요건·학점 트래커 (학사시스템 이수 내역 → 영역별 남은 학점)
+├── F3_Attendance_agent/      F3 출결·학사경고 예방 (공개 시간표 → 수업 회차·결석 한도 경고)
+├── F4_Textbook_agent/        F4 강의자료 보관·열람 (F6 가 받은 자료를 과목별로 열기)
+├── F5_Test_agent/            F5 시험 공부 일정 (공지에서 시험 찾고 분량을 날짜로 역산 → 학습 블록)
+├── F6_Eclass_agent/          F6 e클래스 과제·마감·자료 수집 → 캘린더·할 일·마감 알림
+├── F7_Task_agent/            F7 과제 우선순위 (마감 + 예상 소요시간 → 지금 해야 함/이번 주/나중에)
+├── F8_Plan_agent/            F8 공강 학습 플랜 (낮 09~18시 공강에 과제·할 일 → 남는 공강은 시험 공부)
+├── notice_agent/             (참고 코드) 장학 공지 매칭 — 나중에 앱 기능(F11)으로 옮길 때 참고. 이 가이드에서는 다루지 않음
 ├── 요구사항정의서.md          기능별 요구사항 (무엇을 만드는가) — 기능 개발 전 먼저 볼 문서
-├── Frontend-Route.md         화면·라우트·흐름 정의 (어느 주소에 어떤 순서로)
-├── WE-Meet_데스크톱앱_맥지원_계획.md   macOS 지원 · 데스크톱 앱 · 얇은 서버로 가는 단계별 계획
+├── Frontend-Route.md         화면·라우트·흐름 정의
+├── WE-Meet_데스크톱앱_맥지원_계획.md   데스크톱 앱 · macOS · 얇은 서버로 가는 단계별 계획
 ├── Frontend-Figma.md · Frontend-Screens.md   디자인 팀 가이드 · 그릴 화면 목록
 └── WE-Meet_프로젝트계획서 …   기획 문서 (docx / pdf)
 ```
 
-전체 흐름: **① 프로그램 설치 → ② clone → ③ 수집기 설치 → ④ e클래스 로그인 → ⑤ 수집 → ⑥ 대시보드 실행**
-처음 한 번은 30분쯤(다운로드 포함), 다음부터는 더블클릭 한 번입니다.
+전체 흐름: **① 프로그램 설치 → ② clone → ③ 개발 환경 한 번 → ④ 앱 실행 → ⑤ 앱 안에서 첫 설정·로그인·수집**
+처음 한 번은 40분쯤(Rust·패키지·첫 빌드 포함), 다음부터는 명령 한 줄(또는 설치한 앱 아이콘)입니다.
 
 ---
 
-## 0. 준비물
+## 1. 프로그램 설치
 
-| 항목 | 내용 |
-|---|---|
-| PC | **Windows 10/11** (64비트) — 이 가이드의 기준. **macOS** 는 아래 [0-1](#0-1-맥macos-에서-쓰기) 참고 (notice_agent 만 아직 Windows 전용) |
-| 계정 | 전남대 포털 아이디/비밀번호 (e클래스 SSO 로그인에 쓰는 것) |
-| 휴대폰 | 처음 로그인할 때 **2차 인증**을 받아야 함 |
-| 인터넷 | 설치 중 약 **350MB** 내려받음 (Python 패키지 + 브라우저 엔진) |
-| 디스크 | 여유 2GB 이상 |
+| 프로그램 | Windows | macOS |
+|---|---|---|
+| Git | https://git-scm.com/download/win (기본값으로 설치) | `xcode-select --install` (Xcode 명령줄 도구 — Git·C 컴파일러가 같이 온다) |
+| Python **3.12** | https://www.python.org/downloads/release/python-31210/ → "Windows installer (64-bit)" — 첫 화면 **Add python.exe to PATH** 체크, 끝 화면 **Disable path length limit** 클릭 | python.org 설치 후 `/Applications/Python 3.12/Install Certificates.command` 한 번 (또는 `brew install python@3.12`) |
+| Node.js **20 이상** | https://nodejs.org (LTS) | 같음 (또는 `brew install node@20`) |
+| Rust | https://rustup.rs → `rustup-init.exe` (기본값) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| C++ 빌드 도구 | **Visual Studio Build Tools** — "C++를 사용한 데스크톱 개발" 워크로드 | Xcode 명령줄 도구 (위) |
+| WebView2 | Windows 10/11 에 기본 포함 | 필요 없음 |
 
----
+> 3.13·3.14 가 아니라 **3.12** 를 권장합니다 (검증된 버전). 다른 버전이 있어도 3.12 를 **추가로** 설치하면 됩니다.
 
-### 0-1. 맥(macOS) 에서 쓰기
+확인 (PowerShell / 터미널, 설치 후 **창을 새로** 열고):
 
-Windows 의 `X.cmd` 마다 같은 이름의 **`X.command`** 가 있습니다. Finder 에서 더블클릭하거나 터미널에서 `./X.command` 로 실행합니다.
-설계와 남은 일은 [WE-Meet_데스크톱앱_맥지원_계획.md](WE-Meet_데스크톱앱_맥지원_계획.md).
-
-1. **Python 3.12** — https://www.python.org/downloads/macos/ 설치 후 `/Applications/Python 3.12/Install Certificates.command` 도 한 번 실행 (또는 `brew install python@3.12`). Git 은 `xcode-select --install`.
-2. clone 은 2단계와 같습니다 (`~/Projects` 처럼 짧은 경로 권장).
-3. 아래 순서는 Windows 3~6단계와 같습니다.
-
-| Windows | 맥 |
-|---|---|
-| `C3_Login_agent\setup.cmd` | `C3_Login_agent/setup.command` (venv + 패키지 + Chromium) |
-| `C3_Login_agent\login.cmd` | `C3_Login_agent/login.command` |
-| `C3_Login_agent\setup-creds.cmd` | `C3_Login_agent/setup-creds.command` (자동 재로그인 — 맥은 **로그인 키체인**에 저장) |
-| `F6_Eclass_agent\sync.cmd` | `F6_Eclass_agent/sync.command` |
-| `유니버스 열기.cmd` / `유니버스 종료.cmd` | `유니버스 열기.command` / `유니버스 종료.command` (서버 출력: `univ_us_local/backend/server.log`) |
-| 각 기능 폴더 `run.cmd` | 각 기능 폴더 `run.command` |
-
-- 처음 더블클릭할 때 "확인되지 않은 개발자" 경고가 뜨면 → 파일을 **우클릭 → 열기** 한 번.
-- `권한이 없습니다` 가 뜨면 → 터미널에서 프로젝트 폴더로 가서 `chmod +x *.command */*.command univ_us_local/backend/run.command`.
-- **예약 실행**: 대시보드 **수집 원천 → 예약 실행 `켜기`** 가 맥에서는 launchd(`~/Library/LaunchAgents/kr.univus.*.plist`)에 등록합니다 — 정각 자동 수집·매일 학사일정, 잠자기였으면 깨어날 때·로그인할 때 따라잡기. 자세히는 [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md).
-- **자동 재로그인**: `setup-creds.command` 로 저장하면 비밀번호는 맥 로그인 키체인에만 들어갑니다. 처음 읽을 때 키체인 허용 창이 뜨면 **항상 허용**.
-- **아직 Windows 전용**: notice_agent(선택 기능).
-
----
-
-## 1. 프로그램 설치 (Git, Python)
-
-두 가지만 설치합니다. **이미 있으면 건너뛰세요** (아래 1-3 "확인" 으로 알 수 있음).
-
-### 1-1. Git for Windows
-
-1. https://git-scm.com/download/win → **"Click here to download"** (64-bit) 클릭
-2. 설치 파일 실행 → 설정은 전부 **기본값 그대로 `Next`** → `Install`
-
-### 1-2. Python 3.12
-
-> ⚠️ 3.13·3.14 가 아니라 **3.12** 를 권장합니다 (검증된 버전). 다른 버전이 이미 있어도 3.12 를 **추가로** 설치하면 됩니다.
-
-1. https://www.python.org/downloads/release/python-31210/ → 페이지 맨 아래 **"Windows installer (64-bit)"** 클릭
-2. 설치 파일 실행 → 첫 화면 **맨 아래 체크박스를 켜고** `Install Now`
-   - ✅ **Add python.exe to PATH** ← 꼭!
-3. 설치가 끝난 화면에 **`Disable path length limit`** 버튼이 보이면 **꼭 눌러 주세요.** (경로가 긴 파일을 설치할 때 실패하는 것을 막아 줍니다.)
-
-### 1-3. 확인
-
-**PowerShell** 을 엽니다: `Windows 키` → `powershell` 입력 → Enter.
-아래 두 줄을 한 줄씩 입력해 버전이 나오면 성공입니다.
-
-```powershell
+```bash
 git --version
 py -3.12 --version
+node -v
+cargo -V
 ```
 
-- `git --version` → `git version 2.xx …`
-- `py -3.12 --version` → `Python 3.12.x`
-
-> `'py'은(는) … 인식되지 않습니다` 가 나오면 → Python 을 다시 설치하면서 **Add python.exe to PATH** 체크를 확인하세요. 설치 후에는 **PowerShell 창을 닫고 새로 여세요** (그래야 반영됨).
+맥은 `py -3.12` 대신 `python3.12 --version`.
 
 ---
 
-## 2. 폴더 만들고 저장소 가져오기 (clone)
+## 2. 저장소 가져오기 (clone)
 
-### 2-1. 폴더 만들기
+경로에 **한글·공백이 없고 짧은** 곳을 권장합니다 (`C:\Projects` · `~/Projects`). `OneDrive`·`바탕 화면`·`문서` 안은 피하세요.
 
-파일 탐색기에서 `C:\` 드라이브로 가서 새 폴더 **`Projects`** 를 만듭니다. (→ `C:\Projects`)
-
-> 경로에 **한글·공백이 없고 짧은** 곳을 권장합니다. `OneDrive`·`바탕 화면`·`문서` 안은 클라우드 동기화 때문에 문제를 일으킬 수 있으니 피하세요.
-
-### 2-2. 그 폴더에서 PowerShell 열기
-
-탐색기로 `C:\Projects` 에 들어간 뒤, **위쪽 주소창을 클릭해 `powershell` 이라고 입력하고 Enter**.
-→ 창이 뜨고 프롬프트에 `PS C:\Projects>` 가 보이면 됩니다.
-
-### 2-3. clone
-
-```powershell
+```bash
 git clone https://github.com/AIM-Output/26-WE-Meet-Project.git
-```
-
-끝나면 `C:\Projects\26-WE-Meet-Project` 폴더가 생깁니다. 그 안으로 들어갑니다.
-
-```powershell
 cd 26-WE-Meet-Project
-dir
 ```
 
-`C3_Login_agent`, `F6_Eclass_agent`, `univ_us_local`, `유니버스 열기.cmd` 등이 보이면 성공입니다.
-**이 폴더를 이 문서에서 "프로젝트 폴더" 라고 부릅니다.**
+이 폴더를 이 문서에서 **"프로젝트 폴더"** 라고 부릅니다.
 
 ---
 
-## 3. 학교 로그인 도구 설치 (`C3_Login_agent`)
+## 3. 개발 환경 (한 번)
 
-학교 로그인과 브라우저 엔진은 한 폴더(`C3_Login_agent`)에 모여 있고, e클래스 수집(F6)·프로필 가져오기(C2)·졸업요건(F2)이 같이 씁니다.
+python 가상환경은 **저장소에 하나**(`desktop/sidecar/.venv`)뿐입니다 — 앱 빌드·개발 모드·테스트가 같이 씁니다.
+
+Windows (PowerShell, 프로젝트 폴더에서):
 
 ```powershell
-cd C3_Login_agent
-.\setup.cmd
+py -3.12 -m venv desktop\sidecar\.venv
+desktop\sidecar\.venv\Scripts\python -m pip install -r desktop\sidecar\requirements.txt
+cd univ_us_local\frontend; npm ci; cd ..\..\desktop; npm install; cd ..
 ```
 
-`setup.cmd` 가 자동으로 ① 가상환경(`.venv`) 생성 → ② 패키지 설치 → ③ 브라우저 엔진(Chromium, 약 310MB) 다운로드를 합니다.
-**3~10분** 걸립니다. `설치 완료.` 가 나오면 됩니다 (아무 키나 누르면 정리).
+맥 (터미널, 프로젝트 폴더에서):
 
-> 중간에 실패하면 인터넷을 확인하고 **`.\setup.cmd` 를 다시 실행**하세요. 이미 된 단계는 건너뜁니다.
+```bash
+python3.12 -m venv desktop/sidecar/.venv
+desktop/sidecar/.venv/bin/python -m pip install -r desktop/sidecar/requirements.txt
+(cd univ_us_local/frontend && npm ci) && (cd desktop && npm install)
+```
 
 ---
 
-## 4. e클래스 계정 등록 (로그인)
+## 4. 앱 실행
 
-여기서 **내 전남대 계정으로 e클래스에 한 번 로그인**해서, 이후 수집기가 쓸 "로그인 상태(세션)" 를 내 PC 에 저장합니다.
-비밀번호는 저장하지 않습니다. 브라우저 창에 **직접** 입력합니다.
+### 4-1. 개발 모드 (코드를 고칠 때 — 권장)
 
-```powershell
-.\login.cmd
+```bash
+cd desktop
+npm run dev
 ```
 
-1. 크롬 같은 브라우저 창이 뜨고 e클래스 로그인 화면이 보입니다.
-2. **[SSO 로그인]** 버튼 → 전남대 포털 **아이디/비밀번호** 입력 → 로그인
-3. 휴대폰으로 **2차 인증** 요청이 옵니다 → 승인
-   (이때 "이 기기를 신뢰" 같은 항목이 있으면 켜 두세요. 다음부터 2차 인증이 생략됩니다.)
-4. e클래스 메인 화면까지 들어가지면 창이 **저절로 닫히고**, PowerShell 에 `세션 저장 완료` 가 나옵니다.
-   - 창이 안 닫히면 → PowerShell 창을 클릭하고 **Enter**.
-   - 최대 10분 안에 끝내야 합니다. 시간이 지나면 `.\login.cmd` 를 다시 실행하세요.
+- 처음엔 Rust 빌드로 **몇 분** 걸립니다. 앱 창(시작 화면 → 대시보드)이 뜨면 성공.
+- 화면 코드(`univ_us_local/frontend/src`)를 고치면 창에 바로 반영됩니다. 파이썬 코드를 고쳤으면 `Ctrl+C` 후 `npm run dev` 다시.
+- 개발 모드 데이터는 `desktop/.dev-data` 에 따로 있습니다(설치본 데이터와 섞이지 않음). 예약 자동 수집은 개발 모드에서 꺼져 있습니다.
+- 첫 실행 때 브라우저 엔진(Chromium, 약 150MB)을 백그라운드로 받습니다. 받는 동안 로그인·가져오기는 "내려받는 중"이라고 답합니다.
 
-이제 `C3_Login_agent\state\` 안에 로그인 세션이 저장됐습니다. **이 폴더는 절대 남에게 보내지 마세요** (= 내 계정으로 로그인된 상태 그 자체입니다).
+### 4-2. 설치본 (매일 쓰기 — 예약 자동 수집·알림)
 
-### (선택) 자동 재로그인 등록
-
-로그인 세션은 몇 시간 지나면 만료됩니다. 그때마다 `login.cmd` 를 다시 하기 귀찮으면, 아이디/비밀번호를 **내 PC 에만, 내 Windows 계정으로 암호화해서** 저장해 두고 수집기가 알아서 재로그인하게 할 수 있습니다.
-
-```powershell
-.\setup-creds.cmd          # 아이디·비밀번호 입력 (비밀번호는 화면에 안 보임)
-.\login.cmd --auto         # "성공. 세션 저장됨." 이 나오면 OK
+```bash
+py -3.12 desktop/sidecar/build.py      # 화면 빌드 → 사이드카 빌드 (맥: desktop/sidecar/.venv/bin/python desktop/sidecar/build.py)
+cd desktop
+npx tauri build
 ```
 
-- 저장 위치 `state\cred.bin` 은 Windows DPAPI 로 암호화되어 **내 Windows 계정에서만** 풀립니다. 파일을 복사해 가도 소용없습니다.
-- 지우려면 `.\setup-creds.cmd --clear`.
-- 학교 비밀번호를 바꾸면 `.\setup-creds.cmd` 를 다시 실행하세요.
-- 몇 시간마다 자동 수집까지 하려면 → [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) (대시보드 **수집 원천 → 예약 실행 `켜기`** 한 번이면 됩니다)
+→ `desktop/src-tauri/target/release/bundle/nsis/UnivUs_*_x64-setup.exe` (맥은 `bundle/dmg/`) 를 실행해 설치합니다. 시작 메뉴 / 응용 프로그램의 **UnivUs** 로 엽니다.
+
+- 창을 닫으면 **트레이로 숨습니다**(예약 수집·마감 알림 계속). 완전히 끄려면 트레이 아이콘 → **종료**. 새 버전을 설치하기 전에도 종료.
+- Windows 에서 "PC 보호" 경고가 뜨면 **추가 정보 → 실행** (코드 서명 전이라 뜨는 경고). 맥은 앱을 **우클릭 → 열기** 한 번.
 
 ---
 
-## 5. 크롤링 (자료·마감 수집)
+## 5. 앱 안에서 첫 설정
 
-수집기는 `F6_Eclass_agent` 폴더에 있습니다 (로그인·브라우저는 4단계의 `C3_Login_agent` 것을 씁니다).
-먼저 **내려받지 않고 목록만** 확인해 봅니다.
+| 순서 | 어디서 | 무엇을 |
+|---|---|---|
+| 1 | 처음 열면 나오는 **첫 설정** | 학과 → 입학년도·이수유형 → (선택) 학사정보시스템에서 가져오기 |
+| 2 | ⚙ → **수집 원천 → e클래스 → `로그인 창 열기`** | 브라우저 창에서 [SSO 로그인] → 포털 아이디/비밀번호 → **휴대폰 2차 인증** 승인 ("이 기기를 신뢰" 가 있으면 켜기). e클래스 메인까지 들어가면 창이 저절로 닫히고 바로 수집합니다 |
+| 3 | 같은 줄 **`자동 로그인 정보 저장`** (선택) | 아이디·비밀번호를 **이 PC 에만 암호화해** 저장 → 세션이 만료돼도 창 없이 다시 로그인 (Windows: 이 Windows 계정에서만 풀림 / 맥: 로그인 키체인) |
+| 4 | e클래스 · 학사일정 줄의 **예약 실행 `켜기`** (설치본에서) | e클래스는 정각 4시간마다, 학사일정은 매일 08:00 — 창 없이 자동 수집. PC 가 꺼져 있었으면 켜지는 대로 따라잡기 |
 
-```powershell
-cd ..\F6_Eclass_agent
-.\sync.cmd --dry-run
-```
+첫 수집은 자료 양에 따라 **몇 분 ~ 십여 분** 걸립니다(서버 부하를 줄이려고 요청 사이에 1.5초씩 쉽니다). 두 번째부터는 이미 받은 파일을 건너뛰어 빠릅니다.
 
-내 수강 과목과 자료 목록이 쭉 출력되면 로그인이 잘 된 것입니다. 이제 실제로 수집합니다.
+> 수집하지 않는 것: 동영상 본체, 퀴즈 문제(마감 일시만)·출석, 학생들이 글을 쓰는 게시판(Q&A·팀빌딩 등). 학교 저작권 안내를 지키기 위한 설계이므로 바꾸지 마세요.
 
-```powershell
-.\sync.cmd
-```
-
-- 처음엔 자료 양에 따라 **몇 분 ~ 십여 분** 걸립니다 (서버 부하를 줄이려고 요청 사이에 1.5초씩 쉽니다).
-- 결과는 `F6_Eclass_agent\data\` 에 쌓입니다:
-
-| 파일 | 내용 |
-|---|---|
-| `data\deadlines.md` | **마감 일정** (과제·동영상 시청 기한, 날짜순, 제출 여부) — 메모장으로 열어 보세요 |
-| `data\<과목명>\과제\` | 과제 설명·첨부·마감 |
-| `data\<과목명>\게시판\` | 공지·자료실 글 |
-| `data\<과목명>\<활동>\` | 강의자료 파일 (pdf, pptx, hwp …) |
-
-- 두 번째부터는 이미 받은 파일은 건너뛰므로 빠릅니다.
-- 과제·마감만 빨리 갱신: `.\sync.cmd --only assign,deadlines`
-
-> 수집하지 않는 것: 동영상 본체, 퀴즈 문제(마감 일시만 가져옴)·출석, 학생들이 글을 쓰는 게시판(Q&A·팀빌딩 등). 학교 저작권 안내를 지키기 위한 설계이므로 바꾸지 마세요.
-
----
-
-## 6. 로컬 서버 웹(대시보드) 실행
-
-파일 탐색기에서 **프로젝트 폴더**(예: `C:\Projects\26-WE-Meet-Project`) 로 가서
-
-### **`유니버스 열기.cmd`** 를 더블클릭
-
-- 처음엔 서버용 Python 패키지를 설치하느라 **1~2분** 걸립니다. `로컬 서버를 시작합니다...` 가 보이면 기다리세요.
-- 준비되면 브라우저가 자동으로 **http://localhost:8000** 을 엽니다.
-- 작업표시줄에 최소화된 **"Univ-Us Local Server"** 창이 하나 생깁니다. **이 창을 닫으면 서버가 꺼집니다.** 그냥 두세요.
-
-첫 화면(대시보드) 구성:
-
-| 위치 | 내용 |
-|---|---|
-| 맨 위 | 오늘 브리핑 카드 (오늘 일정·마감 임박을 실제 일정으로 요약) |
-| 가운데 캘린더 | e클래스 마감(과목별 색) + 내 일정 + 할 일 + **공강 블록**(F8). 날짜 클릭/드래그로 새 일정 추가, 드래그로 이동 |
-| 왼쪽 | 일정·할 일 추가 버튼, **"e클래스 동기화"** 버튼(= `sync.cmd` 를 대신 실행), **"학사일정 동기화"** 버튼(학교 학사일정·학사공지 수집 — 처음 누르면 1분쯤 설치 후 수집), 확인 필요 학사일정, **"공강에 배치하기"**(F8 — 낮 09~18시 빈 시간에 과제·할 일, 남는 공강엔 시험 공부 블록을 미리 보고 넣기) |
-| 오른쪽 | **🔥 먼저 할 것** 상위 3건(F7 우선순위) + 할 일 목록 (미제출 과제 = 할 일, 제출 완료·내가 체크함 = 완료). D-day 표시. 마감 D-3·D-1·당일 아침에는 헤더 종에 알림 |
-| 상단 | 마지막 동기화 시각, 알림(종), 설정 메뉴 |
-| 맨 아래 | **기능 타일** — 눌러서 기능별 화면으로 이동 (아래 표) |
-
-기능별 화면 (대시보드 아래 기능 타일 / 상단 설정 메뉴):
+### 화면
 
 | 메뉴 | 기능 | 데이터 |
 |---|---|---|
+| 대시보드 | 브리핑 · 캘린더(e클래스 마감·내 일정·할 일·학사·수업·공강 블록) · 먼저 할 것(F7) · 할 일 · 기능 타일 | ✅ 실제 |
 | 학사일정 | F1 학교 학사일정·학사공지 → 캘린더 자동 등록, 확인 필요 일정 | ✅ 실제 (로그인 불필요) |
-| E클래스 | F6 과제·동영상 마감 목록(내가 체크함·소요시간) + **공지·자료** 새 글 · F7 **우선순위** (지금 해야 함 / 이번 주 / 나중에, 이유 한 줄, 우선순위 설정) | ✅ 실제 (5단계 수집 결과) |
+| E클래스 | F6 과제·동영상 마감(내가 체크함·소요시간) + 공지·자료 새 글 · F7 우선순위 | ✅ 실제 |
 | 졸업요건 | F2 영역별 이수·남은 학점 (학사정보시스템 기이수성적 가져오기) | ✅ 실제 |
 | 출결 | F3 시간표 → 수업 회차, 결석 한도·학사경고 예방, 휴강 자동 반영 | ✅ 실제 |
-| 강의자료 | F4 받은 자료를 과목·주차별로 열기 | ✅ 목록·열람은 실제 / 요약·문제·질문은 예시 |
-| 시험·발표 | F5 공지에서 시험·발표 찾기 → 분량을 날짜로 역산한 학습 블록, 자료별 공부 체크, 날마다 공부 시간 배치 | ✅ 실제 |
-| 기회 · 팀플 · 브리핑 · 대화 | F11~13 · F16 · F10 · F9 | 🚧 예시 데이터 (화면만, 개발 예정) |
-| 설정 → 내 프로필 | C2 학과·학년 (학사정보시스템에서 가져오기) | ✅ 실제 |
-| 설정 → 가용 시간 | F8 공강 배치에 쓸 낮 시간대·블록 길이·남는 공강을 공부로 채울지 | ✅ 실제 |
-| 설정 → 수집 원천 · 졸업요건 기준 · 알림·브리핑 | 원천 켜고 끄기·예약 실행, 졸업요건 기준, 알림 시점 | ✅ 실제 (수집 원천의 **장학(F11)** 줄만 예시) |
+| 강의자료 | F4 받은 자료를 과목·주차별로 열기 | ✅ 목록·열람 / 요약·문제·질문은 예시 |
+| 시험·발표 | F5 공지에서 시험 찾기 → 분량을 날짜로 역산한 학습 블록·공부 체크·날마다 공부 시간 | ✅ 실제 |
+| 기회 · 팀플 · 브리핑 · 대화 | F11~13 · F16 · F10 · F9 | 🚧 예시 데이터 (화면만) |
+| 설정 | 내 프로필(C2) · 수집 원천(로그인·자동 로그인 정보·예약 실행) · 졸업요건 기준 · 가용 시간(F8) · 알림 | ✅ 실제 (장학 F11 줄만 예시) |
 
-화면에 **"예시 데이터"** 띠가 보이면 아직 실제 데이터가 연결되지 않은 화면입니다. 졸업요건·출결·내 프로필은 학사정보시스템 로그인(4단계)이 필요합니다.
-
-캘린더에 과제가 안 보이면 → 5단계 수집이 끝났는지, `F6_Eclass_agent\data\deadlines.json` 이 있는지 확인하세요. 왼쪽 **"e클래스 동기화"** 버튼을 눌러도 됩니다.
-
-### 끄기
-
-**`유니버스 종료.cmd`** 더블클릭 (또는 최소화된 "Univ-Us Local Server" 창 닫기).
+화면에 **"예시 데이터"** 띠가 보이면 아직 실제 데이터가 연결되지 않은 화면입니다.
 
 ---
 
-## 7. 다음부터 쓸 때
+## 6. 다음부터 쓸 때
 
 | 하고 싶은 것 | 방법 |
 |---|---|
-| 대시보드 열기 | `유니버스 열기.cmd` 더블클릭 |
-| e클래스 최신 자료·마감 가져오기 | 대시보드 왼쪽 **e클래스 동기화** 버튼, 또는 PowerShell 에서 `F6_Eclass_agent` 폴더 → `.\sync.cmd` |
-| "로그인이 필요합니다" 가 나올 때 | 대시보드의 **로그인 창 열기** 버튼 (= `C3_Login_agent` 폴더에서 `.\login.cmd`, 4단계). 자동 재로그인을 등록했다면 대부분 저절로 됨 |
-| 끄기 | `유니버스 종료.cmd` |
-| 팀 저장소의 새 버전 받기 | 프로젝트 폴더에서 PowerShell → `git pull` → 대시보드 껐다 켜기 |
-
-바탕 화면에 바로가기를 두고 싶으면 `유니버스 열기.cmd` 에서 우클릭 → **보내기 → 바탕 화면에 바로 가기 만들기**.
+| 앱 열기 | 설치본: 시작 메뉴 **UnivUs** (트레이에 있으면 아이콘 클릭) · 개발: `desktop` 에서 `npm run dev` |
+| e클래스 최신 자료·마감 | 대시보드 **e클래스 동기화** 또는 수집 원천 **지금 수집** (예약 실행을 켰으면 저절로) |
+| "로그인이 필요합니다" | **로그인 창 열기** — 자동 로그인 정보를 저장했다면 대부분 저절로 됨 |
+| 팀 저장소의 새 버전 | `git pull` → (requirements·package.json 이 바뀌었으면 3단계 명령 다시) → 개발 모드 다시 띄우기 또는 설치본 다시 빌드 |
+| 명령줄로 기능 돌려 보기 | 개발 venv 를 켜고(`desktop\sidecar\.venv\Scripts\activate` / `source desktop/sidecar/.venv/bin/activate`) 프로젝트 폴더에서 `python desktop/cli.py eclass sync --dry-run` · `bachelor list` · `login status` … (개발 데이터 대상, `--app` 을 앞에 붙이면 설치본 데이터) |
+| 테스트 | 기능 폴더에서 개발 venv 로 `python -m pytest tests -q` |
 
 ---
 
-## 8. 절대 하지 말 것 (보안·저작권)
+## 7. 데이터 위치 · 절대 하지 말 것 (보안·저작권)
+
+| 데이터 | 위치 |
+|---|---|
+| 설치본 (원본) | Windows `%LOCALAPPDATA%\kr.univus.desktop\data` · 맥 `~/Library/Application Support/kr.univus.desktop/data` — 기능 폴더와 같은 모양(`F6_Eclass_agent/data` …) |
+| 개발 모드 | 프로젝트 폴더의 `desktop/.dev-data` (git 제외) — 설치본 데이터를 복사해 쓰려면 `C0_Platform_agent` 에서 `python -m osenv copy-data --to ../desktop/.dev-data` |
 
 | ❌ 금지 | 이유 |
 |---|---|
-| `C3_Login_agent\state\` 폴더를 복사·공유·업로드 | **내 계정으로 로그인된 상태**(세션 쿠키, 암호화된 비밀번호)가 들어 있음 |
-| `F6_Eclass_agent\data\` · `F4_Textbook_agent\data\` 를 남에게 전송·클라우드·깃허브 업로드 | 학교 강의자료 — 학교 저작권 안내상 **타인 배포·인터넷 게시 금지** |
-| 다른 기능 폴더의 `data\` (`C1`·`C2`·`F1`~`F5`) 공유 | 내 일정·프로필·**성적(이수 내역)**·출결·시험 계획 = 개인정보 |
-| `git add -f` / `.gitignore` 수정으로 위 폴더를 커밋 | 위와 같음. 모든 기능 폴더의 `data\`·`state\` 는 이미 `.gitignore` 로 막혀 있음 |
-| 팀원 PC 에서 내 계정으로 `login.cmd` | 계정정보 공유 = 학교 금지 사항 |
-| `F6_Eclass_agent\eclass\config.py` 의 `REQUEST_INTERVAL` 을 줄이기 | e클래스 서버에 부담 → 계정 차단 위험 |
+| 데이터 폴더의 `C3_Login_agent/state/` 를 복사·공유·업로드 | **내 계정으로 로그인된 상태**(세션 쿠키, 암호화된 비밀번호)가 들어 있음 |
+| `F6_Eclass_agent/data/` · `F4_Textbook_agent/data/` 를 남에게 전송·클라우드·깃허브 업로드 | 학교 강의자료 — 학교 저작권 안내상 **타인 배포·인터넷 게시 금지** |
+| 다른 기능의 `data/` (`C1`·`C2`·`F1`~`F8`) 공유 | 내 일정·프로필·**성적(이수 내역)**·출결·시험 계획 = 개인정보 |
+| `desktop/.dev-data` 를 `git add -f` 로 커밋 | 위와 같음 (`.gitignore` 로 막혀 있음) |
+| 팀원 PC 에서 내 계정으로 로그인 | 계정정보 공유 = 학교 금지 사항 |
+| `F6_Eclass_agent/eclass/config.py` 의 `REQUEST_INTERVAL` 을 줄이기 | e클래스 서버에 부담 → 계정 차단 위험 |
 
-`git status` 를 쳤을 때 `state/`, `data/`, `.venv/` 가 **보이지 않아야** 정상입니다.
+`git status` 를 쳤을 때 `.dev-data/`, `.venv/`, `out/` 이 **보이지 않아야** 정상입니다.
 
 ---
 
-## 9. 문제 해결 (FAQ)
+## 8. 문제 해결 (FAQ)
 
 **Q. `'py'은(는) 내부 또는 외부 명령… 인식되지 않습니다`**
-Python 이 PATH 에 없습니다. Python 설치 파일을 다시 실행 → `Modify` → 다음 화면에서 **py launcher** 와 **Add Python to environment variables** 체크. 끝나면 PowerShell 을 **새로** 여세요.
+Python 이 PATH 에 없습니다. Python 설치 파일을 다시 실행 → `Modify` → **py launcher** 와 **Add Python to environment variables** 체크. 끝나면 PowerShell 을 **새로** 여세요.
 
-**Q. `python` 을 치면 Microsoft Store 가 열려요**
-Windows 의 가짜 python 별칭입니다. 이 프로젝트는 `py` 와 `.venv` 안의 python 만 쓰므로 무시해도 되지만, 거슬리면 `설정 → 앱 → 고급 앱 설정 → 앱 실행 별칭` 에서 `python.exe`, `python3.exe` 를 끄세요.
+**Q. `pip install` 에서 `파일 이름이나 확장명이 너무 깁니다` (WinError 206)**
+경로가 너무 깁니다. 1단계의 **Disable path length limit** 을 누르지 않았거나 폴더가 너무 깊습니다. `C:\Projects` 처럼 짧은 경로로 옮긴 뒤 3단계 다시.
 
-**Q. `setup.cmd` 에서 `파일 이름이나 확장명이 너무 깁니다` (WinError 206)**
-프로젝트 폴더 경로가 너무 깁니다. 1-2 의 **`Disable path length limit`** 을 누르지 않았거나, 폴더가 너무 깊은 곳에 있습니다. `C:\Projects` 처럼 짧은 경로로 옮긴 뒤 `.\setup.cmd` 다시.
+**Q. `npm run dev` 가 `cargo` 를 못 찾아요 / `link.exe not found`**
+Rust 를 설치한 뒤 창을 새로 열지 않았거나(PATH), Visual Studio Build Tools 의 **C++ 데스크톱 개발** 워크로드가 없습니다.
 
-**Q. `setup.cmd` 에서 브라우저 다운로드가 실패해요**
-인터넷(특히 학교 와이파이 방화벽)을 확인하고 다시 `.\setup.cmd`. 프록시 환경이면 휴대폰 핫스팟으로 시도.
+**Q. `npm run dev` 에서 `개발 모드: …\desktop\sidecar\.venv\…python.exe 이(가) 없습니다`**
+3단계의 venv 를 만들지 않았습니다.
 
-**Q. `login.cmd` 를 실행했는데 `Executable doesn't exist … playwright install` 이 나와요**
-브라우저 엔진이 없습니다. `.\setup.cmd` 를 다시 실행하세요. (`.venv` 가 아닌 전역 `python` 으로 직접 실행하면 이 오류가 납니다 — **항상 `.cmd` 파일로** 실행하세요.)
+**Q. `npm run dev` 가 3000 / 8020 포트를 쓸 수 없다고 해요**
+개발 모드가 이미 떠 있거나 다른 프로그램이 그 포트를 씁니다. 떠 있는 개발 모드를 끄고(`Ctrl+C`) 다시.
 
 **Q. 로그인 창이 떴는데 10분 안에 못 끝냈어요 / 창을 실수로 닫았어요**
-`.\login.cmd` 를 다시 실행하면 됩니다.
+**로그인 창 열기** 를 다시 누르면 됩니다.
 
-**Q. `sync.cmd` 가 `로그인 필요` / `exit 2` 로 멈춰요**
-로그인 세션이 끝났고 자동 재로그인도 안 된 것입니다. 대시보드의 **로그인 창 열기** 또는 `C3_Login_agent\login.cmd` (4단계).
+**Q. 수집이 `로그인 필요` 로 멈춰요**
+세션이 끝났고 자동 재로그인도 안 된 것입니다. **로그인 창 열기** (휴대폰 인증 한 번). 자동 로그인 정보를 저장해 두면 대부분 생기지 않습니다.
 
-**Q. `sync.cmd` 가 `네트워크 오류` / `exit 4` 로 멈춰요**
-인터넷 연결 문제입니다. 예약 실행이면 5·15·45분 뒤 스스로 다시 시도합니다. 직접 돌렸다면 연결을 확인하고 다시.
+**Q. 수집이 `네트워크 오류` 로 멈춰요**
+예약 실행이면 5·15·45분 뒤 스스로 다시 시도합니다. 직접 돌렸다면 연결(학교 와이파이 방화벽 등)을 확인하고 다시.
 
-**Q. `sync.cmd` 가 `이미 실행 중` 이라고 해요**
-대시보드의 동기화 버튼이나 이전 실행이 아직 돌고 있습니다. 끝날 때까지 기다리세요. 정말 아무것도 안 도는데 계속 그러면 `F6_Eclass_agent\state\sync.lock` 파일을 지우세요.
-
-**Q. `유니버스 열기.cmd` 가 `서버가 90초 안에 응답하지 않았습니다`**
-최소화된 **"Univ-Us Local Server"** 창을 열어 빨간 오류를 보세요.
-- `No Python 3.12 found` / `'py'은(는) …` → 1-2 단계 Python 설치
-- `Address already in use` / 8000 포트 → `유니버스 종료.cmd` 실행 후 다시
-- 그 외 → 창 내용을 캡처해서 팀 채팅에
-
-**Q. 대시보드는 열리는데 캘린더가 비어 있어요**
-`F6_Eclass_agent\data\deadlines.json` 이 있는지 확인. 없으면 5단계 `.\sync.cmd`. 있으면 페이지 새로고침(F5).
-
-**Q. 한글이 `?????` 나 깨진 글자로 보여요**
-`.cmd` 파일들은 한국어 Windows 기준입니다. 시스템 표시 언어가 한국어인지 확인하고, PowerShell 대신 **Windows Terminal**(Microsoft Store, 무료) 로 실행해 보세요.
+**Q. 앱 창이 시작 화면에서 "로컬 서버가 멈췄습니다" 로 멈춰요**
+트레이 → 종료 후 다시 실행. 그래도 같으면 데이터 폴더의 `logs/backend.log` 를 캡처해서 팀 채팅에.
 
 **Q. `git pull` 이 `Your local changes would be overwritten` 으로 실패해요**
 내가 파일을 고쳐서 충돌합니다. 고친 게 없다면 `git stash` → `git pull` → `git stash pop`. 잘 모르겠으면 팀 채팅에 문의.
 
 **Q. 다른 PC 에서도 쓰고 싶어요**
-그 PC 에서 이 가이드를 처음부터 다시 하면 됩니다 (로그인·2차 인증도 다시). `state\`·`data\` 를 복사해 가지 마세요.
+그 PC 에서 이 가이드를 처음부터 다시 하면 됩니다 (로그인·2차 인증도 다시). 데이터 폴더를 복사해 가지 마세요 — 저장한 비밀번호는 그 PC·계정에서만 풀립니다.
 
 ---
 
-## 10. 더 알아보기
+## 9. 더 알아보기
 
 | 문서 | 내용 |
 |---|---|
-| [C1_Calendar_agent/README.md](C1_Calendar_agent/README.md) | 서비스 캘린더 — `/api/events` 합치기 규칙·내 일정·할 일 저장·명령줄(`run.cmd list`) |
-| [C3_Login_agent/README.md](C3_Login_agent/README.md) | 학교 SSO 자동 로그인 — 신뢰 기기·재인증 순서·자격증명 암호화·다른 기능이 빌려 쓰는 법 |
-| [F6_Eclass_agent/README.md](F6_Eclass_agent/README.md) | e클래스 수집기 옵션(`--course`, `--only`), 결과 파일·과제 원장 규칙(신규·마감 변경·내가 체크함), 마감 알림, 지키는 선 |
-| [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) | 작업 스케줄러로 정각 4시간마다 자동 수집 · 놓친 주기 따라잡기 · 네트워크 재시도 |
-| [F1_Bachelor_agent/README.md](F1_Bachelor_agent/README.md) | 학사일정 수집 원천·규칙·명령줄(`sync.cmd`, `run.cmd list`)·매일 06·18시 자동 수집 등록 |
+| [desktop/README.md](desktop/README.md) | 데스크톱 앱 동작·보안·**개발 모드**·빌드·`cli.py`·아직 안 한 것 |
+| [univ_us_local/README.md](univ_us_local/README.md) | 대시보드 구조·API·화면 |
+| [C0_Platform_agent/README.md](C0_Platform_agent/README.md) | OS 공통 계층(`osenv`) — 자식 프로세스 명령·Chromium 자리·자격증명(DPAPI/키체인)·예약 실행(작업 스케줄러/launchd)·앱 데이터 폴더 |
+| [C1_Calendar_agent/README.md](C1_Calendar_agent/README.md) | 서비스 캘린더 — `/api/events` 합치기 규칙·내 일정·할 일 저장 |
 | [C2_Profile_agent/README.md](C2_Profile_agent/README.md) | 내 프로필 저장 규칙·학과 목록(교육과정검색)·학사정보시스템 가져오기·API |
-| [F2_Graduation_agent/README.md](F2_Graduation_agent/README.md) | 졸업요건 계산 규칙·기본 룰셋과 근거·기이수성적 가져오기·명령줄(`run.cmd status`)·API |
-| [F3_Attendance_agent/README.md](F3_Attendance_agent/README.md) | 출결 계산 규칙(날짜(회) 단위·1/4 한도·경고 단계)·시간표 자동 가져오기·학사일정·e클래스 공지 자동 휴강·명령줄(`run.cmd status`)·API |
-| [F4_Textbook_agent/README.md](F4_Textbook_agent/README.md) | 강의자료 보관 규칙(하드링크·복사)·목록 만드는 규칙(종류·쪽수·텍스트 유무·중복)·직접 추가·원문 열기/내려받기·명령줄(`run.cmd status`)·API |
-| [F5_Test_agent/README.md](F5_Test_agent/README.md) | 시험 공지 추출 규칙(신뢰도·확인 필요)·역산 계산식·상한 초과 조정안·진도·재조정·명령줄(`run.cmd status`)·API |
-| [F7_Task_agent/README.md](F7_Task_agent/README.md) | 과제 우선순위 계산식(여유 = 남은 시간 − 소요×1.5)·그룹 기준·이유 한 줄·오늘 남은 시간·설정·명령줄(`run.cmd list`)·API |
-| [F8_Plan_agent/README.md](F8_Plan_agent/README.md) | 공강 배치 규칙(낮 09~18시 · 과제·할 일 → 남는 공강은 공부: 남은 진도율 ÷ 남은 날수 · 하루 2블록 · 하루 상한 없음)·미배치 이유·고정·충돌·명령줄(`run.cmd preview`)·API |
-| [C0_Platform_agent/README.md](C0_Platform_agent/README.md) | Windows·macOS 차이를 모은 OS 공통 계층(`osenv`) — venv python 자리·프로세스 확인·자격증명(DPAPI/키체인)·예약 실행(작업 스케줄러/launchd)·앱 데이터 폴더 |
-| [univ_us_local/README.md](univ_us_local/README.md) | 대시보드 구조·API·개발 모드 |
-| [desktop/README.md](desktop/README.md) | 데스크톱 앱(Tauri + 사이드카) 동작·보안·빌드 방법·아직 안 한 것 |
+| [C3_Login_agent/README.md](C3_Login_agent/README.md) | 학교 SSO 자동 로그인 — 신뢰 기기·재인증 순서·자동 로그인 정보·다른 기능이 빌려 쓰는 법 |
+| [F1_Bachelor_agent/README.md](F1_Bachelor_agent/README.md) | 학사일정 수집 원천·규칙·매일 08:00 자동 수집 |
+| [F2_Graduation_agent/README.md](F2_Graduation_agent/README.md) | 졸업요건 계산 규칙·기본 룰셋과 근거·기이수성적 가져오기·API |
+| [F3_Attendance_agent/README.md](F3_Attendance_agent/README.md) | 출결 계산 규칙(날짜(회) 단위·1/4 한도·경고 단계)·시간표 자동 가져오기·자동 휴강·API |
+| [F4_Textbook_agent/README.md](F4_Textbook_agent/README.md) | 강의자료 보관 규칙(하드링크·복사)·목록 만드는 규칙·직접 추가·원문 열기·API |
+| [F5_Test_agent/README.md](F5_Test_agent/README.md) | 시험 공지 추출 규칙·역산 계산식·상한 초과 조정안·진도·재조정·API |
+| [F6_Eclass_agent/README.md](F6_Eclass_agent/README.md) | e클래스 수집기 옵션, 결과 파일·과제 원장 규칙, 마감 알림, 지키는 선 |
+| [F6_Eclass_agent/AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) | 예약 수집 — 정각 4시간마다 · 놓친 주기 따라잡기 · 네트워크 재시도 |
+| [F7_Task_agent/README.md](F7_Task_agent/README.md) | 과제 우선순위 계산식·그룹 기준·이유 한 줄·오늘 남은 시간·설정·API |
+| [F8_Plan_agent/README.md](F8_Plan_agent/README.md) | 공강 배치 규칙·미배치 이유·고정·충돌·API |
 | [WE-Meet_데스크톱앱_맥지원_계획.md](WE-Meet_데스크톱앱_맥지원_계획.md) | macOS 지원 → 데스크톱 앱 → 얇은 서버로 가는 단계별 계획과 진행 기록 |
-| [notice_agent/README.md](notice_agent/README.md) | (선택) 장학 공지 매칭·신청서 초안 도구 |
-| [WE-Meet_서버_플랫폼_검토.md](WE-Meet_서버_플랫폼_검토.md) | 왜 "개인 로컬 서버" 구조인지 (설계 배경) |
-
-### 데스크톱 앱 (개발 중)
-
-같은 코드를 설치형 앱(Windows 설치 파일 · 맥 .app)으로 묶는 작업이 `desktop/` 에서 진행 중입니다. **아직 배포하는 설치 파일은 없습니다** — 팀원은 위 가이드대로 저장소에서 실행하면 됩니다. 직접 빌드하려면 Python 3.12 · Node 20+ · Rust 가 필요하고, 방법은 [desktop/README.md](desktop/README.md) 에 있습니다.
-
-> 앱과 저장소 실행을 **같은 PC 에서 같이 쓰지 마세요.** 지금은 둘이 같은 예약 작업 이름을 써서, 한쪽에서 예약 실행을 켜면 다른 쪽 예약이 덮어써집니다 (desktop/README.md "알려진 문제").
-
-### 개발자용: 프론트엔드(화면) 수정하기
-
-화면 코드는 `univ_us_local/frontend/src/` 에 있고 **Node.js 20 이상**이 필요합니다. 그냥 쓰기만 할 땐 필요 없습니다 (빌드 결과 `frontend/out/` 이 저장소에 들어 있음).
-
-```powershell
-cd univ_us_local\frontend
-npm install                 # 최초 1회
-npm run dev                 # http://localhost:3000 (핫리로드; 백엔드 8000 은 유니버스 열기.cmd 로 켜 둘 것)
-npm run build               # 수정이 끝나면 out/ 을 다시 만들어 함께 커밋 → 팀원은 Node 없이 반영됨
-```
+| [WE-Meet_서버_플랫폼_검토.md](WE-Meet_서버_플랫폼_검토.md) | 왜 "내 PC 안에서만" 구조인지 (설계 배경 — 2026-09 시점의 로컬 서버 웹 기록 포함) |
+| [notice_agent/README.md](notice_agent/README.md) | (참고 코드) 장학 공지 매칭·신청서 초안 도구 |

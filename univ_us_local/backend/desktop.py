@@ -8,10 +8,10 @@
         처음 실행이면 Playwright Chromium 을 앱 데이터 폴더에 백그라운드로 받는다(약 150MB, logs/browsers.log).
 
     desktop.py --run-module <모듈> [인자…]
-        `python -m <모듈>` 과 같다(현재 폴더를 import 경로 맨 앞에). 묶인 앱에는 기능별 .venv 가 없어서
+        `python -m <모듈>` 과 같다(현재 폴더를 import 경로 맨 앞에). 기능별 .venv 가 없어서
         수집기·로그인 창·예약 실행이 이 실행 파일을 다시 부른다 (osenv.module_cmd · register-task.ps1 -Command · launchd).
 
-개발 모드(`desktop/` 에서 npm run dev = tauri dev)는 Tauri 디버그 빌드가 이 파일을 univ_us_local/backend/.venv 의 python 으로
+개발 모드(`desktop/` 에서 npm run dev = tauri dev)는 Tauri 디버그 빌드가 이 파일을 desktop/sidecar/.venv 의 python 으로
     desktop.py --dev --data-root desktop/.dev-data --port 8020 --frontend-url http://127.0.0.1:3000
 처럼 띄운다 — 화면은 next dev(즉시 반영), 예약 실행은 꺼짐, 데이터는 설치된 앱과 따로 (desktop/README.md).
 묶인 앱의 파일 배치는 저장소와 같은 모양이다 — <번들>/univus/{C0…F6 기능 폴더, univ_us_local/backend/app, …/frontend/out}
@@ -89,9 +89,25 @@ def _announce(server, port: int, code: str, root: Path, frontend: str | None = N
         print(READY_PREFIX + json.dumps(msg, ensure_ascii=False), flush=True)
 
 
-def _exit_with_stdin(server) -> None:
+def _detach_stdin():
+    """Tauri 가 붙인 표준입력 파이프를 이 프로세스만 갖고, 자식 프로세스에는 NUL 을 물려준다 — 복제한 파이프를 돌려준다.
+    Windows 에서는 한 스레드가 동기 파이프를 읽고 있는 동안 그 핸들을 물려받은 자식 python 이 시작하며 핸들을 건드리면
+    (GetFileType) 멈춘다 — 수집기·가져오기·Chromium 내려받기가 시작하자마자 멈추던 원인 (2026-10-08).
+    subprocess 는 stdin 을 안 주면 GetStdHandle 을 물려주므로, fd 0 과 표준 핸들을 둘 다 NUL 로 바꾼다."""
+    pipe = os.fdopen(os.dup(0), "rb", buffering=0)      # os.dup 은 상속되지 않는 핸들 (PEP 446)
+    null = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(null, 0)
+    os.close(null)
+    if sys.platform == "win32":
+        import ctypes
+        import msvcrt
+        ctypes.windll.kernel32.SetStdHandle(-10, msvcrt.get_osfhandle(0))   # STD_INPUT_HANDLE
+    return pipe
+
+
+def _exit_with_stdin(server, pipe) -> None:
     try:
-        while sys.stdin.read(1):
+        while pipe.read(1):
             pass
     except Exception:                                    # noqa: BLE001
         pass
@@ -109,10 +125,9 @@ def _ensure_browsers(root: Path) -> None:
     mark.write_text(str(os.getpid()), encoding="utf-8")
     log = root / "logs" / "browsers.log"
     log.parent.mkdir(parents=True, exist_ok=True)
-    venv = BUNDLE / "C3_Login_agent" / ".venv"          # 묶인 앱은 무시되고 같은 실행 파일이 쓰인다
     try:
         with open(log, "a", encoding="utf-8") as f:
-            subprocess.run(module_cmd(venv, "playwright", "install", "chromium"), stdout=f, stderr=subprocess.STDOUT,
+            subprocess.run(module_cmd("playwright", "install", "chromium"), stdout=f, stderr=subprocess.STDOUT,
                            cwd=str(root), timeout=30 * 60,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:                               # noqa: BLE001
@@ -134,14 +149,10 @@ def serve(a: argparse.Namespace) -> int:
     if log:
         log.parent.mkdir(parents=True, exist_ok=True)
         sys.stderr = open(log, "a", encoding="utf-8", buffering=1)        # noqa: SIM115 — 프로세스 끝까지 쓴다
-    # 저장소에서 개발용으로 띄울 때는 C3 .venv 에 이미 받아 둔 Chromium 을 그대로 쓴다
-    repo_browsers = BUNDLE / "C3_Login_agent" / ".venv" / "pw-browsers"
-    if not FROZEN and repo_browsers.is_dir():
-        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(repo_browsers))
+    # 개발 모드는 Chromium 을 데이터 폴더가 아니라 venv(desktop/sidecar/.venv/pw-browsers)에 둔다 — .dev-data 를 지워도 다시 받지 않게
+    if not FROZEN:
+        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(Path(sys.prefix) / "pw-browsers"))
     appdata.apply(root)
-    # C1 은 시작할 때 옛 자리(univ_us_local/data/univus.db)의 일정 DB 를 옮겨 온다 — 데스크톱 앱에서는 하지 않는다
-    # (저장소에서 개발용으로 띄울 때 저장소 데이터를 앱 데이터 폴더로 끌고 가지 않게). 옮기려면 python -m osenv migrate-data.
-    os.environ.setdefault("C1_LEGACY_DB", str(root / "C1_Calendar_agent" / "data" / "univus.db"))
 
     port = a.port or _free_port()
     code = secrets.token_urlsafe(18)
@@ -155,8 +166,8 @@ def serve(a: argparse.Namespace) -> int:
     server = uvicorn.Server(uvicorn.Config(app_main.app, host="127.0.0.1", port=port, log_level="warning",
                                            access_log=False))
     threading.Thread(target=_announce, args=(server, port, code, root, a.frontend_url), daemon=True).start()
-    if a.exit_with_stdin:
-        threading.Thread(target=_exit_with_stdin, args=(server,), daemon=True).start()
+    if a.exit_with_stdin:                                # 자식 프로세스를 띄우기 전에 — 아래 Chromium 내려받기도 자식이다
+        threading.Thread(target=_exit_with_stdin, args=(server, _detach_stdin()), daemon=True).start()
     if not (a.no_browser_install or os.environ.get("UNIVUS_NO_BROWSER_INSTALL") == "1"):   # 환경변수: CI·시험 실행용
         threading.Thread(target=_ensure_browsers, args=(root,), daemon=True).start()
     print(f"desktop: 서버 시작 127.0.0.1:{port} · 데이터 {root}", file=sys.stderr, flush=True)

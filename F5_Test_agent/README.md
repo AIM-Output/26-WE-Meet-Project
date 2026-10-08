@@ -31,7 +31,6 @@ F5_Test_agent/
 │   └── __main__.py          명령줄
 ├── tests/                   pytest 199개 (실측 공지 3건 · 계산식 · 시간 배치 · 진도·재조정 · 캘린더·저녁 배치 · 임의 일정)
 ├── web/study_calendar.html  공부 캘린더 화면 — 백엔드가 /study-calendar 로 준다 (과목·시간·분량)
-├── run.cmd                  보기·계획 명령 (status · sync · preview · plan · progress · done · cancel)
 └── data/                    (gitignore) — 내 시험·계획·진도
     └── exams.db
 ```
@@ -96,7 +95,7 @@ F5_Test_agent/
 - API `PATCH /api/exams/{id}/ready` `{ready: true|false}` — 발표가 아니면 422. 날짜를 고친 게 아니라서 공지가 계속 일정을 갱신한다
 - 발표에 계획·자료 체크를 요청하면 422 (`config.PREP_ONLY_TYPES`)
 - 공부 캘린더의 발표 줄에 ✓ 준비 완료
-- 명령줄: `run.cmd ready <시험id> [--undo]`
+- 명령줄: `cli.py exams ready <시험id> [--undo]`
 
 ## 시간 배치 — 하루 몇 시간 (2026-10-06)
 
@@ -107,7 +106,7 @@ F5_Test_agent/
 - 모든 날을 직접 정했는데 모자라면 등록할 수 없다 → `남은 시간을 마지막 날에 더하기` · `고르게 나누기`. 넘치면 `정한 시간 줄이기`
 - 직접 정한 날이 하루 기준 4시간을 넘으면 알리기만 한다(자동으로 나눈 날이 넘으면 예전처럼 확인을 한 번 더 받는다)
 - 등록하면 정한 시간이 계획에 저장된다(`plans.day_minutes`) — 다시 만들기·재조정이 남은 날의 값을 물려받는다
-- 명령줄: `run.cmd preview <시험id> --days 3 --day 2026-10-15=3h --day 2026-10-16=5h`
+- 명령줄: `cli.py exams preview <시험id> --days 3 --day 2026-10-15=3h --day 2026-10-16=5h`
 
 ## 공부 완료 체크 · 공부 진도 (2026-10-06)
 
@@ -117,7 +116,7 @@ F5_Test_agent/
 - 계획 만들기의 분량 기본값 = **범위 − 체크한 쪽수**. 이미 등록한 계획은 안 바뀐다 — 체크 창이 `계획 다시 만들기`를 권한다
 - 범위가 없는 시험(공지에 범위가 없는 과목)은 **지금까지 e클래스에 올라온 강의자료 전체**. 과제 첨부(제출 양식·샘플)는 공부할 자료가 아니라서 뺀다
 - 저장: F5 `data/exams.db` 의 `material_done` 표 (F4 DB 는 읽기만)
-- 명령줄: `run.cmd studied <시험id> [자료id ...] [--undo]` — id 없이 부르면 목록·진도만
+- 명령줄: `cli.py exams studied <시험id> [자료id ...] [--undo]` — id 없이 부르면 목록·진도만
 - 넘치면 조정안 첫째가 '학습일 늘리기'
 
 ## 과목마다 중간·기말 — 임의 일정 (F5-R07~R09, 2026-10-01)
@@ -145,10 +144,10 @@ F5_Test_agent/
 
 2026-10-01 실측: 7과목 중 6과목에 임의 중간고사(10/19 월~10/21 수, 각 과목 첫 수업 시각), 소프트웨어공학론은 공지 일정(10/22 목 15:00) 그대로.
 
-```powershell
-.\run.cmd courses                              # 과목별 시험 유무 + 중간·기말 상태
-.\run.cmd course 산학협력 --no-midterm --no-final   # 시험이 없는 과목 끄기 (--midterm/--final 로 켜기)
-.\run.cmd defaults --date 2026-10-24           # 그날인 것처럼 임의 일정을 맞춰 보기 (기말 생성 확인)
+```bash
+python desktop/cli.py exams courses                              # 과목별 시험 유무 + 중간·기말 상태
+python desktop/cli.py exams course 산학협력 --no-midterm --no-final   # 시험이 없는 과목 끄기 (--midterm/--final 로 켜기)
+python desktop/cli.py exams defaults --date 2026-10-24           # 그날인 것처럼 임의 일정을 맞춰 보기 (기말 생성 확인)
 ```
 
 ## 공지에서 시험 찾기 (F5-R01·R02)
@@ -194,25 +193,24 @@ F5_Test_agent/
 
 명령줄:
 
-```powershell
-cd F5_Test_agent
-.\run.cmd sync                       # e클래스 공지에서 시험 찾기 (넣거나 갱신)
-.\run.cmd status                     # 시험 목록 · D-day · 범위·쪽수 · 계획 상태 · 오늘 분량
-.\run.cmd notices                    # 공지에서 읽힌 것만 보기 (저장하지 않는다)
-.\run.cmd scope 소프트웨어공학론 --weeks 1-5     # 범위 안 자료 쪽수 (F4)
-.\run.cmd preview ex:74261:302a3b78 --difficulty hard --exclude 2026-10-15
-.\run.cmd plan ex:74261:302a3b78 --weeks 1-5 --quiz 20            # 등록 (캘린더에 학습 블록)
-.\run.cmd progress                   # 진도 · 밀림
-.\run.cmd done pl:1 2026-10-13       # 완료 체크 (--undo 로 되돌리기)
-.\run.cmd rebalance pl:1             # 밀린 진도를 남은 날로 다시 나눈 미리보기
-.\run.cmd cancel pl:1                # 계획 취소 (미완료 블록만 지운다)
-.\run.cmd events --from 2026-10-01 --to 2026-10-31   # 캘린더에 나갈 일정
+```bash
+python desktop/cli.py exams sync                       # e클래스 공지에서 시험 찾기 (넣거나 갱신)
+python desktop/cli.py exams status                     # 시험 목록 · D-day · 범위·쪽수 · 계획 상태 · 오늘 분량
+python desktop/cli.py exams notices                    # 공지에서 읽힌 것만 보기 (저장하지 않는다)
+python desktop/cli.py exams scope 소프트웨어공학론 --weeks 1-5     # 범위 안 자료 쪽수 (F4)
+python desktop/cli.py exams preview ex:74261:302a3b78 --difficulty hard --exclude 2026-10-15
+python desktop/cli.py exams plan ex:74261:302a3b78 --weeks 1-5 --quiz 20            # 등록 (캘린더에 학습 블록)
+python desktop/cli.py exams progress                   # 진도 · 밀림
+python desktop/cli.py exams done pl:1 2026-10-13       # 완료 체크 (--undo 로 되돌리기)
+python desktop/cli.py exams rebalance pl:1             # 밀린 진도를 남은 날로 다시 나눈 미리보기
+python desktop/cli.py exams cancel pl:1                # 계획 취소 (미완료 블록만 지운다)
+python desktop/cli.py exams events --from 2026-10-01 --to 2026-10-31   # 캘린더에 나갈 일정
 ```
 
 시험을 직접 넣기:
 
-```powershell
-.\run.cmd add 소프트웨어공학론 midterm 2026-10-22 --time 15:00 --place "박물관 시청각실" --weeks 1-7
+```bash
+python desktop/cli.py exams add 소프트웨어공학론 midterm 2026-10-22 --time 15:00 --place "박물관 시청각실" --weeks 1-7
 ```
 
 ## API (univ_us_local 이 붙인다)
@@ -259,9 +257,8 @@ cd F5_Test_agent
 
 ## 테스트
 
-```powershell
-cd F5_Test_agent
-..\F1_Bachelor_agent\.venv\Scripts\python.exe -m pytest tests -q
+```bash
+python -m pytest tests -q      # 이 폴더에서, 개발 venv(desktop/sidecar/.venv)
 ```
 
 임시 폴더에 가짜 e클래스 게시판을 만들어 쓴다 — 내 시험·계획도, e클래스 수집분도, 강의자료 목록도 건드리지 않고

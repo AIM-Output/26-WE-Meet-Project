@@ -12,7 +12,7 @@
 ## 설치할 것이 없다
 
 - 프로필 저장·API·학과 목록 수집은 **표준 라이브러리만** 쓴다 → 대시보드 백엔드(`univ_us_local`)가 그대로 붙여 쓴다(`app/student_profile.py`).
-- **학사정보시스템에서 가져오기**만 `C3_Login_agent` 의 `.venv`(playwright·bs4)와 로그인 세션을 빌려 쓴다. C3_Login_agent 를 설치하고 한 번 로그인해 두면 된다.
+- **학사정보시스템에서 가져오기**만 playwright·bs4(앱 실행 파일 / 개발 venv)와 `C3_Login_agent` 의 로그인 세션을 빌려 쓴다. 앱에서 한 번 로그인해 두면 된다.
 
 ```
 C2_Profile_agent/
@@ -22,35 +22,33 @@ C2_Profile_agent/
 │   ├── service.py          읽기·쓰기 규칙, 가져오기 반영, 다른 기능용 모양(matching_view), 옛 데이터 옮기기
 │   ├── master.py           학과 마스터 읽기·찾기·갱신(옛 코드 보존)
 │   ├── master_crawl.py     교육과정검색 수집 (표준 라이브러리)
-│   ├── hakstd.py           학사정보시스템 가져오기 (C3_Login_agent .venv 에서 실행)
+│   ├── hakstd.py           학사정보시스템 가져오기 (자식 프로세스 — osenv.module_cmd)
 │   ├── jobs.py             대시보드 버튼 뒤의 백그라운드 작업 (목록 갱신 · 가져오기)
 │   ├── notice_bridge.py    F11(notice_agent/data/profile.json)로 넘기기
 │   ├── api.py              FastAPI 라우터
 │   └── __main__.py         명령줄
 ├── master/departments.json 학과 목록 스냅숏 (저장소에 포함 — 처음 실행에도 네트워크 없이 뜬다)
 ├── tests/                  pytest
-├── run.cmd
-└── data/  state/           (gitignore) 내 프로필 DB · 갱신한 학과 목록 · 가져오기 로그
+└── data/  state/           (gitignore, 개발 기본값) 내 프로필 DB · 갱신한 학과 목록 · 가져오기 로그 — 앱은 앱 데이터 폴더에
 ```
 
 ## 쓰는 법
 
 대시보드: 처음 열면 `/onboarding`(학과 → 입학년도·이수유형 → 학사시스템 가져오기), 이후 ⚙ → **내 프로필**.
-명령줄 (`run.cmd` = 백엔드 .venv 의 python 으로 `python -m student`):
+명령줄 (저장소 루트에서 개발 venv 를 켜고 — `desktop/cli.py` 가 개발 데이터로 `python -m student` 를 돌린다, `--app` 이면 앱 데이터):
 
-```powershell
-cd C2_Profile_agent
-.\run.cmd show                          # 내 프로필 (민감정보는 '입력됨'으로만)
-.\run.cmd dept 인공지능                   # 학과 목록에서 코드 찾기
-.\run.cmd set-dept 30001265 30001267     # 소속 (학과 코드 [전공 코드])
-.\run.cmd set admissionYear=2024 track=single grade=3
-.\run.cmd import                         # 학사정보시스템에서 가져오기
-.\run.cmd master-sync                    # 교육과정검색에서 학과 목록 다시 받기 (1분 남짓)
-.\run.cmd export-notice                  # F11 notice_agent 로 넘기기
-.\run.cmd clear                          # 전부 지우기
+```bash
+python desktop/cli.py student show                          # 내 프로필 (민감정보는 '입력됨'으로만)
+python desktop/cli.py student dept 인공지능                   # 학과 목록에서 코드 찾기
+python desktop/cli.py student set-dept 30001265 30001267     # 소속 (학과 코드 [전공 코드])
+python desktop/cli.py student set admissionYear=2024 track=single grade=3
+python desktop/cli.py student import                         # 학사정보시스템에서 가져오기
+python desktop/cli.py student master-sync                    # 교육과정검색에서 학과 목록 다시 받기 (1분 남짓)
+python desktop/cli.py student export-notice                  # F11 notice_agent 로 넘기기
+python desktop/cli.py student clear                          # 전부 지우기
 ```
 
-테스트: `..\F1_Bachelor_agent\.venv\Scripts\python -m pytest tests -q` (pytest 가 있는 아무 환경)
+테스트: 이 폴더에서 `python -m pytest tests -q` (개발 venv — `desktop/sidecar/.venv`)
 
 ## API (대시보드 `/api/docs`)
 

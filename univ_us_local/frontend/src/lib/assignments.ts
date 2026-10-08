@@ -62,6 +62,15 @@ export interface LoginStatus {
   problem: string | null;
 }
 
+/** GET·PUT·DELETE /api/login/creds (C3) — 자동 로그인 정보. 비밀번호는 보내기만 하고 돌려받지 않는다 */
+export interface LoginCreds {
+  saved: boolean;
+  /** 저장된 아이디 — 복호화하지 못하면(다른 Windows 계정에서 만든 파일 등) null */
+  username: string | null;
+  /** dpapi = Windows 이 계정 전용 암호화 · keychain = 맥 로그인 키체인 */
+  store: "dpapi" | "keychain";
+}
+
 /** /api/status 의 eclass 칸 */
 export interface EclassStatus {
   available: boolean;
