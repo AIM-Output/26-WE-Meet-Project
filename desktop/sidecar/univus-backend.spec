@@ -6,7 +6,7 @@
 #   F2 rulesets·curriculum, F1 directory, C2 master, F5 web …)와 PROJECT_ROOT 를 찾기 때문이다. 백엔드가 지금처럼
 #   sys.path 에 기능 폴더를 붙여 import 한다.
 #   대신 그 코드가 쓰는 표준 라이브러리·외부 패키지는 PyInstaller 가 못 보므로, 기능 코드의 import 를 AST 로 훑어 hiddenimports 로 준다.
-# 넣지 않는 것: data/·state/·.venv/·tests/, .cmd/.command/.ps1 런처, **.env(LLM 키 등 비밀)**.
+# 넣지 않는 것: data/·state/·.venv/·tests/, .cmd/.command/.ps1 런처(예약 등록용 register-task.ps1 만 넣는다), **.env(LLM 키 등 비밀)**.
 import ast
 import os
 from pathlib import Path
@@ -24,6 +24,7 @@ TREES = [(REPO / a, f"univus/{a}") for a in AGENTS] + [
 SKIP_DIRS = {"data", "state", ".venv", "tests", "__pycache__", "node_modules", ".pytest_cache", "pw-browsers"}
 SKIP_FILES = {".env", ".gitignore"}
 SKIP_SUFFIX = {".cmd", ".command", ".ps1", ".pyc", ".lnk", ".log", ".db"}
+KEEP_FILES = {"register-task.ps1"}                         # F1·F6 예약 켜기가 앱 안에서도 이 스크립트를 부른다 (-Command 로 앱 실행 파일)
 
 datas, sources = [], []
 for src, dest in TREES:
@@ -33,7 +34,7 @@ for src, dest in TREES:
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for f in filenames:
             p = Path(dirpath) / f
-            if f in SKIP_FILES or p.suffix in SKIP_SUFFIX:
+            if f not in KEEP_FILES and (f in SKIP_FILES or p.suffix in SKIP_SUFFIX):
                 continue
             datas.append((str(p), str(Path(dest) / p.parent.relative_to(src))))
             if p.suffix == ".py":
