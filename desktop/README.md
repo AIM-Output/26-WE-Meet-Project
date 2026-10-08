@@ -47,6 +47,8 @@ npx tauri build                       # → src-tauri/target/release/bundle/ (Wi
 ```
 
 - `univ_us_local/frontend/out` 은 커밋하지 않는다 — `build.py` 가 매번 만든다(이미 만들었으면 `--skip-frontend`).
+- `build.py` 는 마지막에 묶은 실행 파일로 `--self-check`(기능 폴더의 모든 모듈 import)를 돌린다 — PyInstaller 가 놓친 모듈은 그 기능을 쓸 때에야 터지므로(2026-10-08 `osenv.creds`) 실패하면 빌드도 실패한다.
+  기능 코드(`osenv` 포함)는 PYZ 가 아니라 원본 `.py` 로 묶는다(`univus-backend.spec`).
 - 설치본을 새로 깔기 전에 트레이 → 종료. 아이콘: `src-tauri/icons/source.png` 를 바꾸고 `npm run icon`.
 
 ## 개발 모드 (`npm run dev`)

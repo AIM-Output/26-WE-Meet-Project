@@ -7,6 +7,9 @@
         --exit-with-stdin: 표준입력이 닫히면(앱이 끝나거나 죽으면) 서버도 끝낸다 — 고아 프로세스 방지.
         처음 실행이면 Playwright Chromium 을 앱 데이터 폴더에 백그라운드로 받는다(약 150MB, logs/browsers.log).
 
+    desktop.py --self-check
+        기능 폴더의 모든 모듈·백엔드가 import 되는지 점검 (build.py 가 묶은 실행 파일로 부른다 — PyInstaller 가 놓친 모듈 찾기).
+
     desktop.py --run-module <모듈> [인자…]
         `python -m <모듈>` 과 같다(현재 폴더를 import 경로 맨 앞에). 기능별 .venv 가 없어서
         수집기·로그인 창·예약 실행이 이 실행 파일을 다시 부른다 (osenv.module_cmd · register-task.ps1 -Command · launchd).
@@ -137,6 +140,36 @@ def _ensure_browsers(root: Path) -> None:
         mark.unlink(missing_ok=True)
 
 
+def self_check() -> int:
+    """묶인 실행 파일 점검 — 기능 폴더의 모든 파이썬 모듈과 백엔드(app)가 import 되는가 (build.py·CI 가 부른다).
+    PyInstaller 가 놓친 모듈(2026-10-08 osenv.creds)은 그 기능을 실제로 쓸 때에야 터지므로 빌드 때 한 번 다 불러 본다.
+    데이터는 임시 폴더, 예약 실행은 끈다."""
+    import importlib
+    import tempfile
+    import traceback
+    os.environ.update(F1_TASKS="off", F6_TASKS="off", UNIVUS_NO_BROWSER_INSTALL="1")
+    appdata.apply(Path(tempfile.mkdtemp(prefix="univus-check-")))
+    roots = [d for d in sorted(BUNDLE.iterdir()) if d.is_dir() and (d.name[:1] in "CF") and d.name.endswith("_agent")]
+    roots.append(BACKEND_DIR)
+    names: list[str] = []
+    for root in roots:
+        if str(root) not in sys.path:
+            sys.path.append(str(root))
+        for pkg in sorted(p for p in root.iterdir() if (p / "__init__.py").exists()):
+            names += [f"{pkg.name}.{f.stem}" if f.stem != "__init__" else pkg.name
+                      for f in sorted(pkg.rglob("*.py")) if f.parent == pkg and f.stem != "__main__"]
+    failed = []
+    for name in names:
+        try:
+            importlib.import_module(name)
+        except Exception:                                # noqa: BLE001 — 하나라도 실패하면 모아서 알린다
+            failed.append((name, traceback.format_exc(limit=1).strip().splitlines()[-1]))
+    for name, err in failed:
+        print(f"self-check 실패: {name}: {err}", file=sys.stderr)
+    print(f"self-check: 모듈 {len(names)}개 · 실패 {len(failed)}", file=sys.stderr, flush=True)
+    return 1 if failed else 0
+
+
 def serve(a: argparse.Namespace) -> int:
     root = Path(a.data_root) if a.data_root else appdata.default_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -182,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
             print("사용법: --run-module <모듈> [인자…]", file=sys.stderr)
             return 2
         return run_module(argv[1], argv[2:])
+    if argv[:1] == ["--self-check"]:
+        return self_check()
     ap = argparse.ArgumentParser(prog="univus-backend", description="유니버스 데스크톱 앱 로컬 서버")
     ap.add_argument("--data-root", help="앱 데이터 폴더 (기본: OS 별 위치)")
     ap.add_argument("--port", type=int, default=0, help="포트 (기본: 빈 포트)")

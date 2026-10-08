@@ -40,7 +40,9 @@ for src, dest in TREES:
             if p.suffix == ".py":
                 sources.append(p)
 
-# 기능 폴더 안의 패키지 이름(eclass·login·bachelor …) — 이것들은 원본 파일로 쓰므로 PYZ 에 넣지 않는다 (osenv 는 진입점이 쓴다)
+# 기능 폴더 안의 패키지 이름(osenv·eclass·login·bachelor …) — 원본 파일로 쓰므로 PYZ 에 넣지 않는다.
+# osenv 도 마찬가지다: PYZ 에 넣으면 진입점이 import 한 모듈(__init__·appdata)만 들어가고 그것이 원본보다 먼저 잡혀서,
+# 나중에 부르는 osenv.creds·launchd 를 못 찾는다(2026-10-08 e클래스 재로그인 ImportError). desktop.py 가 C0 폴더를 sys.path 에 붙인다.
 local = {d.name for src, _ in TREES if src.is_dir() for d in src.iterdir() if (d / "__init__.py").exists()}
 local |= {"app", "desktop"}
 mods = set()
@@ -67,7 +69,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden,
-    excludes=sorted((local - {"osenv"}) | {"tkinter", "pytest", "_pytest"}),
+    excludes=sorted(local | {"tkinter", "pytest", "_pytest"}),
     noarchive=False,
 )
 pyz = PYZ(a.pure)

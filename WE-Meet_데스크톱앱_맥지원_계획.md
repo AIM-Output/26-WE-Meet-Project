@@ -244,3 +244,4 @@ server/                    얇은 서버 (나중에)
   - 새로 만든 것: 앱의 **자동 로그인 정보** 저장·지우기(`C3_Login_agent/login/api.py` `/api/login/creds` + 수집 원천 화면 모달 `?creds=1`) — 비밀번호는 돌려주지 않는다.
     개발용 명령줄 `desktop/cli.py <패키지> …`(개발 데이터 / `--app`). macOS CI 를 런처 검사 → 단일 venv 테스트 + 사이드카 빌드·실행(준비 줄·403)으로.
   - F1 `task_info.scheduled` 가 `run-scheduled.cmd` 문자열을 찾아, 앱이 등록한 작업을 늘 '옛 등록'으로 보던 것 수정(`bachelor tick`).
+  - (같은 날) 설치본 e클래스 수집이 세션 만료 → 재로그인 단계에서 `ImportError: cannot import name 'creds' from 'osenv'` — spec 이 osenv 만 PYZ 에 넣어 진입점이 import 한 모듈만 묶였다. osenv 도 원본으로(excludes), `desktop.py --self-check`(모든 모듈 import)를 build.py 마지막에. 설치본에서 재로그인 → 수집 성공 확인.

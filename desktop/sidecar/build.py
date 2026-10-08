@@ -4,6 +4,7 @@
     py -3.12 desktop/sidecar/build.py --skip-frontend    frontend/out 을 이미 만들었으면 (npm run build 생략)
 
 결과: desktop/sidecar/dist/univus-backend/univus-backend(.exe) + _internal/  — Tauri 가 resources 로 넣는다 (tauri.conf.json).
+마지막에 그 실행 파일로 `--self-check`(모든 기능 모듈 import)를 돌려, 실패하면 빌드도 실패한다.
 빌드용 .venv 는 desktop/sidecar/.venv (C0 osenv.venv.ensure — requirements.txt 가 바뀌었을 때만 다시 설치). 개발 모드도 이 venv 를 쓴다.
 frontend/out 은 커밋하지 않는다 — 여기서 매번 만든다 (node_modules 가 없으면 npm ci 먼저).
 """
@@ -42,8 +43,13 @@ def main() -> int:
     if "--skip-frontend" not in sys.argv[1:] and (code := build_frontend()) != 0:
         return code
     py = ensure(HERE / ".venv", HERE / "requirements.txt", log=sys.stderr)
-    return _run([str(py), "-m", "PyInstaller", "--noconfirm", "--clean",
+    code = _run([str(py), "-m", "PyInstaller", "--noconfirm", "--clean",
                  "--distpath", str(HERE / "dist"), "--workpath", str(HERE / "build"), str(HERE / "univus-backend.spec")], HERE)
+    if code != 0:
+        return code
+    # 묶인 실행 파일로 모든 기능 모듈을 한 번 import — PyInstaller 가 놓친 모듈은 그 기능을 쓸 때에야 터진다
+    exe = HERE / "dist" / "univus-backend" / ("univus-backend.exe" if sys.platform == "win32" else "univus-backend")
+    return _run([str(exe), "--self-check"], HERE)
 
 
 if __name__ == "__main__":
