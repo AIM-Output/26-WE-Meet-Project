@@ -38,7 +38,7 @@ jobs:
       - name: 태그와 앱 버전이 같은지
         shell: bash
         run: |
-          v=$(python3 -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])" 2>/dev/null || python -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+          v=$(python3 -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json', encoding='utf-8'))['version'])" 2>/dev/null || python -c "import json;print(json.load(open('desktop/src-tauri/tauri.conf.json', encoding='utf-8'))['version'])")
           echo "tauri.conf.json version=$v · tag=$TAG"
           test "v$v" = "$TAG" || { echo "태그($TAG)와 tauri.conf.json 의 version(v$v)이 다릅니다"; exit 1; }
 
