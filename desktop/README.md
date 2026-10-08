@@ -17,6 +17,7 @@ UnivUs (Tauri, Rust)                         univus-backend (PyInstaller onedir,
 | `src-tauri/` | Rust 껍데기 — `src/main.rs`(사이드카·창·트레이·바깥 링크), `tauri.conf.json`, `icons/` |
 | `splash/` | 서버가 뜰 때까지 보이는 시작 화면 (Tauri API 없음) |
 | `sidecar/` | `univus-backend.spec`(PyInstaller) · `build.py` · 빌드용 `requirements.txt` |
+| `src-tauri/tauri.dev.conf.json` | 개발 모드(`npm run dev`) 덧씌움 — 식별자 `.dev`, next dev 띄우기 |
 
 ## 동작
 
@@ -42,9 +43,44 @@ npx tauri build                       # → src-tauri/target/release/bundle/ (Wi
 ```
 
 - 화면을 고쳤으면 먼저 `univ_us_local/frontend` 에서 `npm run build` (사이드카가 `frontend/out` 을 묶는다).
-- 개발 중 껍데기만 빨리: `npx tauri dev` (사이드카는 `sidecar/dist` 를 쓴다. 다른 것을 쓰려면 `UNIVUS_SIDECAR=<실행 파일>`).
-- 사이드카만 저장소에서: `univ_us_local/backend/.venv` python 으로 `python desktop.py --data-root <임시 폴더>` → 준비 줄의 launchUrl 을 브라우저로.
 - 아이콘: `src-tauri/icons/source.png` 를 바꾸고 `npm run icon`.
+
+## 개발 모드 (`npm run dev`)
+
+설치본을 빌드하지 않고 소스 그대로 앱 창에서 돌린다. 화면(`univ_us_local/frontend/src`)을 고치면 창에 바로 반영되고,
+백엔드·기능 코드(`.py`)를 고치면 `npm run dev` 를 다시 띄운다 (Rust `src-tauri/` 는 tauri dev 가 알아서 다시 빌드).
+
+```bash
+cd desktop
+npm run dev        # = tauri dev --config src-tauri/tauri.dev.conf.json
+```
+
+```
+tauri dev ─ beforeDevCommand ─▶ next dev 127.0.0.1:3000 (univ_us_local/frontend, 즉시 반영)
+   │                                   │ rewrites: /api · /desktop/launch · /study-calendar
+   └ 디버그 빌드 창 ─ 실행 ─▶ univ_us_local/backend/.venv python desktop.py --dev --port 8020 --frontend-url http://127.0.0.1:3000
+                                         --data-root desktop/.dev-data
+```
+
+| | 설치본 | 개발 모드 |
+|---|---|---|
+| 식별자 | `kr.univus.desktop` | `kr.univus.desktop.dev` (`tauri.dev.conf.json`) — 설치본이 떠 있어도 따로 뜬다, WebView2 프로필도 따로 |
+| 데이터 | `%LOCALAPPDATA%\kr.univus.desktop\data` | `desktop/.dev-data` (git 제외) |
+| 화면 | 묶은 `frontend/out` | next dev (`:3000`) |
+| 백엔드 | 사이드카 실행 파일, 빈 포트 | 저장소 소스, 포트 `8020` 고정 (`next.config.ts` 의 `BACKEND_URL` 기본값과 같아야 한다) |
+| 서버 로그 | `logs/backend.log` | tauri dev 터미널 |
+| 예약 실행 | 켜기/끄기 됨 | **꺼짐** (`--dev` → `F1_TASKS`·`F6_TASKS=off`) — 같은 작업 이름이라 설치본 등록을 덮어쓰지 않게 |
+
+- 준비(한 번): `univ_us_local/backend/.venv` (`py -3.12 -m venv univ_us_local/backend/.venv` → 그 python 으로 `pip install -r univ_us_local/backend/requirements.txt`),
+  `univ_us_local/frontend` 에서 `npm install`. 로그인·수집은 아직 기능별 `.venv`(C3_Login_agent·F1_Bachelor_agent)를 부른다 — 하나로 합치는 것은 정리 단계에서.
+- 개발 데이터 채우기: `.dev-data` 를 지운 뒤 `C0_Platform_agent` 에서 `py -3.12 -m osenv migrate-data --to ../desktop/.dev-data`
+  (저장소 `data/`·`state/` 를 복사, 덮어쓰지 않음). 비워 두면 첫 설정(온보딩) 화면부터 시작한다.
+- 3000·8020 포트가 비어 있어야 한다. 묶은 사이드카를 dev 창으로 시험하려면 `UNIVUS_SIDECAR=<sidecar/dist/…/univus-backend(.exe)>` (이때는 데이터·포트가 설치본 규칙).
+- 앱 창 밖 브라우저로 `http://127.0.0.1:3000` 을 열면 API 가 403 이다 (세션 쿠키는 앱 창만 가진다) — 정상.
+
+**주의 (Windows, Claude 데스크톱 앱 안에서 작업할 때)**: Claude 앱은 MSIX 패키지라, 거기서 띄운 프로세스가 `%LOCALAPPDATA%` 에 새로 만드는 파일은
+실제 위치가 아니라 `%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Local\` 로 간다. 설치 파일 실행·`migrate-data`(기본 위치)는 그 안에서 하지 말 것.
+개발 모드 데이터는 저장소 안(`desktop/.dev-data`)이라 영향이 없다.
 
 ## 알려진 문제
 

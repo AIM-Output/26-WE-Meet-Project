@@ -5,3 +5,5 @@ sidecar/dist/
 node_modules/
 src-tauri/target/
 src-tauri/gen/
+# 개발 모드(npm run dev) 데이터 — 설치된 앱의 앱 데이터 폴더와 따로
+.dev-data/

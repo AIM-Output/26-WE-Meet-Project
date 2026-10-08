@@ -29,20 +29,51 @@ const HIDDEN_ARG: &str = "--hidden"; // 로그인할 때 자동 실행이면 창
 
 struct Sidecar(Mutex<Option<Child>>);
 
-/// 사이드카 실행 파일 — 설치본은 resources/sidecar/, 개발은 desktop/sidecar/dist/ (UNIVUS_SIDECAR 로 바꿀 수 있다)
-fn sidecar_path(app: &AppHandle) -> Option<PathBuf> {
+/// 사이드카를 띄울 명령 — 설치본은 resources/sidecar/ 의 실행 파일.
+/// 디버그 빌드(`npm run dev` = tauri dev)는 저장소 소스를 univ_us_local/backend/.venv 의 python 으로 바로 띄운다 (개발 모드).
+/// UNIVUS_SIDECAR=<실행 파일> 이면 그것을 쓴다 — 묶은 사이드카(desktop/sidecar/dist)를 dev 껍데기로 시험할 때.
+fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
     if let Ok(p) = std::env::var("UNIVUS_SIDECAR") {
-        return Some(PathBuf::from(p));
+        return Ok(exe_command(PathBuf::from(p)));
+    }
+    if cfg!(debug_assertions) {
+        return dev_command();
     }
     let exe = if cfg!(windows) { "univus-backend.exe" } else { "univus-backend" };
-    if let Ok(dir) = app.path().resource_dir() {
-        let p = dir.join("sidecar").join(exe);
-        if p.exists() {
-            return Some(p);
-        }
+    match app.path().resource_dir() {
+        Ok(dir) if dir.join("sidecar").join(exe).exists() => Ok(exe_command(dir.join("sidecar").join(exe))),
+        _ => Err("로컬 서버 실행 파일을 찾지 못했습니다 — 앱을 다시 설치해 주세요".into()),
     }
-    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../sidecar/dist/univus-backend").join(exe);
-    dev.exists().then_some(dev)
+}
+
+fn exe_command(path: PathBuf) -> Command {
+    let mut cmd = Command::new(&path);
+    if let Some(dir) = path.parent() {
+        cmd.current_dir(dir);
+    }
+    cmd
+}
+
+// 개발 모드 — next dev(화면 즉시 반영)는 tauri.dev.conf.json 의 beforeDevCommand 가 띄우고, 백엔드는 이 포트에 고정한다
+// (next.config.ts 의 BACKEND_URL 기본값과 같아야 한다). 데이터는 설치된 앱과 따로 desktop/.dev-data.
+const DEV_BACKEND_PORT: &str = "8020";
+const DEV_FRONTEND_URL: &str = "http://127.0.0.1:3000";
+
+fn dev_command() -> Result<Command, String> {
+    let desktop = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().map(PathBuf::from).unwrap_or_default();
+    let repo = desktop.parent().map(PathBuf::from).unwrap_or_default();
+    let backend = repo.join("univ_us_local").join("backend");
+    let venv = backend.join(".venv");
+    let py = if cfg!(windows) { venv.join("Scripts").join("python.exe") } else { venv.join("bin").join("python") };
+    if !py.exists() {
+        return Err(format!("개발 모드: {} 이(가) 없습니다 — desktop/README.md 의 개발 준비를 먼저 하세요", py.display()));
+    }
+    let mut cmd = Command::new(py);
+    cmd.current_dir(&backend)
+        .args(["-X", "utf8", "desktop.py", "--dev", "--port", DEV_BACKEND_PORT, "--frontend-url", DEV_FRONTEND_URL])
+        .arg("--data-root")
+        .arg(desktop.join(".dev-data"));
+    Ok(cmd)
 }
 
 /// 시작 화면의 안내 문구를 바꾼다 (대시보드로 넘어간 뒤에는 #msg 가 없어 아무 일도 없다)
@@ -54,19 +85,20 @@ fn show_status(app: &AppHandle, msg: &str) {
 }
 
 fn start_sidecar(app: &AppHandle) {
-    let Some(path) = sidecar_path(app) else {
-        show_status(app, "로컬 서버 실행 파일을 찾지 못했습니다 — 앱을 다시 설치해 주세요");
-        return;
+    let mut cmd = match sidecar_command(app) {
+        Ok(c) => c,
+        Err(msg) => {
+            show_status(app, &msg);
+            return;
+        }
     };
-    let mut cmd = Command::new(&path);
-    cmd.arg("--exit-with-stdin").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
-    if let Some(dir) = path.parent() {
-        cmd.current_dir(dir);
-    }
-    #[cfg(windows)]
+    // 개발 모드는 서버 로그를 tauri dev 터미널에 그대로 보인다 (설치본은 앱 데이터 폴더/logs/backend.log)
+    let stderr = if cfg!(debug_assertions) { Stdio::inherit() } else { Stdio::null() };
+    cmd.arg("--exit-with-stdin").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(stderr);
+    #[cfg(all(windows, not(debug_assertions)))]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW — 콘솔 창을 띄우지 않는다
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW — 콘솔 창을 띄우지 않는다 (디버그 빌드는 tauri dev 콘솔을 같이 쓴다)
     }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
