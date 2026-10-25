@@ -49,6 +49,7 @@ import type {
   TodayBlock,
 } from "./exams";
 import type { PriorityOverview, PrioritySettingsPatch, PrioritySettingsView } from "./priority";
+import type { Briefing, BriefingHistory, BriefingSettings, BriefingSettingsPatch, BriefingToday } from "./briefing";
 import type { AvailabilitySettings, AvailabilityView, PlacementPreview, RegisterResult, SavedBlock } from "./placement";
 import type { MaterialDetail, MaterialItem, MaterialKind, MaterialsOverview, MaterialsStatus, MaterialScan } from "./materials";
 import type { SchDetail, SchHistory, SchMaterials, SchOverview, SchProgress, SchSource, SchSources, SchSync } from "./scholarships";
@@ -376,6 +377,17 @@ export const api = {
   patchAvailability: (body: { [K in keyof AvailabilitySettings]?: AvailabilitySettings[K] | null } & { reset?: boolean }) =>
     req<AvailabilityView>("/settings/availability", json("PATCH", body)),
 
+  // C4 브리핑 (요구사항 F10 · Frontend-Route 15-6) — 서버가 하루 한 번 만든 스냅샷. 화면은 계산하지 않는다.
+  /** 오늘 브리핑 — 만들 때가 됐는데 없으면 서버가 지금 만든다(놓친 브리핑) */
+  briefingToday: () => req<BriefingToday>("/briefing/today"),
+  /** 다시 만들기 — 지금 기준으로 오늘 것을 덮어쓴다 */
+  regenerateBriefing: () => req<Briefing>("/briefing/regenerate", { method: "POST" }),
+  briefings: (limit = 30) => req<BriefingHistory>(`/briefings?limit=${limit}`),
+  briefing: (date: string) => req<Briefing>(`/briefings/${enc(date)}`),
+  briefingSettings: () => req<BriefingSettings>("/settings/briefing"),
+  /** null 은 그 칸을 기본값으로, reset 은 전부 기본값으로 */
+  patchBriefingSettings: (body: BriefingSettingsPatch) => req<BriefingSettings>("/settings/briefing", json("PATCH", body)),
+
   departments: () => req<MasterSummary & { entries: DeptEntry[] }>("/master/departments"),
   syncDepartments: () => req<JobState>("/master/departments/sync", { method: "POST" }),
   masterStatus: () => req<MasterSummary & { sync: JobState & { result: { colleges: number; count: number; year: number } | null } }>("/master/status"),
@@ -400,7 +412,7 @@ export const api = {
   patchScholarshipSource: (key: string, enabled: boolean | null) => req<SchSource>(`/scholarships/sources/${enc(key)}`, json("PATCH", { enabled })),
   syncScholarships: (sources?: string[]) => req<SchSync>("/scholarships/sync", json("POST", { sources })),
   scholarshipMaterials: () => req<SchMaterials>("/scholarships/materials"),
-  putScholarshipMaterials: (body: Omit<SchMaterials, "exists" | "updatedAt" | "fromProfile">) => req<SchMaterials>("/scholarships/materials", json("PUT", body)),
+  putScholarshipMaterials: (body: Omit<SchMaterials, "exists" | "updatedAt" | "fromProfile" | "basicFrom">) => req<SchMaterials>("/scholarships/materials", json("PUT", body)),
   deleteScholarshipMaterials: () => req<SchMaterials>("/scholarships/materials", { method: "DELETE" }),
 
   // F12 대외활동 (Frontend-Route 17절) — 원천은 F11 과 같고 장학 외 공지를 관심사로 가른다. 관심사는 C2 프로필(patchProfile {interests}).
@@ -419,6 +431,6 @@ export const api = {
   patchOpportunitySource: (key: string, enabled: boolean | null) => req<SchSource>(`/opportunities/sources/${enc(key)}`, json("PATCH", { enabled })),
   syncOpportunities: (sources?: string[]) => req<ActSync>("/opportunities/sync", json("POST", { sources })),
   opportunityMaterials: () => req<ActMaterials>("/opportunities/materials"),
-  putOpportunityMaterials: (body: Omit<ActMaterials, "exists" | "updatedAt" | "from">) => req<ActMaterials>("/opportunities/materials", json("PUT", body)),
+  putOpportunityMaterials: (body: Omit<ActMaterials, "exists" | "updatedAt" | "from" | "basicFrom">) => req<ActMaterials>("/opportunities/materials", json("PUT", body)),
   deleteOpportunityMaterials: () => req<ActMaterials>("/opportunities/materials", { method: "DELETE" }),
 };

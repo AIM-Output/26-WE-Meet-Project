@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS notices (
     dup_of        TEXT,
     info          TEXT,
     extract_ver   INTEGER NOT NULL DEFAULT 0,
+    reader_ver    INTEGER NOT NULL DEFAULT 0,
     first_seen    TEXT NOT NULL,
     fetched_at    TEXT NOT NULL,
     changed_at    TEXT
@@ -112,6 +113,13 @@ def loads(s: Optional[str], default: Any = None) -> Any:
         return default
 
 
+def _migrate(con: sqlite3.Connection) -> None:
+    """예전 DB 에 나중에 생긴 칸을 붙인다 — reader_ver(첨부·이미지를 읽은 방법의 판, 2026-10-25 HWP·OCR)."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(notices)")}
+    if "reader_ver" not in cols:
+        con.execute("ALTER TABLE notices ADD COLUMN reader_ver INTEGER NOT NULL DEFAULT 0")
+
+
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     C.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -122,6 +130,7 @@ def connect() -> Iterator[sqlite3.Connection]:
         if str(C.DB_PATH) not in _initialized or not C.DB_PATH.exists():
             con.execute("PRAGMA journal_mode = WAL")
             con.executescript(SCHEMA)
+            _migrate(con)
             con.commit()
             _initialized.add(str(C.DB_PATH))
         yield con
@@ -166,11 +175,12 @@ def upsert_notice(con: sqlite3.Connection, n: dict) -> str:
     old = notice(con, n["id"])
     now = now_iso()
     cols = ("source", "source_name", "unit_key", "title", "url", "posted_at", "writer", "category", "body", "attach_text",
-            "attachments", "image_only", "content_hash", "title_key", "dup_of", "info", "extract_ver")
+            "attachments", "image_only", "content_hash", "title_key", "dup_of", "info", "extract_ver", "reader_ver")
     vals = {k: n.get(k) for k in cols}
     vals["attachments"] = dumps(n.get("attachments") or [])
     vals["info"] = dumps(n["info"]) if n.get("info") is not None else None
     vals["image_only"] = int(bool(n.get("image_only")))
+    vals["reader_ver"] = int(n.get("reader_ver") or 0)
     if old is None:
         con.execute(f"INSERT INTO notices(id, {', '.join(cols)}, first_seen, fetched_at) "
                     f"VALUES (?, {', '.join('?' * len(cols))}, ?, ?)",

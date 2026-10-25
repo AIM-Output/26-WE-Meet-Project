@@ -13,7 +13,8 @@
     GET    /api/scholarships/sources                  원천 — 학교 전체 · 부서 · 사업단 · 내 소속 (내 학과와 관련 여부 · 켜짐)
     PATCH  /api/scholarships/sources/{key}            {enabled: true|false|null(기본값으로)}
     POST   /api/scholarships/sync                     지금 수집 {sources?}
-    GET|PUT|DELETE /api/scholarships/materials         초안 재료(진로·활동·형편·강조점) — 프로필과 따로, 따로 지운다
+    GET|PUT|DELETE /api/scholarships/materials         초안 재료(기본 정보 basic{이름·학번·소속·학년·연락처·이메일} · 진로·활동·형편·강조점)
+                                                      — 프로필과 따로, 따로 지운다. 기본 정보는 LLM 에 보내지 않는다
 
 의존성: fastapi·pydantic + 표준 라이브러리. 수집(requests·bs4)은 runner 가 자식 프로세스로 띄운다.
 프로필(C2, 민감정보 포함)은 대시보드가 get_profile 로, 캘린더·할 일은 add_event 로, 알림은 push 로 넘겨준다.
@@ -62,11 +63,22 @@ class SyncIn(BaseModel):
     sources: Optional[list[str]] = None
 
 
+class BasicIn(BaseModel):
+    """초안 기본 정보 — 이 PC 의 초안 재료에만 둔다(프로필·LLM 에는 가지 않는다, basicinfo)."""
+    name: str = Field(default="", max_length=40)
+    studentId: str = Field(default="", max_length=20)
+    department: str = Field(default="", max_length=80)
+    grade: str = Field(default="", max_length=10)
+    phone: str = Field(default="", max_length=30)
+    email: str = Field(default="", max_length=80)
+
+
 class MaterialsIn(BaseModel):
     careerGoal: str = Field(default="", max_length=2000)
     activities: str = Field(default="", max_length=2000)
     hardship: str = Field(default="", max_length=2000)
     highlights: str = Field(default="", max_length=2000)
+    basic: Optional[BasicIn] = None
 
 
 _deliver_cache: dict = {"at": 0.0, "stamp": None}
@@ -100,7 +112,9 @@ def touch() -> None:
         store.touch(con)
 
 
-def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = None) -> APIRouter:
+def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = None,
+                 shared_basic: Optional[service.BasicGetter] = None) -> APIRouter:
+    """shared_basic = 대외활동(F12) 초안 재료의 기본 정보 — 장학 쪽 기본 정보가 비어 있을 때 미리 채운다(대시보드가 넘겨준다)."""
     r = APIRouter(prefix="/api/scholarships", tags=["F11 장학"])
 
     def _404(nid: str):
@@ -137,7 +151,7 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
             if not mats["exists"] and not body.borrowFrom:
                 raise HTTPException(409, "needsMaterials")
             try:
-                return service.make_draft(con, nid, profile, body.borrowFrom)
+                return service.make_draft(con, nid, profile, body.borrowFrom, other_basic=shared_basic)
             except service.NotFound:
                 _404(nid)
             except service.Invalid as e:
@@ -214,18 +228,18 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
     @r.get("/materials")
     def get_materials() -> dict:
         with store.connect() as con:
-            return service.materials(con, get_profile())
+            return service.materials(con, get_profile(), shared_basic)
 
     @r.put("/materials")
     def put_materials(body: MaterialsIn) -> dict:
         with store.connect() as con:
-            return service.put_materials(con, body.model_dump())
+            return service.put_materials(con, body.model_dump(exclude_unset=True), get_profile(), shared_basic)
 
     @r.delete("/materials")
     def delete_materials() -> dict:
         with store.connect() as con:
             service.delete_materials(con)
-            return service.materials(con, None)
+            return service.materials(con, get_profile(), shared_basic)
 
     return r
 

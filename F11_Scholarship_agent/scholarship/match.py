@@ -259,10 +259,14 @@ def decide(req: dict, profile: Optional[dict], notice: Optional[dict] = None, to
         verdict = "ineligible"           # 본문을 못 읽었어도 제목의 지역 재단·단과대학·캠퍼스가 내 것이 아니면 확실하다
     elif req.get("needsOcr"):
         verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown", "본문이 이미지라 자동으로 판정하지 못했습니다 — 원문 확인")
+    elif fails and req.get("ocr"):       # OCR 은 '3.5' 를 '3.0' 으로 읽기도 한다 — 미달을 단정하지 않는다
+        verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown",
+                                           "이미지 속 글자(OCR)로 읽은 조건에 미달 항목이 있습니다 — 잘못 읽었을 수 있어 원문 확인")
     elif fails:
         verdict = "ineligible"
     elif conf < C.CONFIDENCE_THRESHOLD:
         verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown",
+                                           "이미지 속 글자를 OCR 로 읽은 공지라 자동 판정을 보류했습니다 — 원문 확인" if req.get("ocr") else
                                            "조건을 다 읽었는지 확신이 없어 자동 판정을 보류했습니다"
                                            + (" (첨부를 읽지 못함)" if req.get("attachmentsUnread") else ""))
     elif unknown:

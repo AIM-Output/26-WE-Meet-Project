@@ -33,7 +33,7 @@ export const FEATURES: Feature[] = [
   // 팀플(F16, /team) 타일 자리에 대외활동을 둔다(10칸 배치 유지). /team 화면은 남아 있고 타일만 빠졌다.
   { key: "scholarships", label: "장학", href: "/scholarships", icon: HandCoins, fid: "F11" },
   { key: "opportunities", label: "대외활동", href: "/opportunities", icon: Trophy, fid: "F12·F13" },
-  { key: "briefing", label: "브리핑", href: "/briefing", icon: Sun, fid: "F10" },
+  { key: "briefing", label: "브리핑", href: "/briefing", icon: Sun, fid: "C4·F10" }, // 공통 기능 C4 가 F10 요구사항을 구현
   { key: "chat", label: "대화", href: "/chat", icon: MessageCircle, fid: "F9" },
 ];
 

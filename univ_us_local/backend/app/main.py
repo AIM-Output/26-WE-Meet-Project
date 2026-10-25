@@ -4,7 +4,7 @@
 - /                 frontend/out (next build 결과) 가 있으면 정적으로 서빙. 없으면 안내 페이지.
 개발 모드(desktop/ 에서 npm run dev)에서는 `next dev`(3000) 가 /api·/desktop/launch 를 여기(8020)로 넘겨준다 (frontend/next.config.ts rewrites).
 
-이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8 · F11 · F12).
+이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8 · F11 · F12 · C4 브리핑).
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import academic, activity, attendance, calendar_events, exams, graduation, materials, placement, priority, scholarship
+from . import academic, activity, attendance, briefing, calendar_events, exams, graduation, materials, placement, priority, scholarship
 from . import config as C
 from . import eclass_data, login_creds, student_profile
 
@@ -109,6 +109,8 @@ def get_status() -> dict:
         "placement": placement.status(),     # F8: 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt (바뀌면 화면이 캘린더를 다시 받는다)
         "scholarship": scholarship.status(),  # F11: 해당 · 확인 필요 · 마감 임박 · 수집 상태 (겸사겸사 새 장학 알림 배달 · 06·18시 자동 수집)
         "activity": activity.status(),        # F12: 내 관심사 · 관련 있음 · 담은 것 · 마감 임박 (겸사겸사 관심 기회 알림 · 장학 다음 06·18시 수집)
+        # C4: 오늘 브리핑 상태 · 건수 · updatedAt (겸사겸사 예정 시각이 지났으면 만든다 — 위 기능들이 알림을 배달한 뒤라 맨 끝에 둔다)
+        "briefing": briefing.status(),
     }
 
 
@@ -214,6 +216,12 @@ if (_f11_router := scholarship.router()) is not None:
 # 를 모아 C2 프로필의 관심사로 '내 관심사 / 관련 있음 / 관심 밖'을 가른다. 담으면 신청 마감이 C1 내 일정이 되고, 신청서 초안까지 만든다(제출은 하지 않는다).
 if (_f12_router := activity.router()) is not None:
     app.include_router(_f12_router)
+
+# C4 브리핑 (요구사항 F10 아침 브리핑을 공통 기능으로) — /api/briefing* · /api/settings/briefing (C4_Briefing_agent/briefing/api.py)
+# 각 기능이 브리핑용으로 내놓은 값(F3 오늘 수업 · F6 마감 · F7 먼저 할 것 · F1 학사 D-3 · F5 오늘 공부 · F8 블록 · F11·F12 마감
+# · 알림 센터의 안 읽은 알림)을 모아 하루 한 번 스냅샷을 만든다. 오늘 일정·마감은 /api/events 와 같은 합치기에서 읽는다.
+if (_c4_router := briefing.router(lambda start, end: calendar_events.collect(CALENDAR_SOURCES, start, end))) is not None:
+    app.include_router(_c4_router)
 
 
 # ---------------------------------------------------------------- 데스크톱 앱

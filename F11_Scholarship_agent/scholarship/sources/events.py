@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urljoin
 
-from .base import FormatChanged, Http, Post, clean_title, html_to_text, ymd
+from .base import FormatChanged, Http, Post, body_images, clean_title, html_to_text, ymd
 
 
 def _icon_text(card, icon: str) -> str:
@@ -61,6 +61,7 @@ def fetch_detail(post: Post, cfg: dict, http: Http) -> Post:
     body = re.sub(r"^\s*행사 상세 정보\s*[:：]?\s*", "", body)
     post.body = "\n".join(x for x in (*facts, body) if x).strip()
     post.image_only = bool(h is not None and h.parent.select("img[src]")) and len(re.sub(r"\s+", "", body)) < 40
+    post.images = body_images(post, h.parent if h is not None else None)
     post.attachments = [{"name": a.get("download") or a.get_text(" ", strip=True) or "첨부", "url": urljoin(post.url, a["href"])}
                         for a in soup.select("a[download][href]")]
     return post

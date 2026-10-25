@@ -4,7 +4,7 @@
 
 import type { Tone } from "@/components/ui/Chip";
 import type { Interests } from "./profile";
-import type { SchSource, SchSources, SchSync } from "./scholarships";
+import type { DraftBasic, SchSource, SchSources, SchSync } from "./scholarships";
 
 export type ActGrade = "match" | "related" | "other";
 export type ActStatus = "open" | "expired" | "result" | "stale" | "not_for_me";
@@ -71,6 +71,7 @@ export interface ActItem {
   askApplied: boolean;
   isNew: boolean;
   needsOcr: boolean;
+  ocr: boolean; // 이미지 속 글자를 OCR 로 읽었다
 }
 
 export interface ActDetail extends ActItem {
@@ -87,7 +88,8 @@ export interface ActDetail extends ActItem {
   evidence: Record<string, string>;
   body: string;
   bodyTruncated: boolean;
-  attachments: { name: string; url: string; ext: string; read: boolean }[];
+  attachments: { name: string; url: string; ext: string; read: boolean; ocr?: boolean }[];
+  ocrText: string | null; // 이미지에서 OCR 로 읽은 글자
   alsoPostedAt: { id: string; source_name: string; url: string }[];
   changedAt: string | null;
   state: {
@@ -157,6 +159,8 @@ export interface ActMaterials {
   activities: string;
   skills: string;
   highlights: string;
+  basic: DraftBasic;
+  basicFrom: "scholarship" | "profile" | null; // 기본 정보 빈 칸을 미리 채운 곳
   updatedAt: string | null;
   from: "scholarship" | "profile" | null; // 비어 있을 때 미리 채운 출처
 }

@@ -99,6 +99,18 @@ def calendar_events(profile: Optional[dict], start: Optional[str], end: Optional
         return service.calendar_events(con, profile, start, end)
 
 
+def upcoming(profile: Optional[dict], days: int = 3) -> list[dict]:
+    """오늘부터 days 일 안의 내 학사 일정 — C4 브리핑(F1-R35)이 라우터를 거치지 않고 읽는다 (GET /api/academic/upcoming 과 같다)."""
+    with store.connect() as con:
+        return notify.upcoming(con, profile, max(0, min(days, 60)))
+
+
+def notifications(profile: Optional[dict], unread_only: bool = True, limit: int = 60) -> list[dict]:
+    """알림 센터 목록(배달할 것을 먼저 배달) — C4 브리핑의 '새 알림'이 읽는다 (GET /api/notifications 와 같다)."""
+    with store.connect() as con:
+        return notify.list_notifications(con, profile, unread_only=unread_only, limit=limit)["items"]
+
+
 def build_router(get_profile: ProfileGetter) -> APIRouter:
     r = APIRouter(prefix="/api", tags=["F1 학사일정"])
 

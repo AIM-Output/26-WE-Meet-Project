@@ -16,6 +16,7 @@ os.environ["F11_DATA_DIR"] = str(_TMP / "f11-data")
 os.environ["F11_STATE_DIR"] = str(_TMP / "f11-state")        # 기다리는 상대(F11 수집 잠금)도 임시 자리
 os.environ["F12_AUTOSYNC"] = "off"
 os.environ["F11_AUTOSYNC"] = "off"
+os.environ["UNIVUS_OCR"] = "off"                            # OS OCR(PowerShell)을 띄우지 않는다 — OCR 은 가짜 엔진을 넘겨 시험
 os.environ["F1_DATA_DIR"] = str(_TMP / "no-f1-data")        # 내려받은 홈페이지 목록 대신 저장소 스냅숏
 for k in ("LLM_MAIN_BASE_URL", "LLM_MAIN_API_KEY", "LLM_MAIN_MODEL"):
     os.environ[k] = ""

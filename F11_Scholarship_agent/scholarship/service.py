@@ -12,7 +12,7 @@ from typing import Any, Callable, Optional
 
 from . import config as C
 from . import draft as drafting
-from . import match, registry, store
+from . import attachments, basicinfo, match, registry, store
 from .textutil import days_until, semester_of, to_date
 
 PROGRESS = ("draft", "approved", "applied", "selected", "not_selected", "skipped")
@@ -35,7 +35,7 @@ def _req(con: sqlite3.Connection, row: sqlite3.Row) -> dict:
     if req is None or row["extract_ver"] < C.EXTRACT_VERSION:
         from .collect import build_req          # collect 는 수집기를 함수 안에서만 import 한다 — 여기서 불러도 requests 없이 된다
         unit = registry.get(row["unit_key"]) if row["unit_key"] else None
-        unread = sum(1 for a in store.loads(row["attachments"], []) if not a.get("read") and a.get("ext") not in (".jpg", ".png", ".zip"))
+        unread = attachments.unread_count(store.loads(row["attachments"], []))
         req = build_req(dict(row), unit, unread)
         store.set_req(con, row["id"], req, C.EXTRACT_VERSION)
     return req
@@ -83,7 +83,7 @@ def _item(row: sqlite3.Row, req: dict, res: dict, st: Optional[sqlite3.Row], dr:
         # 첫 수집(기준선)에 한꺼번에 들어온 글은 '새 글'이 아니다 — 그 뒤 이틀 안에 처음 본 글만
         "isNew": bool(baseline and row["first_seen"] and row["first_seen"] > baseline
                       and row["first_seen"][:10] >= (today - timedelta(days=2)).isoformat()),
-        "needsOcr": bool(req.get("needsOcr")), "attachmentsUnread": req.get("attachmentsUnread", 0),
+        "needsOcr": bool(req.get("needsOcr")), "ocr": bool(req.get("ocr")), "attachmentsUnread": req.get("attachmentsUnread", 0),
         "confidence": res["confidence"],
     }
 
@@ -161,6 +161,7 @@ def detail(con: sqlite3.Connection, nid: str, profile: Optional[dict], today: Op
         "contact": req.get("contact"), "selectionCount": req.get("selectionCount"), "notes": req.get("notes") or [],
         "otherConditions": req.get("otherConditions") or [],
         "body": body[:6000], "bodyTruncated": len(body) > 6000, "attachments": store.loads(row["attachments"], []),
+        "ocrText": attachments.ocr_part(row["attach_text"])[:6000] or None,
         "alsoPostedAt": dups, "changedAt": row["changed_at"],
         "state": {"override": st["override"] if st else None, "overrideReason": st["override_reason"] if st else None,
                   "overrideAt": st["override_at"] if st else None, "progress": it["progress"],
@@ -285,22 +286,41 @@ def set_source(con: sqlite3.Connection, key: str, enabled: Optional[bool]) -> No
 # ── 초안 재료 (프로필과 따로 — 별도 삭제 가능, F11 6절) ───────────
 
 MATERIAL_KEYS = ("careerGoal", "activities", "hardship", "highlights")
+BasicGetter = Callable[[], Optional[dict]]
 
 
-def materials(con: sqlite3.Connection, profile: Optional[dict] = None) -> dict:
+def saved_basic(con: sqlite3.Connection) -> dict:
+    """저장한 기본 정보(이름·학번·소속·학년·연락처·이메일) — 대외활동(F12)이 비어 있을 때 빌려 간다."""
+    return basicinfo.clean((store.loads(store.get_meta(con, "materials"), None) or {}).get("basic"))
+
+
+def materials(con: sqlite3.Connection, profile: Optional[dict] = None, other_basic: Optional[BasicGetter] = None) -> dict:
+    """초안 재료 — 기본 정보(basic) + 진로·활동·형편·강조점. 기본 정보의 빈 칸은 대외활동 재료의 기본 정보 → 프로필 소속·학년으로."""
     m = store.loads(store.get_meta(con, "materials"), None)
+    own = basicinfo.clean((m or {}).get("basic"))
+    other = None
+    if other_basic and not all(own.values()):
+        try:
+            other = other_basic()
+        except Exception:                                  # noqa: BLE001 — 대외활동 쪽을 못 읽어도 재료 카드는 뜬다
+            other = None
+    basic, basic_from = basicinfo.resolve(own, profile, other, "activity")
     if m is None:
         dc = (profile or {}).get("draftContext") or {}
-        return {"exists": False, **{k: dc.get(k, "") for k in MATERIAL_KEYS}, "updatedAt": None,
-                "fromProfile": bool(dc)}
-    return {"exists": True, **{k: m.get(k, "") for k in MATERIAL_KEYS}, "updatedAt": m.get("updatedAt"), "fromProfile": False}
+        return {"exists": False, **{k: dc.get(k, "") for k in MATERIAL_KEYS}, "basic": basic, "basicFrom": basic_from,
+                "updatedAt": None, "fromProfile": bool(dc)}
+    return {"exists": True, **{k: m.get(k, "") for k in MATERIAL_KEYS}, "basic": basic, "basicFrom": basic_from,
+            "updatedAt": m.get("updatedAt"), "fromProfile": False}
 
 
-def put_materials(con: sqlite3.Connection, body: dict) -> dict:
-    data = {k: str(body.get(k) or "").strip()[:2000] for k in MATERIAL_KEYS}
+def put_materials(con: sqlite3.Connection, body: dict, profile: Optional[dict] = None,
+                  other_basic: Optional[BasicGetter] = None) -> dict:
+    """basic 을 보내지 않으면(예전 화면) 저장해 둔 기본 정보를 그대로 둔다."""
+    data: dict = {k: str(body.get(k) or "").strip()[:2000] for k in MATERIAL_KEYS}
+    data["basic"] = basicinfo.clean(body["basic"]) if body.get("basic") is not None else saved_basic(con)
     data["updatedAt"] = store.now_iso()
     store.set_meta(con, "materials", json.dumps(data, ensure_ascii=False))
-    return materials(con)
+    return materials(con, profile, other_basic)
 
 
 def delete_materials(con: sqlite3.Connection) -> None:
@@ -310,12 +330,12 @@ def delete_materials(con: sqlite3.Connection) -> None:
 # ── 초안 ────────────────────────────────────────────────────
 
 def make_draft(con: sqlite3.Connection, nid: str, profile: Optional[dict], borrow_from: Optional[str] = None,
-               llm: Optional[Callable] = None) -> dict:
+               llm: Optional[Callable] = None, other_basic: Optional[BasicGetter] = None) -> dict:
     """초안 만들기 — 재료가 아직 없으면 화면이 먼저 재료 카드를 띄운다(needsMaterials)."""
     d = detail(con, nid, profile)
     if d is None:
         raise NotFound(nid)
-    mats = materials(con, profile)
+    mats = materials(con, profile, other_basic)
     borrowed = None
     if borrow_from:
         src = store.draft(con, borrow_from)

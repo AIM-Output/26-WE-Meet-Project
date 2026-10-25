@@ -14,6 +14,7 @@ from . import config as C
 from . import draft as drafting
 from . import interests as I
 from . import registry, store
+from scholarship import attachments, basicinfo
 from scholarship.textutil import days_until, semester_of, to_date
 
 PROGRESS = ("saved", "draft", "approved", "applied", "selected", "not_selected", "skipped")
@@ -42,7 +43,8 @@ def _info(con: sqlite3.Connection, row: sqlite3.Row) -> dict:
     if info is None or row["extract_ver"] < C.EXTRACT_VERSION:
         from .collect import build_info          # collect 는 수집기를 함수 안에서만 import 한다 — requests 없이 된다
         unit = registry.get(row["unit_key"]) if row["unit_key"] else None
-        unread = sum(1 for a in store.loads(row["attachments"], []) if not a.get("read") and a.get("ext") not in (".jpg", ".png", ".zip"))
+        body_short = len((row["body"] or "").strip()) < C.ATTACH_BODY_SHORT     # 본문이 길면 첨부를 읽지 않으므로 '못 읽음'도 아니다
+        unread = attachments.unread_count(store.loads(row["attachments"], [])) if body_short else 0
         info = build_info(dict(row), unit, unread)
         store.set_info(con, row["id"], info, C.EXTRACT_VERSION)
     return info
@@ -135,7 +137,7 @@ def _evaluate_row(row: sqlite3.Row, info: dict, interests: dict, llm: Optional[d
         # 첫 수집(기준선)에 한꺼번에 들어온 글은 '새 글'이 아니다 — 그 뒤 이틀 안에 처음 본 글만
         "isNew": bool(baseline and row["first_seen"] and row["first_seen"] > baseline
                       and row["first_seen"][:10] >= (today - timedelta(days=2)).isoformat()),
-        "needsOcr": bool(info.get("needsOcr")),
+        "needsOcr": bool(info.get("needsOcr")), "ocr": bool(info.get("ocr")),
     }
 
 
@@ -254,6 +256,7 @@ def detail(con: sqlite3.Connection, nid: str, profile: Optional[dict], today: Op
         "documents": info.get("documents") or [], "applyMethod": info.get("applyMethod"), "applyUrl": info.get("applyUrl"),
         "contact": info.get("contact"), "notes": info.get("notes") or [], "evidence": info.get("evidence") or {},
         "body": body[:6000], "bodyTruncated": len(body) > 6000, "attachments": store.loads(row["attachments"], []),
+        "ocrText": attachments.ocr_part(row["attach_text"])[:6000] or None,
         "alsoPostedAt": dups, "changedAt": row["changed_at"],
         "state": {"override": st["override"] if st else None, "overrideAt": st["override_at"] if st else None,
                   "progress": it["progress"], "progressAt": st["progress_at"] if st else None,
@@ -407,26 +410,48 @@ MATERIAL_KEYS = ("careerGoal", "activities", "skills", "highlights")
 Fallback = Callable[[], Optional[dict]]
 
 
-def materials(con: sqlite3.Connection, profile: Optional[dict] = None, fallback: Optional[Fallback] = None) -> dict:
+def saved_basic(con: sqlite3.Connection) -> dict:
+    """저장한 기본 정보(이름·학번·소속·학년·연락처·이메일) — 장학(F11)이 비어 있을 때 빌려 간다."""
+    return basicinfo.clean((store.loads(store.get_meta(con, "materials"), None) or {}).get("basic"))
+
+
+def materials(con: sqlite3.Connection, profile: Optional[dict] = None, fallback: Optional[Fallback] = None,
+              other_basic: Optional[Fallback] = None) -> dict:
+    """초안 재료 — 기본 정보(basic) + 진로·활동·보유 역량·강조점. 비어 있으면 장학 초안 재료(fallback)·프로필 초안 재료를 불러온다.
+    기본 정보의 빈 칸은 장학 재료의 기본 정보(other_basic) → 프로필 소속·학년으로 (F11 basicinfo.resolve)."""
     m = store.loads(store.get_meta(con, "materials"), None)
+    own = basicinfo.clean((m or {}).get("basic"))
+    other = None
+    if other_basic and not all(own.values()):
+        try:
+            other = other_basic()
+        except Exception:                        # noqa: BLE001 — 장학 쪽을 못 읽어도 재료 카드는 뜬다
+            other = None
+    basic, basic_from = basicinfo.resolve(own, profile, other, "scholarship")
+    extra = {"basic": basic, "basicFrom": basic_from}
     if m is not None:
-        return {"exists": True, **{k: m.get(k, "") for k in MATERIAL_KEYS}, "updatedAt": m.get("updatedAt"), "from": None}
+        return {"exists": True, **{k: m.get(k, "") for k in MATERIAL_KEYS}, **extra, "updatedAt": m.get("updatedAt"), "from": None}
     shared = None
     try:
         shared = fallback() if fallback else None
     except Exception:                            # noqa: BLE001 — 장학 쪽을 못 읽어도 재료 카드는 뜬다
         shared = None
     if shared and any((shared.get(k) or "").strip() for k in ("careerGoal", "activities", "highlights")):
-        return {"exists": False, **{k: shared.get(k, "") or "" for k in MATERIAL_KEYS}, "updatedAt": None, "from": "scholarship"}
+        return {"exists": False, **{k: shared.get(k, "") or "" for k in MATERIAL_KEYS}, **extra, "updatedAt": None,
+                "from": "scholarship"}
     dc = (profile or {}).get("draftContext") or {}
-    return {"exists": False, **{k: dc.get(k, "") or "" for k in MATERIAL_KEYS}, "updatedAt": None, "from": "profile" if dc else None}
+    return {"exists": False, **{k: dc.get(k, "") or "" for k in MATERIAL_KEYS}, **extra, "updatedAt": None,
+            "from": "profile" if dc else None}
 
 
-def put_materials(con: sqlite3.Connection, body: dict) -> dict:
-    data = {k: str(body.get(k) or "").strip()[:2000] for k in MATERIAL_KEYS}
+def put_materials(con: sqlite3.Connection, body: dict, profile: Optional[dict] = None,
+                  other_basic: Optional[Fallback] = None) -> dict:
+    """basic 을 보내지 않으면(예전 화면) 저장해 둔 기본 정보를 그대로 둔다."""
+    data: dict = {k: str(body.get(k) or "").strip()[:2000] for k in MATERIAL_KEYS}
+    data["basic"] = basicinfo.clean(body["basic"]) if body.get("basic") is not None else saved_basic(con)
     data["updatedAt"] = store.now_iso()
     store.set_meta(con, "materials", json.dumps(data, ensure_ascii=False))
-    return materials(con)
+    return materials(con, profile, other_basic=other_basic)
 
 
 def delete_materials(con: sqlite3.Connection) -> None:
@@ -436,12 +461,13 @@ def delete_materials(con: sqlite3.Connection) -> None:
 # ── 초안 ────────────────────────────────────────────────────
 
 def make_draft(con: sqlite3.Connection, nid: str, profile: Optional[dict], borrow_from: Optional[str] = None,
-               llm: Optional[Callable] = None, add_event: Optional[AddEvent] = None) -> dict:
+               llm: Optional[Callable] = None, add_event: Optional[AddEvent] = None,
+               other_basic: Optional[Fallback] = None) -> dict:
     """초안 만들기 — 재료가 아직 없으면 화면이 먼저 재료 카드를 띄운다(api 가 409). 담지 않은 공지면 초안 대기로 담는다."""
     d = detail(con, nid, profile)
     if d is None:
         raise NotFound(nid)
-    mats = materials(con, profile)
+    mats = materials(con, profile, other_basic=other_basic)
     borrowed = None
     if borrow_from:
         src = store.draft(con, borrow_from)

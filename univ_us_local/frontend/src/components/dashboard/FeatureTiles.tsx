@@ -32,6 +32,7 @@ export default function FeatureTiles() {
   const exams = status?.exams;
   const sch = status?.scholarship;
   const act = status?.activity;
+  const brf = status?.briefing; // C4 — 오늘 브리핑 (서버 스냅샷)
   const feedUnread = status?.eclass?.feed?.unread ?? 0; // E클래스 새 공지·자료 (안 읽음)
 
   const data = useMemo<Record<string, TileData>>(() => {
@@ -120,10 +121,19 @@ export default function FeatureTiles() {
             : act.match
               ? { value: `내 관심사 ${act.match}건`, sub: act.soon ? `담은 것 마감 임박 ${act.soon}건` : act.next ? `가장 가까운 마감 D-${act.next.daysLeft} · ${act.next.title}` : `관련 있음 ${act.related ?? 0}건`, tone: act.soon ? "warn" : "ok" }
               : { value: "없음", sub: `지금 관심사에 맞는 기회가 없습니다${act.related ? ` · 관련 있음 ${act.related}건` : ""}` },
-      briefing: { value: "오늘", sub: "지난 30일 브리핑" },
+      // F10-S08 — 오늘 것이 있으면 한 줄 요약(건수), 놓친 브리핑이면 주황. 꺼져 있어도 타일은 /briefing 으로
+      briefing: !brf?.available
+        ? { value: "—", sub: "브리핑 기능을 불러오지 못했습니다" }
+        : !brf.enabled
+          ? { value: "꺼짐", sub: "설정에서 켜면 매일 아침 만듭니다" }
+          : brf.today
+            ? { value: brf.today.missed ? "놓친 브리핑" : "오늘 도착", sub: brf.today.summary, tone: brf.today.missed ? "warn" : "ok" }
+            : brf.state === "pending"
+              ? { value: "만드는 중", sub: `${(brf.waitingFor ?? []).join(" · ")} 수집이 끝나면 만듭니다` }
+              : { value: `${brf.time ?? "08:00"} 예정`, sub: "지난 브리핑 보기" },
       chat: { value: "물어보기", sub: "일정 등록 · 조회 · 이동", demo: true },
     };
-  }, [list, academicStatus, reviewCount, grad, attd, mats, exams, sch, act, feedUnread]);
+  }, [list, academicStatus, reviewCount, grad, attd, mats, exams, sch, act, brf, feedUnread]);
 
   return (
     <section aria-labelledby="features-title">

@@ -13,7 +13,6 @@ import { useToast } from "@/components/ui/Toast";
 import { useAppData } from "@/components/app/AppData";
 import { DeptPicker } from "@/components/profile/DeptPicker";
 import { useProfile, useProfileImport } from "@/lib/useProfile";
-import { useStored } from "@/lib/storage";
 import { closeQuery, navigateQuery, useQueryValue } from "@/lib/useQueryState";
 import { SETTINGS } from "@/lib/features";
 import { demoBoards, type SourceRow } from "@/lib/demo";
@@ -29,6 +28,7 @@ import { AcademicSourcesSection } from "@/components/academic/AcademicSources";
 import { addDays, fmtRelative, fmtShortStamp, toDateStr } from "@/lib/dates";
 import type { AvailabilitySettings as Avail, AvailabilityView } from "@/lib/placement";
 import type { ExamSettings } from "@/lib/exams";
+import type { BriefingSettings, BriefingSettingsPatch } from "@/lib/briefing";
 
 // 설정 5개 — 설정 허브 페이지는 만들지 않는다(헤더 ⚙ 드롭다운이 입구). 페이지 사이는 위쪽 링크로 옮겨 다닌다.
 
@@ -949,7 +949,63 @@ export function AvailabilitySettings() {
 
 /* ------------------------------------------------------------------ /settings/notifications */
 
-const NOTI_DEFAULT = { briefingOn: true, briefingAt: "08:00", keepDays: 30 };
+/** 브리핑 (C4 · 요구사항 F10-R06·R07·R22) — 켜기 · 시각 · 보관 기간. 서버(C4_Briefing_agent)에 저장하고, 서버가 그 시각에 만든다. */
+function BriefingRows() {
+  const toast = useToast();
+  const [cfg, setCfg] = useState<BriefingSettings | null>(null);
+  useEffect(() => {
+    api.briefingSettings().then(setCfg).catch(() => setCfg(null));
+  }, []);
+  const save = async (patch: BriefingSettingsPatch, done?: string) => {
+    if (!cfg) return;
+    const before = cfg;
+    setCfg({ ...cfg, ...(patch as Partial<BriefingSettings>) });
+    try {
+      setCfg(await api.patchBriefingSettings(patch));
+      if (done) toast(done, { tone: "success" });
+    } catch (e) {
+      setCfg(before);
+      toast(`저장하지 못했습니다: ${e instanceof Error ? e.message : String(e)}`, { tone: "error" });
+    }
+  };
+  return (
+    <>
+      <Row label="브리핑 받기" hint="끄면 대시보드에 카드가 뜨지 않습니다 — /briefing 에서 손으로 만들 수는 있습니다">
+        <Toggle checked={!!cfg?.enabled} disabled={!cfg} onChange={(x) => void save({ enabled: x })} label="브리핑 받기" />
+      </Row>
+      <Row label="브리핑 시각" hint="이 시각에 그날 브리핑을 만듭니다. PC 가 꺼져 있었으면 켤 때 그 시점 기준으로 만들고 '놓친 브리핑'으로 표시합니다">
+        <input
+          type="time"
+          className="field field-sm w-auto"
+          aria-label="브리핑 시각"
+          value={cfg?.time ?? "08:00"}
+          disabled={!cfg?.enabled}
+          onChange={(e) => {
+            if (/^\d{2}:\d{2}$/.test(e.target.value)) void save({ time: e.target.value }, "브리핑 시각을 바꿨습니다");
+          }}
+        />
+      </Row>
+      <Row label="보관 기간" hint="지난 브리핑은 이 기간이 지나면 오래된 것부터 지웁니다">
+        <select
+          className="field field-sm w-auto"
+          aria-label="보관 기간"
+          value={cfg?.keepDays ?? 30}
+          disabled={!cfg}
+          onChange={(e) => void save({ keepDays: Number(e.target.value) })}
+        >
+          {(cfg?.keepDaysChoices ?? [7, 14, 30, 60]).map((d) => (
+            <option key={d} value={d}>
+              {d}일
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row label="맨 위 한 줄 요약" hint="숫자와 제목만 보내 한 문장으로 줄입니다. 없거나 실패하면 그 줄만 빠지고 나머지는 그대로 나옵니다">
+        <span className="text-[13px] text-muted">{cfg ? (cfg.llm ? "LLM 설정됨" : "LLM 없음 — 한 줄 요약 없이") : "—"}</span>
+      </Row>
+    </>
+  );
+}
 
 // 학사 유형별 기본 알림 (F1_Bachelor_agent config.DEFAULT_REMINDERS) — 일정마다 상세에서 바꾼다
 const REMINDER_WORD: Record<string, string> = { d7: "D-7", d3: "D-3", d1: "D-1", end1: "종료 전날", m30: "30분 전" };
@@ -1089,32 +1145,17 @@ function DeadlineReminderRow() {
 }
 
 export function NotificationSettings() {
-  const [v, setV] = useStored("notification-settings", NOTI_DEFAULT);
   return (
     <SettingsShell title="알림·브리핑" subtitle="PC 화면 안에서 끝나는 알림 — 헤더 종 + 놓친 알림 모아보기">
-      <Section title="아침 브리핑 (F10)">
-        <Row label="브리핑 받기">
-          <Toggle checked={v.briefingOn} onChange={(x) => setV((p) => ({ ...p, briefingOn: x }))} label="브리핑 받기" />
-        </Row>
-        <Row label="브리핑 시각" hint="PC 가 꺼져 있었으면 켤 때 그 시점 기준으로 만듭니다">
-          <input type="time" className="field field-sm w-auto" aria-label="브리핑 시각" value={v.briefingAt} disabled={!v.briefingOn} onChange={(e) => setV((p) => ({ ...p, briefingAt: e.target.value }))} />
-        </Row>
-        <Row label="보관 기간">
-          <select className="field field-sm w-auto" aria-label="보관 기간" value={v.keepDays} onChange={(e) => setV((p) => ({ ...p, keepDays: Number(e.target.value) }))}>
-            {[7, 14, 30].map((d) => (
-              <option key={d} value={d}>
-                {d}일
-              </option>
-            ))}
-          </select>
-        </Row>
+      <Section title="브리핑 (C4 · F10)">
+        <BriefingRows />
       </Section>
       <Section title="알림 시점">
         <AlertTimeRow />
         <DeadlineReminderRow />
         <EclassFeedNotifyRow />
       </Section>
-      <p className="text-[12px] text-faint">모바일 알림(Web Push·메신저)은 추후 검토입니다(전역 결정 G2). 알림 시각·과제 마감 알림은 서버에, 브리핑은 이 브라우저에 저장됩니다.</p>
+      <p className="text-[12px] text-faint">모바일 알림(Web Push·메신저)은 추후 검토입니다(전역 결정 G2). 브리핑·알림 시각·과제 마감 알림은 모두 이 PC 의 앱 데이터에 저장됩니다.</p>
     </SettingsShell>
   );
 }

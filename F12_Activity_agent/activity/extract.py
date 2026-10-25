@@ -99,13 +99,15 @@ def _fix_year(period: Optional[dict], posted: Optional[str]) -> None:
 
 
 def extract(title: str, text: str, *, unit: Optional[dict] = None, category: Optional[str] = None,
-            writer: Optional[str] = None, image_only: bool = False, attachments_unread: int = 0, posted_at: Optional[str] = None) -> dict:
-    """제목 + 본문(+첨부 글자) → 대외활동 정보. unit = 이 글을 올린 사업단·부서(registry.unit_for)."""
+            writer: Optional[str] = None, image_only: bool = False, attachments_unread: int = 0, posted_at: Optional[str] = None,
+            ocr: bool = False) -> dict:
+    """제목 + 본문(+첨부 글자) → 대외활동 정보. unit = 이 글을 올린 사업단·부서(registry.unit_for).
+    ocr = 글자 일부를 이미지에서 OCR 로 읽었다 — 'OCR 로 읽음' 안내(F11 extract 의 노트)와 화면 표시."""
     title = nfkc(title)
     text = nfkc(text)
     pd = to_date(posted_at)
     base = sx.extract(title, text, unit=unit, image_only=image_only, attachments_unread=attachments_unread,
-                      default_year=pd.year if pd else None)
+                      default_year=pd.year if pd else None, ocr=ocr)
     _fix_year(base.get("period"), posted_at)
     bc = board_category(title, category)
     name = clean_title(title)
@@ -124,7 +126,8 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, category: Opt
         "period": base.get("period"), "documents": base.get("documents") or [], "applyMethod": base.get("applyMethod"),
         "applyUrl": base.get("applyUrl"), "contact": base.get("contact"), "capacity": base.get("selectionCount"),
         "grades": base.get("grades"), "gradOnly": bool(base.get("gradOnly")), "foreignOnly": bool(base.get("foreignOnly")),
-        "needsOcr": bool(base.get("needsOcr")), "attachmentsUnread": attachments_unread, "notes": base.get("notes") or [],
+        "needsOcr": bool(base.get("needsOcr")), "ocr": bool(ocr), "attachmentsUnread": attachments_unread,
+        "notes": base.get("notes") or [],
         "participation": bool(PARTICIPATION.search(title)) or bool(PARTICIPATION.search(" ".join(lines(text)[:6]))),
         "result": bool(RESULT.search(title)), "closedMark": bool(CLOSED.search(title)),
     }

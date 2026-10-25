@@ -9,6 +9,7 @@ import time
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Optional
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -144,6 +145,7 @@ class Post:
     body: str = ""
     image_only: bool = False
     attachments: list[dict] = field(default_factory=list)   # [{name, url}]
+    images: list[str] = field(default_factory=list)         # 본문 이미지 주소(data: 포함) — 본문이 짧으면 OCR (attachments.gather)
     extra: dict = field(default_factory=dict)
 
 
@@ -152,8 +154,29 @@ def ymd(text: Optional[str]) -> Optional[str]:
     return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else None
 
 
+_NOT_CONTENT_IMG = re.compile(r"icon|ico_|btn_|/btn|emoticon|emoji|blank\.|spacer|loading|\.svg(?:$|\?)", re.I)
+
+
+def body_images(post: Post, el, limit: int = 6) -> list[str]:
+    """본문 안 이미지 주소 — 아이콘·버튼·이모티콘은 뺀다. 상대 주소는 글 주소 기준으로."""
+    if el is None:
+        return []
+    out: list[str] = []
+    for img in el.select("img[src]"):
+        src = (img.get("src") or "").strip()
+        if not src or (not src.startswith("data:image/") and _NOT_CONTENT_IMG.search(src)):
+            continue
+        u = src if src.startswith("data:") else urljoin(post.url, src)
+        if u not in out:
+            out.append(u)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def finish(post: Post, body_el) -> Post:
     post.body = html_to_text(body_el)
+    post.images = body_images(post, body_el)
     has_img = bool(body_el is not None and body_el.select("img[src]"))
     post.image_only = has_img and len(re.sub(r"\s+", "", post.body)) < 40
     return post

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Popover } from "@/components/ui/Layout";
 import { useAppData } from "./AppData";
+import { BrandMark } from "./BrandMark";
 import { EclassFailureStrip } from "@/components/assignments/EclassSyncBanner";
 import { navigateQuery } from "@/lib/useQueryState";
 import { api } from "@/lib/api";
@@ -54,13 +55,7 @@ export default function Header() {
           style={{ boxShadow: "var(--shadow-lift), var(--inner-hi)" }}
         >
           <Link href="/" className="flex items-center gap-2.5 rounded-xl pr-2" aria-label="유니버스 대시보드로">
-            <span
-              className="grid size-8 place-items-center rounded-[10px] bg-brand-green text-[15px] font-extrabold text-brand-sand"
-              style={{ fontFamily: "var(--font-display)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.16)" }}
-              aria-hidden
-            >
-              U
-            </span>
+            <BrandMark size={32} className="flex-none rounded-[7px]" style={{ boxShadow: "var(--shadow-card)" }} />
             <span className="text-[17px] font-extrabold tracking-tight">유니버스</span>
             <span translate="no" className="hidden text-[12px] font-semibold tracking-wide text-sand-text sm:inline" style={{ fontFamily: "var(--font-display)" }}>
               Univ-Us

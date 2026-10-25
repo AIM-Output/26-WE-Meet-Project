@@ -5,8 +5,10 @@
 순서 (원천마다, 요청 간격 1.5초 · 동시성 1)
   1. 목록 1~2쪽(처음 보는 원천은 3쪽) — 장학 전용 게시판·말머리가 아니면 제목 어휘(config.SCHOLARSHIP_WORDS)로 거른다
   2. 처음 보는 글만 상세를 받는다(원천마다 최대 25건). 최근 14일 글은 몇 건씩 다시 받아 수정 여부(내용 해시)를 본다
-  3. 첨부 PDF·HWPX·DOCX 의 글자를 읽어 본문과 함께 추출한다(파일은 저장하지 않는다)
+  3. 첨부 PDF·HWP·HWPX·DOCX 의 글자를 읽어 본문과 함께 추출한다(파일은 저장하지 않는다). 글자 없는 스캔 PDF·그림만 든 HWP,
+     그리고 본문이 짧으면 본문 이미지·이미지 첨부는 OS 내장 OCR 로 (attachments.gather — 이 컴퓨터에 한국어 OCR 이 있을 때만)
   4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키) 먼저 들어온 것에 묶는다(dup_of)
+  5. 예전 판으로 읽어 못 읽은 공지(본문 이미지·HWP 첨부)는 원천마다 REREAD_MAX 건씩 상세를 다시 받아 읽는다 (notices.reader_ver)
   내 단과대학·학과(profile_board)는 프로필 소속 → 홈페이지(F1 목록) → 장학 게시판 찾기(k2web.discover, 7일마다 다시)
   상시 장학 안내(catalog)는 7일에 한 번.
   F12 대외활동 수집이 돌고 있으면 끝날 때까지 기다린다 — 같은 게시판을 읽으므로 동시성 1 을 두 기능 사이에서도 지킨다.
@@ -45,23 +47,6 @@ def _host_key(cfg: dict) -> str:
     return host.split(".")[0] if not host.startswith("jnu.") else host.split(".")[1]
 
 
-def _attachment_text(post, http) -> tuple[str, list[dict], int]:
-    texts, infos, unread = [], [], 0
-    for a in post.attachments[:8]:
-        ext = attachments.ext_of(a.get("name", ""), a.get("url", ""))
-        info = {"name": a.get("name"), "url": a.get("url"), "ext": ext, "read": False}
-        if ext in attachments.READABLE and sum(1 for i in infos if i["read"]) < C.MAX_ATTACH_PER_NOTICE:
-            data = http.download(a["url"])
-            t = attachments.read_text(data, ext) if data else None
-            if t and len(t.strip()) > 30:
-                texts.append(f"[첨부: {a.get('name')}]\n{t.strip()}")
-                info["read"] = True
-        if not info["read"] and ext not in (".jpg", ".jpeg", ".png", ".zip"):
-            unread += 1
-        infos.append(info)
-    return "\n\n".join(texts), infos, unread
-
-
 def _fix_year(req: dict, posted: Optional[str]) -> None:
     """연도 없는 '1. 5.(월)까지' 를 게시 연도로 읽어 게시일보다 앞서면 다음 해로 (12월 공지의 1월 마감)."""
     p = req.get("period") or {}
@@ -83,13 +68,15 @@ def build_req(row_like: dict, unit: Optional[dict], unread: int = 0) -> dict:
     if row_like.get("attach_text"):
         text = f"{text}\n\n{row_like['attach_text']}"
     req = extract.extract(row_like["title"], text, unit=unit, image_only=bool(row_like.get("image_only")),
-                          attachments_unread=unread, default_year=year, catalog=row_like.get("kind") == "catalog")
+                          attachments_unread=unread, default_year=year, catalog=row_like.get("kind") == "catalog",
+                          ocr=attachments.has_ocr(row_like.get("attach_text")))
     _fix_year(req, posted)
     return req
 
 
-def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict]) -> str:
-    attach_text, infos, unread = _attachment_text(post, http) if post.attachments else ("", [], 0)
+def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict], ocr=None) -> str:
+    attach_text, infos, unread = (attachments.gather(post, http, max_read=C.MAX_ATTACH_PER_NOTICE, ocr=ocr)
+                                  if post.attachments or post.images else ("", [], 0))
     unit = unit_cfg or registry.unit_for(post.writer, post.title, post.category)
     nid = f"{hk}:{post.native_id}"
     tk = norm_title(post.title)
@@ -102,10 +89,11 @@ def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict]) ->
     }
     row["req"] = build_req(row, unit, unread)
     row["extract_ver"] = C.EXTRACT_VERSION
+    row["reader_ver"] = attachments.reader_version(ocr)
     return store.upsert_notice(con, row)
 
 
-def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dict:
+def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False, ocr=None) -> dict:
     from .sources import COLLECTORS, k2web
     from .sources.base import NeedsProfile, NotListed
     kind = cfg["kind"]
@@ -145,25 +133,29 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dic
     # 학교 전체 대상 게시판(학생과·부서)은 작성 부서로 찾는다(학교 공지에 사업단이 올린 글).
     unit_cfg = registry.get(cfg["key"]) if (cfg.get("audience") or {}).get("scope") in ("related", "campus") else None
     with store.connect() as con:
-        known = {r["id"]: r for r in con.execute("SELECT id, posted_at, content_hash FROM notices WHERE id LIKE ?", (f"{hk}:%",))}
+        known = {r["id"]: r for r in con.execute("SELECT id, posted_at, content_hash, reader_ver, image_only, body, attachments "
+                                                 "FROM notices WHERE id LIKE ?", (f"{hk}:%",))}
     new = [p for p in want if f"{hk}:{p.native_id}" not in known][:C.FIRST_MAX_DETAIL if first else C.MAX_DETAIL_PER_SOURCE]
     recent = date.today() - timedelta(days=C.RECHECK_DAYS)
     recheck = [p for p in want if f"{hk}:{p.native_id}" in known and to_date(p.posted_at) and to_date(p.posted_at) >= recent]
     recheck = recheck[:C.RECHECK_MAX]
-    counts = {"listed": len(posts), "matched": len(want), "new": 0, "changed": 0}
+    ver = attachments.reader_version(ocr)
+    reread = [p for p in want if p not in recheck and f"{hk}:{p.native_id}" in known
+              and attachments.needs_reread(known[f"{hk}:{p.native_id}"], ver)][:C.REREAD_MAX]
+    counts = {"listed": len(posts), "matched": len(want), "new": 0, "changed": 0, "reread": len(reread)}
     if dry_run:
         for p in want:
             _log(f"  [{cfg['key']}] {'새' if p in new else '  '} {p.posted_at or '?':10s} {p.title[:70]}")
         counts["new"] = len(new)
         return counts
-    for p in new + recheck:
+    for p in new + recheck + reread:
         try:
             p = mod.fetch_detail(p, cfg, http)
         except Exception as e:                   # noqa: BLE001 — 글 하나 실패로 원천 전체를 버리지 않는다
             _log(f"  ! [{cfg['key']}] 상세 실패 {p.url}: {type(e).__name__}: {e}")
             continue
         with store.connect() as con:
-            res = _save_post(con, cfg, p, http, hk, unit_cfg)
+            res = _save_post(con, cfg, p, http, hk, unit_cfg, ocr)
         if res in ("new", "changed"):
             counts[res] += 1
     return counts
@@ -250,16 +242,21 @@ def run(keys: Optional[list[str]] = None, profile: Optional[dict] = None, *, by:
         if keys:
             targets = [r for r in rows if r["key"] in keys and r["kind"] != "relay"]
         http = Http()
+        ocr = None if dry_run else attachments.ocr_engine()
         _log(f"장학 수집 시작 ({by}) — 원천 {len(targets)}곳: {', '.join(t['key'] for t in targets)}")
+        if not dry_run:
+            st = attachments.ocr_status()
+            _log(f"  OCR: {st.get('engine')} ({st.get('lang')})" if ocr else f"  OCR 없음 — {st.get('reason') or '한국어 OCR 을 쓸 수 없습니다'}")
         for cfg in targets:
             t0 = store.now_iso()
             try:
                 if cfg["kind"] == "catalog":
                     c = collect_catalog(cfg, http, force=force_catalog or bool(keys))
                 else:
-                    c = collect_source(cfg, http, profile, dry_run)
+                    c = collect_source(cfg, http, profile, dry_run, ocr=ocr)
                 results[cfg["key"]] = {"ok": True, **c}
-                _log(f"  [{cfg['key']}] 목록 {c['listed']} · 장학 {c['matched']} · 새 글 {c['new']} · 바뀜 {c['changed']}")
+                _log(f"  [{cfg['key']}] 목록 {c['listed']} · 장학 {c['matched']} · 새 글 {c['new']} · 바뀜 {c['changed']}"
+                     + (f" · 다시 읽음 {c['reread']}" if c.get("reread") else ""))
                 if not dry_run:
                     with store.connect() as con:
                         store.put_source(con, cfg["key"], last_run_at=t0, last_ok_at=store.now_iso(), last_count=c["matched"],

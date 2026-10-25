@@ -1,6 +1,7 @@
 """신청서 초안 — 요구사항정의서 F11 6절 구성 그대로. 표준 라이브러리만.
 
-    1. 기본 정보        {{이름}} / {{학번}} / 학과 · 학년 · 학적     ← 자리표시자 + 프로필 값 (이름·학번은 넣지 않는다, F11-R44)
+    1. 기본 정보        이름 · 학번 · 소속 · 학년·학적 · 연락처 · 작성일  ← 초안 재료의 기본 정보(basicinfo — 2026-10-25 사용자 결정),
+                                                                     모르는 값은 {{빈칸}}. LLM 에는 보내지 않고 다 만든 뒤 이 PC 에서 채운다
     2. 지원 자격 정리    이 장학의 조건과 내 값 대조표                ← 판정 근거 그대로
     3. 지원 동기        문단                                        ← 재료(진로·활동·형편·강조점)만 근거로
     4. 학업 계획·포부    문단
@@ -15,8 +16,10 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Callable, Optional
 
+from . import basicinfo
 from . import llm as L
 
 NEEDS_HARDSHIP = re.compile(r"생활|복지|가계|형편|저소득|희망|응원|창조|근로|주거|기초생활|차상위|소득")
@@ -24,7 +27,7 @@ NEEDS_HARDSHIP = re.compile(r"생활|복지|가계|형편|저소득|희망|응�
 SYSTEM = """너는 대학생의 장학금 신청서 문단을 돕는다. 반드시 지킬 것:
 1. 학생이 준 '재료'에 있는 사실만 쓴다. 재료에 없는 경험·수상·봉사·가족 사항·숫자를 지어내지 않는다.
 2. 근거가 없는 자리는 {{무엇을 채울지 적은 빈칸}} 으로 남긴다. 예: {{구체적인 활동 경험을 적어 주세요}}
-3. 이름·학번은 쓰지 않는다. 필요하면 {{이름}} 으로 둔다.
+3. 이름·학번은 쓰지 않는다(받지도 않는다). 필요하면 {{이름}} 으로 둔다 — 학생의 PC 가 나중에 채운다.
 4. 두 문단을 쓴다: '지원 동기' 와 '학업 계획·포부'. 각 300~500자, 존댓말 1인칭('저는').
 5. 출력 형식: 첫 줄 '### 지원 동기', 문단, 빈 줄, '### 학업 계획·포부', 문단. 다른 말은 쓰지 않는다."""
 
@@ -78,8 +81,8 @@ def _paragraphs_llm(d: dict, p: dict, m: dict, chat: Callable[[str, str], str]) 
 
 
 def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
-          llm: Optional[Callable[[str, str], str]] = None) -> tuple[str, str]:
-    """→ (마크다운 본문, generated_by: template | llm | borrowed)."""
+          llm: Optional[Callable[[str, str], str]] = None, today: Optional[date] = None) -> tuple[str, str]:
+    """→ (마크다운 본문, generated_by: template | llm | borrowed). m['basic'] = 기본 정보(service.materials 가 채운 것)."""
     by = "template"
     note = None
     if borrowed:
@@ -99,7 +102,7 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         if by != "llm":
             para1, para2 = _paragraphs_template(d, p, m)
 
-    who = " · ".join(x for x in (p.get("college"), p.get("department"), p.get("major")) if x) or "{{소속}}"
+    basic = m.get("basic") or basicinfo.resolve(None, p)[0]
     rows = [r for r in d.get("reasons", []) if r["field"] not in ("other", "exclusion", "notice", "extraction", "deadline")]
     icon = {"pass": "충족", "fail": "미달", "unknown": "확인 필요"}
     table = "\n".join(f"| {r['label']} | {r.get('need') or '-'} | {r.get('mine') or '-'} | {icon[r['status']]} |" for r in rows)
@@ -113,10 +116,7 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         *(["> " + note] if note else []),
         "",
         "## 1. 기본 정보",
-        "- 이름: {{이름}}",
-        "- 학번: {{학번}}",
-        f"- 소속: {who}",
-        f"- 학년·학적: {p.get('grade') or '{{학년}}'}학년 · {p.get('enrollmentStatus') or '{{학적}}'}",
+        *basicinfo.lines(basic, p, today, contact=False),
         "",
         "## 2. 지원 자격 정리",
         "| 조건 | 공지 | 내 값 | 판정 |",
@@ -142,4 +142,4 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         "- 제출은 시스템이 하지 않습니다. 확인 후 본인이 직접 제출하세요.",
         "- {{ }} 로 남은 빈칸을 모두 채웠는지, 첨부 양식(HWP 등)이 따로 있으면 그 양식에 옮겨 적었는지 확인하세요.",
     ]
-    return "\n".join(parts).strip() + "\n", by
+    return basicinfo.fill("\n".join(parts).strip() + "\n", basic), by

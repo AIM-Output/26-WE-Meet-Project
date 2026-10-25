@@ -1892,6 +1892,10 @@ app/chat/page.tsx     (신규)
 
 요구사항은 [요구사항정의서.md](요구사항정의서.md) F10 절. **새 계산이 없다** — 앞 기능들이 만든 값을 모아 대시보드 맨 위에 카드 하나로 놓는 것이 전부다.
 
+> **2026-10-25 구현 — 공통 기능 C4** (`C4_Briefing_agent/`, 요구사항정의서 F10 12절). 섹션은 **6종** — ⚠ 주의(출결 위험·놓친 마감) · 📚 오늘 수업 · 📅 오늘 일정 ·
+> ⏰ 마감 임박(과제·학사·시험·장학·대외활동 D-3) · 🔥 먼저 할 것 · 🔔 새 알림(지난 브리핑 이후 안 읽은 알림). 수집이 도는 동안은 `pending`(스켈레톤),
+> 설정 API 는 `/api/settings/briefing` 이다(아래 15-6).
+
 ### 15-1. 화면 흐름도
 
 ```mermaid
@@ -1972,11 +1976,10 @@ F1·F6 의 알림 시점과 F10 브리핑을 **한 화면에서** 관리한다.
 ### 15-6. 컴포넌트·API
 
 ```
-components/briefing/
-  BriefingCard.tsx     대시보드 카드(접기 포함)
-  BriefingSections.tsx 섹션 4종 렌더링(공용)
-app/briefing/page.tsx  (신규) 날짜 목록 + 본문
-app/settings/notifications/page.tsx (신규)
+components/dashboard/BriefingCard.tsx  대시보드 카드(접기 포함) + BriefingSections · GeneratedChip · BriefingGaps (공용, /briefing 도 쓴다)
+components/pages/BriefingPage.tsx      날짜 목록 + 스냅샷 본문 + 다시 만들기/지금 만들기
+components/pages/SettingsPages.tsx     /settings/notifications 의 브리핑 칸(BriefingRows — 서버 저장)
+lib/briefing.ts · lib/useBriefing.ts   응답 타입 · 생성 표시 · 오늘 브리핑 훅(/api/status 의 briefing.updatedAt 이 바뀌면 다시 받는다)
 ```
 
 | 시점 | 호출 |
@@ -1985,7 +1988,7 @@ app/settings/notifications/page.tsx (신규)
 | 지난 목록 | `GET /api/briefings?limit=30` |
 | 특정 날짜 | `GET /api/briefings/{date}` |
 | 다시 만들기 | `POST /api/briefing/regenerate` |
-| 설정 | `GET/PUT /api/settings/notifications` |
+| 설정 | `GET/PATCH /api/settings/briefing` {enabled, time, keepDays} *(구현 2026-10-25: 초안의 `/api/settings/notifications` 하나 대신 — 알림 기본 시각은 F1 `/api/academic/settings`, 과제 마감 알림은 F6 `/api/assignments/settings` 가 이미 저장한다. 화면은 한 곳)* |
 
 > **생성은 서버가 한다.** 프론트는 만들어진 스냅샷을 보여 줄 뿐이고, 카드가 직접 데이터를 모아 계산하지 않는다(숫자가 두 벌이 되는 것을 막는다).
 
@@ -2696,14 +2699,14 @@ components/team/
 
 ### F10 아침 브리핑
 
-- [ ] 대시보드 **브리핑 카드**(커버 아래·3단 위) + 접기 상태 기억
-- [ ] `놓친 브리핑` 칩(예정 시각 → 실제 생성 시각)
-- [ ] 섹션 4종(수업·일정·마감·먼저 할 것), 섹션당 5줄 + `+N건 더`
-- [ ] LLM 한 줄 실패 시 **그 줄만 생략**(오류 문구 금지)
-- [ ] 항목 클릭 → 캘린더·과제 목록으로
-- [ ] `/briefing` 날짜 목록 + 스냅샷 본문 + `다시 만들기`
-- [ ] `/settings/notifications` — 브리핑 시각·보관, 알림 기본 시각·시점(모바일 채널 UI 없음)
-- [ ] 프론트는 **계산하지 않는다** — `GET /api/briefing/today` 스냅샷만 렌더
+- [x] 대시보드 **브리핑 카드**(커버 아래·3단 위) + 접기 상태 기억
+- [x] `놓친 브리핑` 칩(예정 시각 → 실제 생성 시각)
+- [x] 섹션 ~~4종~~ **6종**(주의·수업·일정·마감·먼저 할 것·새 알림 — C4, 2026-10-25), 섹션당 5줄 + `+N건 더`
+- [x] LLM 한 줄 실패 시 **그 줄만 생략**(오류 문구 금지)
+- [x] 항목 클릭 → 그 항목의 상세가 열린 URL(캘린더 `?event=` · 학사 · 시험 · 장학 · 대외활동 · 출결)
+- [x] `/briefing` 날짜 목록 + 스냅샷 본문 + `다시 만들기`(오늘 것이 없으면 `지금 만들기`)
+- [x] `/settings/notifications` — 브리핑 켜기·시각·보관(서버 저장), 알림 기본 시각·시점(모바일 채널 UI 없음)
+- [x] 프론트는 **계산하지 않는다** — `GET /api/briefing/today` 스냅샷만 렌더 (대시보드 '오늘 한눈에' 숫자만 지금 캘린더로 센다)
 
 ### F11 장학 매칭·초안
 

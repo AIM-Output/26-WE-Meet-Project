@@ -29,6 +29,7 @@ LAYOUT: dict[str, tuple[Optional[str], Optional[str]]] = {
     "C1_Calendar_agent": ("C1_DATA_DIR", None),
     "C2_Profile_agent": ("C2_DATA_DIR", "C2_STATE_DIR"),
     "C3_Login_agent": (None, "C3_STATE_DIR"),
+    "C4_Briefing_agent": ("C4_DATA_DIR", None),
     "F1_Bachelor_agent": ("F1_DATA_DIR", "F1_STATE_DIR"),
     "F2_Graduation_agent": ("F2_DATA_DIR", "F2_STATE_DIR"),
     "F3_Attendance_agent": ("F3_DATA_DIR", "F3_STATE_DIR"),

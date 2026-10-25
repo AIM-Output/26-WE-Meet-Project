@@ -66,6 +66,12 @@ def calendar_events(start: Optional[str] = None, end: Optional[str] = None) -> l
         return service.calendar_events(con, start, end)
 
 
+def today() -> dict:
+    """오늘 수업 + 위험 과목 — C4 브리핑(F3-R35) · F9 대화가 라우터를 거치지 않고 읽는다 (GET /api/attendance/today 와 같다)."""
+    with store.connect() as con:
+        return service.today(con)
+
+
 def touch() -> None:
     with store.connect() as con:
         store.touch(con)

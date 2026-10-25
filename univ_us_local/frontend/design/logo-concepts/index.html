@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유니버스 로고 시안</title>
+<link rel="stylesheet" href="../../node_modules/pretendard/dist/web/variable/pretendardvariable.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap">
+<style>
+:root{color-scheme:light;--bg:#f8f4f0;--surface:#fffdfa;--surface-2:#faf6f1;--surface-3:#f2ebe3;--border:#e7dfd5;
+--text:#1f2b25;--muted:#4b524d;--faint:#646b66;--pine:#33644d;--pine-soft:#e9f0ec;--sand:#cbaf94;--sand-text:#7a5c40;
+--shadow-card:0 1px 2px rgba(74,52,30,.05),0 12px 32px -18px rgba(74,52,30,.24);--inner-hi:inset 0 1px 0 rgba(255,255,255,.7)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);line-height:1.55;word-break:keep-all;-webkit-font-smoothing:antialiased;
+font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.16 0 0 0 0 0.1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+main{max-width:1080px;margin:0 auto;padding:56px 20px 80px}
+.eyebrow{margin:0;font:700 12px/1.4 "Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:.08em;color:var(--sand-text)}
+h1{margin:8px 0 12px;font-size:clamp(28px,4.2vw,42px);line-height:1.15;font-weight:800;letter-spacing:-.03em}
+.lede{margin:0;max-width:62ch;color:var(--muted);text-wrap:pretty}
+.palette{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0;padding:0;list-style:none}
+.palette li{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:13px;color:var(--muted)}
+.palette i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(31,43,37,.1)}
+.palette code{font:600 12px/1 ui-monospace,Consolas,monospace;color:var(--faint)}
+.lineup{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:36px 0 0;padding:24px 20px 18px;border-radius:22px;background:var(--surface-3)}
+.lineup>*{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted);font-size:13px;font-weight:700;text-decoration:none}
+.lineup svg{width:100%;max-width:84px;height:auto;filter:drop-shadow(0 10px 14px rgba(51,100,77,.2))}
+.lineup .now{opacity:.7}
+.lineup .now span::after{content:" (지금)";font-weight:500}
+.card{margin-top:20px;padding:28px;border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-card),var(--inner-hi)}
+.wordmarks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+.wordmarks figure{align-items:flex-start;padding:28px 24px 18px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border)}
+.wordmarks figure.dark{background:var(--pine);border-color:var(--pine)}
+.wordmarks figure.dark figcaption{color:#cfe0d7}
+.wordmarks svg{width:100%;max-width:300px;height:auto}
+.concept{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:32px}
+.hero{display:grid;place-items:center;align-self:start;aspect-ratio:1;border-radius:16px;background:radial-gradient(120% 90% at 30% 8%,#fff 0,var(--surface-2) 58%,var(--surface-3) 100%)}
+.hero svg{width:62%;height:auto;filter:drop-shadow(0 16px 22px rgba(51,100,77,.26))}
+.tag{margin:0;font-size:12px;font-weight:700;color:var(--sand-text);letter-spacing:.02em}
+h2{margin:4px 0 8px;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.story{margin:0;max-width:58ch;color:var(--muted);text-wrap:pretty}
+.notes{display:grid;gap:4px;margin:12px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.notes b{display:inline-block;min-width:70px;color:var(--text)}
+.ramp{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;margin-top:20px;padding-top:20px;border-top:1px dashed var(--border)}
+figure{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0}
+figcaption{font:600 11px/1.3 "Plus Jakarta Sans","Pretendard Variable","Malgun Gothic",system-ui,sans-serif;color:var(--faint);font-variant-numeric:tabular-nums}
+.bar span{display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:10px}
+.bar.dark span{background:#202020}
+.bar.light span{background:#eeeae6;box-shadow:inset 0 0 0 1px var(--border)}
+.uses{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:20px}
+.island{display:flex;align-items:center;gap:10px;height:56px;padding:0 18px 0 12px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-card),var(--inner-hi)}
+.island .wm{height:17px;width:auto}
+.latin{font:700 12px/1 "Plus Jakarta Sans",system-ui,sans-serif;color:var(--sand-text);letter-spacing:.02em}
+.alt{flex-direction:row;gap:10px}
+.alt span{display:grid;place-items:center;width:56px;height:56px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border)}
+.pick{margin-top:28px;padding:28px;border-radius:22px;background:var(--pine-soft);border:1px solid #d2ddd8}
+.pick h2{color:var(--pine)}
+.pick p{margin:0;max-width:64ch;color:var(--text);text-wrap:pretty}
+.pick p+p{margin-top:8px;color:var(--muted)}
+footer{margin-top:24px;color:var(--faint);font-size:13px}
+footer code{font:600 12px ui-monospace,Consolas,monospace}
+.vgroup{margin-top:24px;padding-top:22px;border-top:1px dashed var(--border)}
+.vgroup h3{margin:0 0 14px;font-size:17px;font-weight:800;letter-spacing:-.01em}
+.vrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.vcell{align-items:stretch;gap:12px}
+.vcell .hero{aspect-ratio:4/3}
+.vcell .hero svg{width:52%}
+.vcell.orig .hero{background:var(--surface-3)}
+.vcell figcaption{flex:1 1 auto;font:400 13.5px/1.55 "Pretendard Variable",Pretendard,"Malgun Gothic",system-ui,sans-serif;color:var(--muted);text-wrap:pretty}
+.vcell figcaption b{display:block;margin-bottom:2px;font-size:15px;font-weight:800;color:var(--text)}
+.vcell.orig figcaption b{color:var(--sand-text)}
+.vsizes{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.chip{display:flex;align-items:center;gap:8px;height:34px;padding:0 9px;border-radius:8px}
+.chip.dark{background:#202020}
+.chip.light{background:#eeeae6;box-shadow:inset 0 0 0 1px var(--border)}
+.island.sm{align-self:flex-start;gap:8px;height:46px;padding:0 14px 0 9px;border-radius:14px}
+.island.sm .wm{height:14px}
+@media (max-width:760px){
+  .concept{grid-template-columns:1fr;gap:20px}.card{padding:20px}.hero{max-width:200px}
+  .lineup{grid-template-columns:repeat(3,minmax(0,1fr))}.wordmarks{grid-template-columns:1fr}
+  .vrow{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><mask id="orbit-gap" maskUnits="userSpaceOnUse" x="-50" y="-50" width="200" height="200"><rect x="-50" y="-50" width="200" height="200" fill="#fff"/><circle cx="63.4" cy="13.75" r="11.5" fill="#000"/></mask><linearGradient id="b1-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#284d3c"/><stop offset="1" stop-color="#3b6c55"/></linearGradient><radialGradient id="b1-glow"><stop offset="0" stop-color="#fbf8f3" stop-opacity=".5"/><stop offset="1" stop-color="#fbf8f3" stop-opacity="0"/></radialGradient></defs><symbol id="s-now" viewBox="0 0 100 100"><rect width="100" height="100" rx="22.3" fill="#33644d"/><path d="M34.95 25.6V57.6A15.05 15.05 0 0 0 65.05 57.6V25.6" fill="none" stroke="#cbaf94" stroke-width="11.7"/></symbol><symbol id="s-a" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="#33644d"/><path d="M31 26.5v26a19 19 0 0 0 38 0V26.5" fill="none" stroke="#cbaf94" stroke-width="12" stroke-linecap="round"/><circle cx="50" cy="44.5" r="7" fill="#fbf8f3"/></symbol><symbol id="s-a-alt" viewBox="19 16 62 66"><path d="M31 26.5v26a19 19 0 0 0 38 0V26.5" fill="none" stroke="#33644d" stroke-width="12" stroke-linecap="round"/><circle cx="50" cy="44.5" r="7" fill="#33644d"/></symbol><symbol id="s-b" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="#33644d"/><polyline points="29,29 31,51 39,67 58,71 68,57 71,31" fill="none" stroke="#cbaf94" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29" cy="29" r="7.5" fill="#fbf8f3"/><circle cx="31" cy="51" r="4.5" fill="#cbaf94"/><circle cx="39" cy="67" r="5.5" fill="#cbaf94"/><circle cx="58" cy="71" r="4.5" fill="#cbaf94"/><circle cx="68" cy="57" r="5.5" fill="#cbaf94"/><circle cx="71" cy="31" r="6" fill="#cbaf94"/></symbol><symbol id="s-b-alt" viewBox="17 17 66 66"><polyline points="29,29 31,51 39,67 58,71 68,57 71,31" fill="none" stroke="#33644d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29" cy="29" r="7.5" fill="#33644d"/><circle cx="31" cy="51" r="4.5" fill="#33644d"/><circle cx="39" cy="67" r="5.5" fill="#33644d"/><circle cx="58" cy="71" r="4.5" fill="#33644d"/><circle cx="68" cy="57" r="5.5" fill="#33644d"/><circle cx="71" cy="31" r="6" fill="#33644d"/></symbol><symbol id="s-c" viewBox="0 0 100 100"><path d="M23 0H74L100 26V77A23 23 0 0 1 77 100H23A23 23 0 0 1 0 77V23A23 23 0 0 1 23 0Z" fill="#fbf8f3" stroke="#d8ccbc" stroke-width="1.5"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" transform="translate(-1.6 1.6)" fill="#1f2b25" opacity="0.12"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" fill="#cbaf94"/><path d="M33 38v16a17 17 0 0 0 34 0V38" fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round"/></symbol><symbol id="s-c-alt" viewBox="0 0 100 100"><path d="M23 0H74L100 26V77A23 23 0 0 1 77 100H23A23 23 0 0 1 0 77V23A23 23 0 0 1 23 0Z" fill="#33644d"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" transform="translate(-1.6 1.6)" fill="#000" opacity="0.2"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" fill="#cbaf94"/><path d="M33 38v16a17 17 0 0 0 34 0V38" fill="none" stroke="#fbf8f3" stroke-width="13" stroke-linecap="round"/></symbol><symbol id="s-d" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="#33644d"/><rect x="21.5" y="21.5" width="17" height="17" rx="4.5" fill="#cbaf94"/><rect x="21.5" y="41.5" width="17" height="17" rx="4.5" fill="#cbaf94"/><rect x="21.5" y="61.5" width="17" height="17" rx="4.5" fill="#cbaf94"/><rect x="41.5" y="61.5" width="17" height="17" rx="4.5" fill="#fbf8f3"/><rect x="61.5" y="61.5" width="17" height="17" rx="4.5" fill="#cbaf94"/><rect x="61.5" y="41.5" width="17" height="17" rx="4.5" fill="#cbaf94"/><rect x="61.5" y="21.5" width="17" height="17" rx="4.5" fill="#cbaf94"/></symbol><symbol id="s-d-alt" viewBox="18 18 64 64"><rect x="21.5" y="21.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="21.5" y="41.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="21.5" y="61.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="41.5" y="61.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="61.5" y="61.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="61.5" y="41.5" width="17" height="17" rx="4.5" fill="#33644d"/><rect x="61.5" y="21.5" width="17" height="17" rx="4.5" fill="#33644d"/></symbol><symbol id="s-e" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="#33644d"/><g transform="translate(22 22) scale(.56)"><g fill="none" stroke="#cbaf94" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path d="M9 64H91M35 64V93.5M65 64V93.5"/></g><g mask="url(#orbit-gap)"><circle cx="50" cy="25" r="17.5" fill="none" stroke="#cbaf94" stroke-width="13"/></g><circle cx="63.4" cy="13.75" r="7" fill="#fbf8f3"/></g></symbol><symbol id="s-e-alt" viewBox="-4 -4 108 108"><g fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path d="M9 64H91M35 64V93.5M65 64V93.5"/></g><g mask="url(#orbit-gap)"><circle cx="50" cy="25" r="17.5" fill="none" stroke="#33644d" stroke-width="13"/></g><circle cx="63.4" cy="13.75" r="7" fill="#33644d"/></symbol><symbol id="s-wm" viewBox="0 0 393 100"><g fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(0 0)" d="M9 64H91M35 64V93.5M65 64V93.5"/><path transform="translate(103 0)" d="M9 13V84H56M80 6.5V93.5"/><path transform="translate(195 0)" d="M9 13V87H47V13M9 50H47M86 6.5V93.5M67 50H86"/><path transform="translate(294 0)" d="M50 10L14 56M44 18L86 56M8 84H92"/></g><circle cx="50" cy="25" r="17.5" fill="none" stroke="#33644d" stroke-width="13"/></symbol><symbol id="s-wm-orbit" viewBox="0 0 393 100"><g fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(0 0)" d="M9 64H91M35 64V93.5M65 64V93.5"/><path transform="translate(103 0)" d="M9 13V84H56M80 6.5V93.5"/><path transform="translate(195 0)" d="M9 13V87H47V13M9 50H47M86 6.5V93.5M67 50H86"/><path transform="translate(294 0)" d="M50 10L14 56M44 18L86 56M8 84H92"/></g><g mask="url(#orbit-gap)"><circle cx="50" cy="25" r="17.5" fill="none" stroke="#33644d" stroke-width="13"/></g><circle cx="63.4" cy="13.75" r="7" fill="#cbaf94"/></symbol><symbol id="s-wm-paper" viewBox="0 0 393 100"><g fill="none" stroke="#fbf8f3" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(0 0)" d="M9 64H91M35 64V93.5M65 64V93.5"/><path transform="translate(103 0)" d="M9 13V84H56M80 6.5V93.5"/><path transform="translate(195 0)" d="M9 13V87H47V13M9 50H47M86 6.5V93.5M67 50H86"/><path transform="translate(294 0)" d="M50 10L14 56M44 18L86 56M8 84H92"/></g><g mask="url(#orbit-gap)"><circle cx="50" cy="25" r="17.5" fill="none" stroke="#fbf8f3" stroke-width="13"/></g><circle cx="63.4" cy="13.75" r="7" fill="#cbaf94"/></symbol><symbol id="s-b1" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="url(#b1-sky)"/><circle cx="15" cy="17" r="1.3" fill="#fbf8f3" opacity="0.55"/><circle cx="46" cy="13" r="1" fill="#fbf8f3" opacity="0.45"/><circle cx="86" cy="15" r="1.5" fill="#fbf8f3" opacity="0.5"/><circle cx="89" cy="43" r="1" fill="#fbf8f3" opacity="0.4"/><circle cx="11" cy="47" r="1.1" fill="#fbf8f3" opacity="0.4"/><circle cx="50" cy="43" r="1.2" fill="#fbf8f3" opacity="0.35"/><circle cx="19" cy="84" r="1.4" fill="#fbf8f3" opacity="0.45"/><circle cx="83" cy="82" r="1" fill="#fbf8f3" opacity="0.4"/><circle cx="60" cy="88" r="1.2" fill="#fbf8f3" opacity="0.5"/><circle cx="38" cy="86" r="0.9" fill="#fbf8f3" opacity="0.35"/><circle cx="29" cy="29" r="16" fill="url(#b1-glow)"/><polyline points="29,29 31,51 39,67 58,71 68,57 71,31" fill="none" stroke="#cbaf94" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29" cy="29" r="7.5" fill="#fbf8f3"/><circle cx="31" cy="51" r="4.5" fill="#cbaf94"/><circle cx="39" cy="67" r="5.5" fill="#cbaf94"/><circle cx="58" cy="71" r="4.5" fill="#cbaf94"/><circle cx="68" cy="57" r="5.5" fill="#cbaf94"/><circle cx="71" cy="31" r="6" fill="#cbaf94"/></symbol><symbol id="s-b2" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="#fbf8f3" stroke="#d8ccbc" stroke-width="1.5"/><circle cx="29" cy="29" r="12.5" fill="#e6d6c2"/><polyline points="29,29 31,51 39,67 58,71 68,57 71,31" fill="none" stroke="#b89a7b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29" cy="29" r="7.5" fill="#33644d"/><circle cx="31" cy="51" r="4.5" fill="#33644d"/><circle cx="39" cy="67" r="5.5" fill="#33644d"/><circle cx="58" cy="71" r="4.5" fill="#33644d"/><circle cx="68" cy="57" r="5.5" fill="#33644d"/><circle cx="71" cy="31" r="6" fill="#33644d"/></symbol><symbol id="s-c1" viewBox="0 0 100 100"><path d="M23 0H74L100 26V77A23 23 0 0 1 77 100H23A23 23 0 0 1 0 77V23A23 23 0 0 1 23 0Z" fill="#fbf8f3" stroke="#d8ccbc" stroke-width="1.5"/><path d="M10 41H90" stroke="#cbaf94" stroke-width="1.2" opacity=".55"/><path d="M10 54H90" stroke="#cbaf94" stroke-width="1.2" opacity=".55"/><path d="M10 67H90" stroke="#cbaf94" stroke-width="1.2" opacity=".55"/><path d="M10 80H90" stroke="#cbaf94" stroke-width="1.2" opacity=".55"/><path d="M21 7V93" stroke="#b89a7b" stroke-width="1.2" opacity=".8"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" transform="translate(-1.6 1.6)" fill="#1f2b25" opacity="0.12"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" fill="#cbaf94"/><path d="M33 38v16a17 17 0 0 0 34 0V38" fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round"/></symbol><symbol id="s-c2" viewBox="0 0 100 100"><path d="M23 0H74L100 26V77A23 23 0 0 1 77 100H23A23 23 0 0 1 0 77V23A23 23 0 0 1 23 0Z" fill="#dcc6ad" stroke="#c3a98c" stroke-width="1.5"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" transform="translate(-1.6 1.6)" fill="#1f2b25" opacity="0.16"/><path d="M74 0V20A6 6 0 0 0 80 26H100Z" fill="#fbf8f3"/><path d="M33 38v16a17 17 0 0 0 34 0V38" fill="none" stroke="#33644d" stroke-width="13" stroke-linecap="round"/></symbol></svg>
+<main>
+<header>
+  <p class="eyebrow">UNIV-US · 2026-10-25 · DESIGN v3 PAPER &amp; PINE</p>
+  <h1>유니버스 로고 시안 다섯 가지</h1>
+  <p class="lede">솔빛·모래색·종이 세 가지 색 안에서, 성격이 다른 다섯 방향으로 그렸습니다. 전부 글꼴 없이 SVG 경로로만 그려서 앱 아이콘·파비콘·헤더 어디에 넣어도 똑같이 보입니다. 마음에 드신 B 별자리·C 종이는 원본을 그대로 두고 변형을 두 가지씩 더 그렸습니다(바로 아래).</p>
+  <ul class="palette"><li><i style="background:#33644d"></i>솔 Pine <code>#33644d</code></li><li><i style="background:#cbaf94"></i>모래 Sand <code>#cbaf94</code></li><li><i style="background:#f8f4f0"></i>종이 Paper <code>#f8f4f0</code></li><li><i style="background:#1f2b25"></i>먹 Ink <code>#1f2b25</code></li></ul>
+</header>
+<nav class="lineup" aria-label="시안 한눈에"><div class="now"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-now"/></svg><span>U</span></div><a href="#a"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-a"/></svg><span>A 담음</span></a><a href="#b"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-b"/></svg><span>B 별자리</span></a><a href="#c"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-c"/></svg><span>C 종이</span></a><a href="#d"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-d"/></svg><span>D 시간표</span></a><a href="#e"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#s-e"/></svg><span>E 유</span></a></nav>
+<section class="card" id="variants" aria-labelledby="var-title">
+  <p class="tag">B · C 변형</p>
+  <h2 id="var-title">별자리와 종이, 두 가지씩 더</h2>
+  <p class="story">원본은 그대로 두고 조금씩만 바꿨습니다. 1번은 크게 볼 때만 보이는 결(잔별·줄)을 더해 작게 보면 원본과 같고, 2번은 판의 재질과 색을 바꿨습니다.</p>
+  <div class="vgroup"><h3>B 별자리</h3><div class="vrow">
+      <figure class="vcell orig">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="B 별자리 원본 앱 아이콘"><use href="#s-b"/></svg></div>
+        <figcaption><b>원본</b>그대로 둔 원본입니다. 솔빛 판에 모래색 별 여섯, 가장 밝은 별은 왼쪽 위.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+      <figure class="vcell">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="B 별자리 B-1 밤하늘 앱 아이콘"><use href="#s-b1"/></svg></div>
+        <figcaption><b>B-1 밤하늘</b>위는 짙고 아래는 옅은 밤하늘 판에 희미한 잔별과 빛무리를 더했습니다. 작게 보면 원본과 같습니다.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-b1"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b1"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b1"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b1"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-b1"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+      <figure class="vcell">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="B 별자리 B-2 종이 별자리 앱 아이콘"><use href="#s-b2"/></svg></div>
+        <figcaption><b>B-2 종이 별자리</b>같은 별자리를 종이 판에 옮겼습니다. 별은 솔빛, 가장 밝은 별은 모래빛 무리로 표시합니다.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-b2"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b2"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b2"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b2"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-b2"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+    </div></div><div class="vgroup"><h3>C 종이</h3><div class="vrow">
+      <figure class="vcell orig">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="C 종이 원본 앱 아이콘"><use href="#s-c"/></svg></div>
+        <figcaption><b>원본</b>그대로 둔 원본입니다. 귀를 접은 종이에 모래색 귀, 솔빛 U.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+      <figure class="vcell">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="C 종이 C-1 공책 앱 아이콘"><use href="#s-c1"/></svg></div>
+        <figcaption><b>C-1 공책</b>종이에 모래색 줄 넷과 여백선을 그어 공책으로 만들었습니다. 작게 보면 원본과 같습니다.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-c1"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c1"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c1"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c1"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c1"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-c1"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+      <figure class="vcell">
+        <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="C 종이 C-2 크라프트 앱 아이콘"><use href="#s-c2"/></svg></div>
+        <figcaption><b>C-2 크라프트</b>판을 크라프트지 색으로 바꾸고 접힌 귀를 흰 뒷면으로 뒤집었습니다. 밝은 바탕에서도 가장자리가 보입니다.</figcaption>
+        <div class="vsizes"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-c2"/></svg><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c2"/></svg><span class="chip dark" title="어두운 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c2"/></svg></span><span class="chip light" title="밝은 작업 표시줄"><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c2"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c2"/></svg></span></div>
+        <div class="island sm" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true"><use href="#s-c2"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg></div>
+      </figure>
+    </div></div>
+</section>
+<section class="card" aria-labelledby="wm-title">
+  <p class="tag">공통 · 워드마크</p>
+  <h2 id="wm-title">새로 그린 '유니버스'</h2>
+  <p class="story">글꼴을 쓰지 않고 둥근 획 하나(굵기 13)로 네 글자를 그렸습니다. A~D 는 왼쪽 기본형과, E 는 ㅇ 이 궤도가 된 오른쪽 형과 짝을 이룹니다.</p>
+  <div class="wordmarks">
+    <figure><svg viewBox="0 0 393 100" role="img" aria-label="유니버스 워드마크"><use href="#s-wm"/></svg><figcaption>기본</figcaption></figure>
+    <figure><svg viewBox="0 0 393 100" role="img" aria-label="유니버스 워드마크, 궤도 ㅇ"><use href="#s-wm-orbit"/></svg><figcaption>궤도 ㅇ (E)</figcaption></figure>
+    <figure class="dark"><svg viewBox="0 0 393 100" role="img" aria-label="어두운 바탕 워드마크"><use href="#s-wm-paper"/></svg><figcaption>어두운 바탕</figcaption></figure>
+  </div>
+</section>
+
+<section class="card concept" id="a" aria-labelledby="a-title">
+  <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="담음 앱 아이콘"><use href="#s-a"/></svg></div>
+  <div>
+    <p class="tag">A · 글자 표시</p>
+    <h2 id="a-title">담음</h2>
+    <p class="story">지금 쓰는 'U' 타일을 손으로 다시 그렸습니다. 둥근 U 가 가운데 점을 감쌉니다 — 학교(Univ)가 나(Us)를 담는다는 뜻입니다.</p>
+    <ul class="notes"><li><b>좋은 점</b>지금 로고와 이어져 바꿔도 낯설지 않습니다. 16px 에서도 U 로 읽힙니다.</li><li><b>아쉬운 점</b>무난합니다. 개성은 점 하나뿐입니다.</li></ul>
+    <div class="ramp"><figure><svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true"><use href="#s-a"/></svg><figcaption>64px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="48" height="48" aria-hidden="true"><use href="#s-a"/></svg><figcaption>48px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-a"/></svg><figcaption>32px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-a"/></svg><figcaption>24px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-a"/></svg><figcaption>16px</figcaption></figure><figure class="bar dark"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-a"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-a"/></svg></span><figcaption>어두운 작업 표시줄</figcaption></figure><figure class="bar light"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-a"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-a"/></svg></span><figcaption>밝은 작업 표시줄</figcaption></figure></div>
+    <div class="uses">
+      <div class="island" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-a"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg><span class="latin" translate="no">Univ-Us</span></div>
+      <figure class="alt"><span><svg viewBox="0 0 62 66" width="40" height="40" aria-hidden="true"><use href="#s-a-alt"/></svg></span><figcaption>한 색</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="card concept" id="b" aria-labelledby="b-title">
+  <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="별자리 앱 아이콘"><use href="#s-b"/></svg></div>
+  <div>
+    <p class="tag">B · 상징</p>
+    <h2 id="b-title">별자리</h2>
+    <p class="story">유니버스 = 우주. 가장 밝은 별(오늘의 나)에서 출발해 흩어진 별(공지·마감·일정)을 차례로 이으면 U 가 됩니다.</p>
+    <ul class="notes"><li><b>좋은 점</b>이름의 말장난이 바로 보이고, 별 크기가 들쭉날쭉해 진짜 별자리처럼 보입니다.</li><li><b>아쉬운 점</b>선이 가늘어 16px 에서는 흐려집니다. 작은 크기용은 선을 굵게 따로 그려야 합니다.</li></ul>
+    <div class="ramp"><figure><svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true"><use href="#s-b"/></svg><figcaption>64px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="48" height="48" aria-hidden="true"><use href="#s-b"/></svg><figcaption>48px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-b"/></svg><figcaption>32px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><figcaption>24px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg><figcaption>16px</figcaption></figure><figure class="bar dark"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg></span><figcaption>어두운 작업 표시줄</figcaption></figure><figure class="bar light"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-b"/></svg></span><figcaption>밝은 작업 표시줄</figcaption></figure></div>
+    <div class="uses">
+      <div class="island" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-b"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg><span class="latin" translate="no">Univ-Us</span></div>
+      <figure class="alt"><span><svg viewBox="0 0 66 66" width="40" height="40" aria-hidden="true"><use href="#s-b-alt"/></svg></span><figcaption>한 색</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="card concept" id="c" aria-labelledby="c-title">
+  <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="종이 앱 아이콘"><use href="#s-c"/></svg></div>
+  <div>
+    <p class="tag">C · 재질</p>
+    <h2 id="c-title">종이</h2>
+    <p class="story">디자인 v3 'Paper & Pine' 을 그대로 옮겼습니다. 귀를 접은 종이 위에 솔빛 U 를 얹었습니다.</p>
+    <ul class="notes"><li><b>좋은 점</b>화면의 종이·솔 재질과 가장 잘 어울리고, 어두운 작업 표시줄에서 눈에 잘 띕니다.</li><li><b>아쉬운 점</b>밝은 바탕에서는 가장자리가 묻혀 테두리가 꼭 필요합니다.</li></ul>
+    <div class="ramp"><figure><svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true"><use href="#s-c"/></svg><figcaption>64px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="48" height="48" aria-hidden="true"><use href="#s-c"/></svg><figcaption>48px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-c"/></svg><figcaption>32px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><figcaption>24px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg><figcaption>16px</figcaption></figure><figure class="bar dark"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg></span><figcaption>어두운 작업 표시줄</figcaption></figure><figure class="bar light"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-c"/></svg></span><figcaption>밝은 작업 표시줄</figcaption></figure></div>
+    <div class="uses">
+      <div class="island" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-c"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg><span class="latin" translate="no">Univ-Us</span></div>
+      <figure class="alt"><span><svg viewBox="0 0 100 100" width="40" height="40" aria-hidden="true"><use href="#s-c-alt"/></svg></span><figcaption>어두운 판</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="card concept" id="d" aria-labelledby="d-title">
+  <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="시간표 앱 아이콘"><use href="#s-d"/></svg></div>
+  <div>
+    <p class="tag">D · 격자</p>
+    <h2 id="d-title">시간표</h2>
+    <p class="story">시간표 칸 일곱 개로 쌓은 U 입니다. 빈 두 칸은 공강, 밝은 한 칸은 지금 듣는 수업입니다.</p>
+    <ul class="notes"><li><b>좋은 점</b>캘린더·시간표가 중심인 앱이라는 게 보입니다. 격자라 픽셀에 딱 맞습니다.</li><li><b>아쉬운 점</b>칸 사이 틈이 16px 에서는 뭉칩니다.</li></ul>
+    <div class="ramp"><figure><svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true"><use href="#s-d"/></svg><figcaption>64px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="48" height="48" aria-hidden="true"><use href="#s-d"/></svg><figcaption>48px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-d"/></svg><figcaption>32px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-d"/></svg><figcaption>24px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-d"/></svg><figcaption>16px</figcaption></figure><figure class="bar dark"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-d"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-d"/></svg></span><figcaption>어두운 작업 표시줄</figcaption></figure><figure class="bar light"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-d"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-d"/></svg></span><figcaption>밝은 작업 표시줄</figcaption></figure></div>
+    <div class="uses">
+      <div class="island" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-d"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm"/></svg><span class="latin" translate="no">Univ-Us</span></div>
+      <figure class="alt"><span><svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><use href="#s-d-alt"/></svg></span><figcaption>한 색</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="card concept" id="e" aria-labelledby="e-title">
+  <div class="hero"><svg viewBox="0 0 100 100" role="img" aria-label="유 앱 아이콘"><use href="#s-e"/></svg></div>
+  <div>
+    <p class="tag">E · 한글 글자 표시 + 워드마크</p>
+    <h2 id="e-title">유</h2>
+    <p class="story">한글 '유'를 그대로 로고로 썼습니다. 둥근 획으로 새로 그린 '유니버스' 에서 ㅇ 이 궤도가 되고, 모래색 위성이 그 둘레를 돕니다.</p>
+    <ul class="notes"><li><b>좋은 점</b>영문 이니셜 아이콘들 사이에서 가장 눈에 띄고, 아이콘과 워드마크가 한 몸입니다.</li><li><b>아쉬운 점</b>한글을 모르면 그냥 도형입니다. 획이 많아 16px 은 빠듯합니다.</li></ul>
+    <div class="ramp"><figure><svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true"><use href="#s-e"/></svg><figcaption>64px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="48" height="48" aria-hidden="true"><use href="#s-e"/></svg><figcaption>48px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-e"/></svg><figcaption>32px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-e"/></svg><figcaption>24px</figcaption></figure><figure><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-e"/></svg><figcaption>16px</figcaption></figure><figure class="bar dark"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-e"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-e"/></svg></span><figcaption>어두운 작업 표시줄</figcaption></figure><figure class="bar light"><span><svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><use href="#s-e"/></svg><svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><use href="#s-e"/></svg></span><figcaption>밝은 작업 표시줄</figcaption></figure></div>
+    <div class="uses">
+      <div class="island" aria-label="헤더에 넣었을 때"><svg viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><use href="#s-e"/></svg><svg viewBox="0 0 393 100" class="wm" aria-hidden="true"><use href="#s-wm-orbit"/></svg><span class="latin" translate="no">Univ-Us</span></div>
+      <figure class="alt"><span><svg viewBox="0 0 108 108" width="40" height="40" aria-hidden="true"><use href="#s-e-alt"/></svg></span><figcaption>한 색</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="pick" aria-labelledby="pick-title">
+  <p class="tag">추천</p>
+  <h2 id="pick-title">선택: B-2 종이 별자리 (2026-10-25 적용)</h2>
+  <p>헤더 로고(components/app/BrandMark.tsx), 파비콘(app/icon.svg · favicon.ico), 데스크톱 시작 화면, 앱 아이콘(make_source.py)에 넣었습니다. 32px 이하는 별자리를 1.2배 키우고 선·별을 굵힌 작은 판을 씁니다.</p>
+  <p>나머지 시안과 변형은 비교용으로 그대로 둡니다. 로고 규칙은 frontend/DESIGN.md '로고' 절에 있습니다.</p>
+</section>
+<footer>낱장 SVG: <code>design/logo-concepts/svg/</code> (변형은 <code>b1-·b2-·c1-·c2-</code>) — 고르면 헤더·시작 화면·데스크톱 앱 아이콘(<code>make_source.py</code>)·파비콘에 옮깁니다.</footer>
+</main>
+</body>
+</html>

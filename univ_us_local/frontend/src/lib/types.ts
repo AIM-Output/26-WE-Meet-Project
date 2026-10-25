@@ -11,6 +11,7 @@ import type { GraduationSummary } from "./graduation";
 import type { MaterialsStatus } from "./materials";
 import type { ScholarshipStatus } from "./scholarships";
 import type { ActivityStatus } from "./activities";
+import type { BriefingStatus } from "./briefing";
 
 export type { ClassProps } from "./attendance";
 export type { StudyProps } from "./placement";
@@ -175,6 +176,7 @@ export interface Status {
   placement?: PlacementStatus; // F8 — 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt
   scholarship?: ScholarshipStatus; // F11 — 해당 · 확인 필요 · 마감 임박 · 수집 상태 · updatedAt
   activity?: ActivityStatus; // F12 — 내 관심사 · 관련 있음 · 담은 것 · 마감 임박 · 수집 상태 · updatedAt
+  briefing?: BriefingStatus; // C4 — 오늘 브리핑 상태(ready·before·pending·off) · 한 줄 · 건수 · updatedAt
 }
 
 /* ---------------------------------------------------------------- F1 학사 원천·수집 */

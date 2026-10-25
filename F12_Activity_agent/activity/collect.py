@@ -9,8 +9,10 @@
        장학 글(F11 과 같은 어휘 — 장학 화면 몫) · 말머리 행정공고·입찰공고·채용공고 · 부고·입찰·교원 초빙 같은 어휘 ·
        원천의 require(총동창회는 모집·행사 글만) · 45일보다 오래된 글(상단 고정의 옛 안내)
   2. 처음 보는 글만 상세를 받는다(원천마다 최대 25건). 최근 10일 글은 몇 건씩 다시 받아 수정 여부(내용 해시)를 본다
-  3. 본문이 짧으면 첨부 PDF·HWPX·DOCX 의 글자를 읽는다(모집 요강이 첨부에만 있는 경우, 파일은 저장하지 않는다)
+  3. 본문이 짧으면 첨부 PDF·HWP·HWPX·DOCX 의 글자를 읽는다(모집 요강이 첨부에만 있는 경우, 파일은 저장하지 않는다).
+     본문이 이미지(포스터)뿐이면 본문 이미지·이미지 첨부를 OS 내장 OCR 로 (F11 attachments.gather — 한국어 OCR 이 있을 때만)
   4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키) 먼저 들어온 것에 묶는다(dup_of)
+  5. 예전 판으로 읽어 못 읽은 공지(본문 이미지·HWP 첨부, 본문이 짧은 것만)는 원천마다 REREAD_MAX 건씩 다시 받아 읽는다
   내 단과대학·학과(profile_board)는 프로필 소속 → 홈페이지(F1 목록) → **공지 게시판 찾기**(장학 메뉴는 건너뛴다, 7일마다 다시)
 종료 코드: 0 성공 · 2 일부 원천 실패 · 3 이미 수집 중 · 4 전부 실패(대개 네트워크)
 """
@@ -67,23 +69,10 @@ def skip_reason(title: str, category: Optional[str], cfg: dict, writer: Optional
     return None
 
 
-def _attachment_text(post, http) -> tuple[str, list[dict], int]:
-    """본문이 짧을 때만 첨부 글자를 읽는다. 반환 (글자, 첨부 목록, 읽지 못한 첨부 수)."""
+def _attachment_text(post, http, ocr=None) -> tuple[str, list[dict], int]:
+    """본문이 짧을 때만 첨부 글자를 읽는다(+본문 이미지 OCR). 반환 (글자, 첨부 목록, 읽지 못한 첨부 수)."""
     short = len((post.body or "").strip()) < C.ATTACH_BODY_SHORT
-    texts, infos, unread = [], [], 0
-    for a in post.attachments[:8]:
-        ext = attachments.ext_of(a.get("name", ""), a.get("url", ""))
-        info = {"name": a.get("name"), "url": a.get("url"), "ext": ext, "read": False}
-        if short and ext in attachments.READABLE and sum(1 for i in infos if i["read"]) < C.MAX_ATTACH_PER_NOTICE:
-            data = http.download(a["url"])
-            t = attachments.read_text(data, ext) if data else None
-            if t and len(t.strip()) > 30:
-                texts.append(f"[첨부: {a.get('name')}]\n{t.strip()}")
-                info["read"] = True
-        if short and not info["read"] and ext not in (".jpg", ".jpeg", ".png", ".zip"):
-            unread += 1
-        infos.append(info)
-    return "\n\n".join(texts), infos, unread
+    return attachments.gather(post, http, max_read=C.MAX_ATTACH_PER_NOTICE, read=short, ocr=ocr)
 
 
 def build_info(row_like: dict, unit: Optional[dict], unread: int = 0) -> dict:
@@ -92,12 +81,12 @@ def build_info(row_like: dict, unit: Optional[dict], unread: int = 0) -> dict:
     if row_like.get("attach_text"):
         text = f"{text}\n\n{row_like['attach_text']}"
     return extract.extract(row_like["title"], text, unit=unit, category=row_like.get("category"), writer=row_like.get("writer"),
-                           image_only=bool(row_like.get("image_only")),
-                           attachments_unread=unread, posted_at=row_like.get("posted_at"))
+                           image_only=bool(row_like.get("image_only")), attachments_unread=unread,
+                           posted_at=row_like.get("posted_at"), ocr=attachments.has_ocr(row_like.get("attach_text")))
 
 
-def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict]) -> str:
-    attach_text, infos, unread = _attachment_text(post, http) if post.attachments else ("", [], 0)
+def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict], ocr=None) -> str:
+    attach_text, infos, unread = _attachment_text(post, http, ocr) if post.attachments or post.images else ("", [], 0)
     unit = unit_cfg or registry.unit_for(post.writer, post.title, post.category)
     nid = f"{hk}:{post.native_id}"
     tk = norm_title(post.title)
@@ -110,6 +99,7 @@ def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict]) ->
     }
     row["info"] = build_info(row, unit, unread)
     row["extract_ver"] = C.EXTRACT_VERSION
+    row["reader_ver"] = attachments.reader_version(ocr)
     return store.upsert_notice(con, row)
 
 
@@ -140,7 +130,7 @@ def discover_notice(homepage: str, http) -> dict:
             "boardUrl": f"{base}/bbs/{site}/{board}/artclList.do", "discoveredAt": datetime.now().isoformat(timespec="seconds")}
 
 
-def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dict:
+def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False, ocr=None) -> dict:
     from scholarship.sources import COLLECTORS
     from scholarship.sources.base import NeedsProfile, NotListed
     kind = cfg["kind"]
@@ -183,13 +173,17 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dic
     # 특정 학과·캠퍼스 대상 원천(사업단·공학교육혁신센터 …)의 글은 그 원천을 주관으로 붙인다. 학교 전체 게시판은 작성 부서로 찾는다.
     unit_cfg = registry.get(cfg["key"]) if (cfg.get("audience") or {}).get("scope") in ("related", "campus") else None
     with store.connect() as con:
-        known = {r["id"] for r in con.execute("SELECT id FROM notices WHERE id LIKE ?", (f"{hk}:%",))}
+        known = {r["id"]: r for r in con.execute("SELECT id, reader_ver, image_only, body, attachments FROM notices WHERE id LIKE ?",
+                                                 (f"{hk}:%",))}
     limit = (cfg.get("firstMaxDetail") or C.FIRST_MAX_DETAIL) if first else (cfg.get("maxDetail") or C.MAX_DETAIL_PER_SOURCE)
     new = [p for p in want if f"{hk}:{p.native_id}" not in known][:limit]
     recent = date.today() - timedelta(days=C.RECHECK_DAYS)
     recheck = [p for p in want if f"{hk}:{p.native_id}" in known and to_date(p.posted_at) and to_date(p.posted_at) >= recent]
     recheck = recheck[:C.RECHECK_MAX]
-    counts = {"listed": len(posts), "matched": len(want), "new": 0, "changed": 0, "skipped": skipped}
+    ver = attachments.reader_version(ocr)
+    reread = [p for p in want if p not in recheck and f"{hk}:{p.native_id}" in known
+              and attachments.needs_reread(known[f"{hk}:{p.native_id}"], ver, C.ATTACH_BODY_SHORT)][:C.REREAD_MAX]
+    counts = {"listed": len(posts), "matched": len(want), "new": 0, "changed": 0, "reread": len(reread), "skipped": skipped}
     if dry_run:
         for p in posts:
             why = skip_reason(p.title, p.category, cfg, p.writer)
@@ -197,7 +191,7 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dic
             _log(f"  [{cfg['key']}] {mark} {p.posted_at or '?':10s} {p.title[:64]}{f'  ({why})' if why else ''}")
         counts["new"] = len(new)
         return counts
-    for p in new + recheck:
+    for p in new + recheck + reread:
         try:
             p = mod.fetch_detail(p, cfg, http)
         except Exception as e:                   # noqa: BLE001 — 글 하나 실패로 원천 전체를 버리지 않는다
@@ -208,7 +202,7 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False) -> dic
         if to_date(p.posted_at) and to_date(p.posted_at) < oldest:   # 목록에 날짜가 없는 게시판(XE·CNU Events) — 상세에서 본 날짜로
             continue
         with store.connect() as con:
-            res = _save_post(con, cfg, p, http, hk, unit_cfg)
+            res = _save_post(con, cfg, p, http, hk, unit_cfg, ocr)
         if res in ("new", "changed"):
             counts[res] += 1
     return counts
@@ -269,15 +263,19 @@ def run(keys: Optional[list[str]] = None, profile: Optional[dict] = None, *, by:
         if keys:
             targets = [r for r in rows if r["key"] in keys and r["kind"] != "relay"]
         http = Http()
+        ocr = None if dry_run else attachments.ocr_engine()
         _log(f"대외활동 수집 시작 ({by}) — 원천 {len(targets)}곳: {', '.join(t['key'] for t in targets)}")
+        if not dry_run:
+            st = attachments.ocr_status()
+            _log(f"  OCR: {st.get('engine')} ({st.get('lang')})" if ocr else f"  OCR 없음 — {st.get('reason') or '한국어 OCR 을 쓸 수 없습니다'}")
         for cfg in targets:
             t0 = store.now_iso()
             try:
-                c = collect_source(cfg, http, profile, dry_run)
+                c = collect_source(cfg, http, profile, dry_run, ocr=ocr)
                 results[cfg["key"]] = {"ok": True, **c}
                 sk = " · ".join(f"{k} {v}" for k, v in c.get("skipped", {}).items())
                 _log(f"  [{cfg['key']}] 목록 {c['listed']} · 대외활동 {c['matched']} · 새 글 {c['new']} · 바뀜 {c['changed']}"
-                     + (f" (거름: {sk})" if sk else ""))
+                     + (f" · 다시 읽음 {c['reread']}" if c.get("reread") else "") + (f" (거름: {sk})" if sk else ""))
                 if not dry_run:
                     with store.connect() as con:
                         store.put_source(con, cfg["key"], last_run_at=t0, last_ok_at=store.now_iso(), last_count=c["matched"],

@@ -105,6 +105,34 @@ def test_draft_template_no_invention(profile, cal):
     assert d["progress"] == "draft" and d["draft"]["generatedBy"] == "template" and d["onCalendar"]
 
 
+def test_basic_info_from_scholarship_and_in_draft(profile):
+    """2026-10-25 — 초안 재료의 기본 정보(이름·학번·소속·학년·연락처 + 작성일). 비면 장학 재료의 기본 정보 → 프로필 소속·학년.
+    LLM 프롬프트에는 이름·학번·연락처를 넣지 않는다."""
+    from datetime import date
+    from activity import draft as drafting
+    sch = {"name": "테스트학생", "studentId": "2099000001", "department": "", "grade": "", "phone": "010-0000-0000", "email": ""}
+    prompts = []
+
+    def fake_llm(system, user):
+        prompts.append(system + user)
+        return "### 참가 동기\n저는 {{이름}}입니다.\n\n### 아이디어·준비 계획\n준비하겠습니다."
+    with store.connect() as con:
+        seed(con)
+        m = service.materials(con, profile, lambda: None, lambda: sch)
+        assert m["basic"]["name"] == "테스트학생" and m["basicFrom"] == "scholarship"
+        assert m["basic"]["department"].endswith("인공지능학부") and m["basic"]["grade"] == "3"
+        service.put_materials(con, {"careerGoal": "AI 엔지니어", "basic": {**sch, "email": "me@example.com"}})
+        mats = service.materials(con, profile)
+        d = service.detail(con, "www:1", profile, TODAY)
+    body, by = drafting.build(d, profile, mats, llm=fake_llm, today=date(2026, 10, 25))
+    assert by == "llm"
+    for line in ("- 이름: 테스트학생", "- 학번: 2099000001", "- 연락처: 010-0000-0000", "- 이메일: me@example.com",
+                 "- 작성일: 2026. 10. 25.", "3학년 · 재학"):
+        assert line in body, line
+    assert "저는 테스트학생입니다." in body and "{{이름}}" not in body
+    assert prompts and all("테스트학생" not in p and "2099000001" not in p and "010-0000" not in p for p in prompts)
+
+
 def test_rental_draft_headings(profile):
     with store.connect() as con:
         add_notice(con, "aicoss:1", "인공지능혁신융합대학사업단 실험실습 기자재 대여 안내(2026년 2학기)",

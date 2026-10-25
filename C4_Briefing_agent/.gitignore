@@ -1,0 +1,7 @@
+# 내 브리핑 스냅샷·설정 — 공유하지 않는다
+data/
+.env
+
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -63,6 +63,7 @@ export interface SchItem {
   askApplied: boolean; // 승인했는데 마감이 지났다 → '신청하셨나요?'
   isNew: boolean;
   needsOcr: boolean;
+  ocr: boolean; // 이미지 속 글자를 OCR 로 읽었다 — 자동 판정 대신 확인 필요
   attachmentsUnread: number;
   confidence: number;
 }
@@ -91,7 +92,8 @@ export interface SchDetail extends SchItem {
   otherConditions: string[];
   body: string;
   bodyTruncated: boolean;
-  attachments: { name: string; url: string; ext: string; read: boolean }[];
+  attachments: { name: string; url: string; ext: string; read: boolean; ocr?: boolean }[];
+  ocrText: string | null; // 이미지에서 OCR 로 읽은 글자
   alsoPostedAt: { id: string; source_name: string; url: string }[];
   changedAt: string | null;
   state: {
@@ -191,12 +193,24 @@ export interface SchHistory {
   }[];
 }
 
+/** 초안 기본 정보 — 장학·대외활동 초안 재료에 같이 들어간다. 이 PC 의 초안 재료에만 두고 LLM 에는 보내지 않는다(F11 basicinfo) */
+export interface DraftBasic {
+  name: string;
+  studentId: string;
+  department: string;
+  grade: string;
+  phone: string;
+  email: string;
+}
+
 export interface SchMaterials {
   exists: boolean;
   careerGoal: string;
   activities: string;
   hardship: string;
   highlights: string;
+  basic: DraftBasic;
+  basicFrom: "activity" | "profile" | null; // 기본 정보 빈 칸을 미리 채운 곳
   updatedAt: string | null;
   fromProfile: boolean;
 }

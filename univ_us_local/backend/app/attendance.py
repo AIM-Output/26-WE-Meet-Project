@@ -64,6 +64,13 @@ def calendar_events(start: Optional[str] = None, end: Optional[str] = None) -> l
         return []
 
 
+def today() -> dict:
+    """오늘 수업 + 위험 과목 — C4 브리핑(F3-R35)·F9 대화가 읽는다. 실패는 그대로 올린다(브리핑이 '못 읽은 재료'로 적는다)."""
+    if not f3:
+        return {"classes": [], "totals": {}}
+    return f3.today()
+
+
 def touch() -> None:
     """프로필이 바뀌었다 — 학사경고 안내(직전 학기 평점)가 달라질 수 있으니 화면이 다시 부르게 한다 (C2-R08)."""
     if not f3:

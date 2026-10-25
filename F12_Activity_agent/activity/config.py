@@ -71,7 +71,8 @@ FIRST_MAX_DETAIL = 35
 FIRST_MAX_AGE_DAYS = 45         # 처음 수집할 때 이보다 오래된 글은 상세를 받지 않는다(대개 끝난 모집 — 요청을 아낀다)
 RECHECK_DAYS = 10               # 게시 후 이 기간 안의 글은 몇 건씩 다시 받아 수정 여부(내용 해시)를 본다
 RECHECK_MAX = 4
-ATTACH_BODY_SHORT = 300         # 본문이 이보다 짧을 때만 첨부(PDF·HWPX·DOCX) 글자를 읽는다 — 모집 요강이 첨부에만 있는 경우
+REREAD_MAX = 4                  # 예전 판으로 읽어 못 읽은 공지(본문 이미지·HWP 첨부)를 한 번에 다시 받는 최대 수
+ATTACH_BODY_SHORT = 300         # 본문이 이보다 짧을 때만 첨부(PDF·HWP·HWPX·DOCX)·이미지(OCR) 글자를 읽는다 — 모집 요강이 첨부·포스터에만 있는 경우
 MAX_ATTACH_PER_NOTICE = 2
 DISCOVERY_MAX_AGE_DAYS = 7      # 찾아 둔 학과 공지 게시판을 이 기간이 지나면 다시 확인한다
 SYNC_SLOTS = ("06:00", "18:00")  # 앱이 떠 있으면 이 시각마다 (F13-R06 — 장학과 같은 시각, 장학 수집이 끝난 뒤)
@@ -85,7 +86,7 @@ def autosync_enabled() -> bool:
 
 
 # 추출 규칙 판(版). 규칙을 고치면 올린다 → 저장된 공지를 다음 읽기 때 새 규칙으로 다시 뽑는다.
-EXTRACT_VERSION = 5
+EXTRACT_VERSION = 6            # 6: OCR 로 읽은 공지 표시 (2026-10-25)
 
 # ── 관심사 등급 (요구사항정의서 F12 5절) ───────────────────────
 STALE_DAYS = 45                 # 신청 기간을 못 읽은 공지가 이보다 오래됐으면 '지난 공지'로 접는다

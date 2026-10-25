@@ -6,7 +6,8 @@
 #   F2 rulesets·curriculum, F1 directory, C2 master, F5 web …)와 PROJECT_ROOT 를 찾기 때문이다. 백엔드가 지금처럼
 #   sys.path 에 기능 폴더를 붙여 import 한다.
 #   대신 그 코드가 쓰는 표준 라이브러리·외부 패키지는 PyInstaller 가 못 보므로, 기능 코드의 import 를 AST 로 훑어 hiddenimports 로 준다.
-# 넣지 않는 것: data/·state/·.venv/·tests/, .cmd/.command/.ps1 런처(예약 등록용 register-task.ps1 만 넣는다), **.env(LLM 키 등 비밀)**.
+# 넣지 않는 것: data/·state/·.venv/·tests/, .cmd/.command/.ps1 런처(예약 등록용 register-task.ps1 · C0 OCR 의 ocr_win.ps1 만 넣는다),
+#   **.env(LLM 키 등 비밀)**.
 import ast
 import os
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 REPO = Path(SPECPATH).resolve().parents[1]
-AGENTS = ["C0_Platform_agent", "C1_Calendar_agent", "C2_Profile_agent", "C3_Login_agent", "F1_Bachelor_agent",
+AGENTS = ["C0_Platform_agent", "C1_Calendar_agent", "C2_Profile_agent", "C3_Login_agent", "C4_Briefing_agent", "F1_Bachelor_agent",
           "F2_Graduation_agent", "F3_Attendance_agent", "F4_Textbook_agent", "F5_Test_agent", "F6_Eclass_agent",
           "F7_Task_agent", "F8_Plan_agent", "F11_Scholarship_agent", "F12_Activity_agent"]
 TREES = [(REPO / a, f"univus/{a}") for a in AGENTS] + [
@@ -24,7 +25,8 @@ TREES = [(REPO / a, f"univus/{a}") for a in AGENTS] + [
 SKIP_DIRS = {"data", "state", ".venv", "tests", "__pycache__", "node_modules", ".pytest_cache", "pw-browsers"}
 SKIP_FILES = {".env", ".gitignore"}
 SKIP_SUFFIX = {".cmd", ".command", ".ps1", ".pyc", ".lnk", ".log", ".db"}
-KEEP_FILES = {"register-task.ps1"}                         # F1·F6 예약 켜기가 앱 안에서도 이 스크립트를 부른다 (-Command 로 앱 실행 파일)
+KEEP_FILES = {"register-task.ps1",                         # F1·F6 예약 켜기가 앱 안에서도 이 스크립트를 부른다 (-Command 로 앱 실행 파일)
+              "ocr_win.ps1"}                               # F11·F12 수집기의 Windows 내장 OCR (osenv/ocr.py 가 -File 로)
 
 datas, sources = [], []
 for src, dest in TREES:

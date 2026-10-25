@@ -58,6 +58,45 @@ def test_draft_needs_no_invention(profile):
     assert d["progress"] == "draft" and d["draft"]["generatedBy"] == "template"
 
 
+BASIC = {"name": "테스트학생", "studentId": "2099000001", "department": "", "grade": "", "phone": "010-0000-0000", "email": ""}
+
+
+def test_basic_info_fills_draft_but_never_reaches_llm(profile):
+    """2026-10-25 사용자 결정 — 초안 재료는 기본 정보(이름·학번·학과·날짜 …)부터. 이름·학번은 LLM 프롬프트에 넣지 않고 이 PC 에서 채운다."""
+    from datetime import date
+    from scholarship import draft as drafting
+    prompts = []
+
+    def fake_llm(system, user):
+        prompts.append(system + user)
+        return "### 지원 동기\n저는 {{이름}}입니다. 진로는 보안 연구입니다.\n\n### 학업 계획·포부\n열심히 하겠습니다."
+    with store.connect() as con:
+        seed(con)
+        m = service.materials(con, profile, lambda: {**BASIC, "email": "me@example.com"})
+        assert m["basic"]["name"] == "테스트학생" and m["basicFrom"] == "activity"               # 대외활동에 적어 둔 것
+        assert m["basic"]["department"].endswith("인공지능학부") and m["basic"]["grade"] == "3"   # 비면 프로필 소속·학년
+        service.put_materials(con, {"careerGoal": "보안 연구", "basic": BASIC})
+        assert service.saved_basic(con)["studentId"] == "2099000001"
+        service.put_materials(con, {"careerGoal": "보안 연구 (고침)"})                          # basic 없이 저장해도 기본 정보는 남는다
+        mats = service.materials(con, profile)
+        assert mats["basic"]["name"] == "테스트학생" and mats["basicFrom"] == "profile"
+        d = service.detail(con, "www:1", profile, TODAY)
+    body, by = drafting.build(d, profile, mats, llm=fake_llm, today=date(2026, 10, 25))
+    assert by == "llm"
+    assert "- 이름: 테스트학생" in body and "- 학번: 2099000001" in body and "- 작성일: 2026. 10. 25." in body
+    assert "- 소속: AI융합대학 인공지능학부" in body and "3학년 · 재학" in body
+    assert "저는 테스트학생입니다." in body and "{{이름}}" not in body                           # LLM 이 남긴 빈칸을 채웠다
+    assert prompts and all("테스트학생" not in p and "2099000001" not in p and "010-0000" not in p for p in prompts)
+
+
+def test_basic_info_blanks_when_unknown(profile):
+    from scholarship import basicinfo
+    lines = basicinfo.lines({}, {}, contact=False)
+    assert "- 이름: {{이름}}" in lines and "- 학번: {{학번}}" in lines and "- 소속: {{소속}}" in lines
+    assert not any(x.startswith("- 연락처") for x in lines)                                      # 장학은 적었을 때만
+    assert basicinfo.fill("{{이름}} / {{학번}} / {{소속·학년}}", {"name": "가"}) == "가 / {{학번}} / {{소속·학년}}"
+
+
 def test_borrow_marks_source(profile):
     with store.connect() as con:
         seed(con)

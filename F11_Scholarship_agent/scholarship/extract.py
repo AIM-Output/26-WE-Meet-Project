@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+from . import config as C
 from . import regions, registry
 from .textutil import find_sentence, lines, nfkc, parse_period
 
@@ -301,8 +302,9 @@ def foreign_only(title: str) -> bool:
 # ── 진입점 ────────────────────────────────────────────────
 
 def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: bool = False,
-            attachments_unread: int = 0, default_year: Optional[int] = None, catalog: bool = False) -> dict:
-    """제목 + 본문(+첨부 글자) → Requirements. unit = 이 글을 올린 사업단·부서(registry.unit_for)."""
+            attachments_unread: int = 0, default_year: Optional[int] = None, catalog: bool = False, ocr: bool = False) -> dict:
+    """제목 + 본문(+첨부 글자) → Requirements. unit = 이 글을 올린 사업단·부서(registry.unit_for).
+    ocr = 글자 일부를 이미지에서 OCR 로 읽었다(attachments.has_ocr) — 신뢰도를 OCR_CONFIDENCE_CAP 까지로, 판정은 확인 필요로 (match)."""
     title = nfkc(title)
     text = nfkc(text)
     full = f"{title}\n{text}"
@@ -419,14 +421,19 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: b
         conf = 0.55 + 0.05 * structured                                   # 학교가 표로 정리한 안내 — 문구가 정형이다
     if unread_heavy:
         conf = min(conf, 0.4)
+    req["ocr"] = bool(ocr)
+    if ocr:
+        conf = min(conf, C.OCR_CONFIDENCE_CAP)
     if req["needsOcr"]:
         conf = 0.0
     req["confidence"] = round(min(conf, 0.8), 2)
     req["unknownFields"] = [] if structured or req["otherConditions"] else ["grades", "minGpa", "incomeMax"]
     notes = []
+    if ocr:
+        notes.append("이미지 속 글자를 OCR 로 읽었습니다 — 숫자·날짜가 틀릴 수 있으니 원문에서 확인하세요")
     if req["needsOcr"]:
         notes.append("본문이 이미지라 자동으로 읽지 못했습니다")
     if attachments_unread:
-        notes.append(f"첨부 {attachments_unread}개를 읽지 못했습니다(HWP 등) — 원문에서 조건을 확인하세요")
+        notes.append(f"첨부 {attachments_unread}개를 읽지 못했습니다(엑셀·스캔 문서·암호 문서 등) — 원문에서 조건을 확인하세요")
     req["notes"] = notes
     return req

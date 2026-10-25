@@ -22,6 +22,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Banner, EmptyState, ErrorPanel, SkeletonList, SyncBanner } from "@/components/ui/Feedback";
 import { Chip, DdayChip, StatusBadge, type Tone } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
+import { OcrText } from "@/components/ui/OcrText";
+import { DraftBasicFields } from "@/components/ui/DraftBasicFields";
 import { useToast } from "@/components/ui/Toast";
 import { useAppData } from "@/components/app/AppData";
 import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
@@ -396,6 +398,7 @@ function MatchView({ d, s, onDraft }: { d: SchDetail; s: Sch; onDraft: () => voi
           </ul>
         </div>
       )}
+      {d.ocrText && <OcrText text={d.ocrText} />}
       {d.alsoPostedAt.length > 0 && (
         <p className="text-[12px] text-faint">같은 글: {d.alsoPostedAt.map((a) => a.source_name).join(" · ")}</p>
       )}
@@ -798,7 +801,7 @@ function MaterialsModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
             disabled={!m}
             onClick={async () => {
               if (!m) return;
-              await api.putScholarshipMaterials({ careerGoal: m.careerGoal, activities: m.activities, hardship: m.hardship, highlights: m.highlights });
+              await api.putScholarshipMaterials({ careerGoal: m.careerGoal, activities: m.activities, hardship: m.hardship, highlights: m.highlights, basic: m.basic });
               toast("저장했습니다 — 다음 초안부터 쓰입니다", { tone: "success" });
               onClose();
               onSaved();
@@ -813,6 +816,14 @@ function MaterialsModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
         <p className="hint">
           한 번 적어 두면 이후 초안에 다시 쓰입니다(이미 만든 초안은 그대로). 적은 것만 근거로 쓰고, 없는 경험은 지어내지 않고 빈칸으로 남깁니다. 프로필과 따로 저장되고 따로 지울 수 있습니다.
         </p>
+        {m && (
+          <DraftBasicFields
+            idPrefix="mat-basic"
+            value={m.basic}
+            onChange={(basic) => setM({ ...m, basic })}
+            fromNote={m.basicFrom === "activity" ? "대외활동 초안 재료에 적어 둔 기본 정보를 불러왔습니다." : m.basicFrom === "profile" ? "학과·학년은 프로필에서 불러왔습니다." : null}
+          />
+        )}
         {m?.fromProfile && <p className="text-[12px] text-faint">프로필에 적어 둔 초안 재료를 불러왔습니다.</p>}
         {fields.map((f) => (
           <div key={f.k}>

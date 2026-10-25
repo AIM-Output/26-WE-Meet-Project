@@ -1,6 +1,7 @@
 """신청서 초안 — F11 초안(요구사항정의서 F11 6절)과 같은 7단 구성을 대외활동에 맞게. 표준 라이브러리만.
 
-    1. 기본 정보        {{이름}} / {{학번}} / {{연락처}} / 소속 · 학년 · 학적   ← 이름·학번·연락처는 넣지 않는다 (F11-R44 와 같은 선)
+    1. 기본 정보        이름 · 학번 · 소속 · 학년·학적 · 연락처 · (이메일) · 작성일  ← 초안 재료의 기본 정보(F11 basicinfo — 2026-10-25
+                        사용자 결정), 모르는 값은 {{빈칸}}. LLM 에는 보내지 않고 다 만든 뒤 이 PC 에서 채운다
     2. 모집 정보 정리    주관 · 분류 · 대상(내 학년) · 신청 기간 · 활동 기간 · 장소 · 혜택 · 참가비 · 인원 · 걸린 관심사
     3·4. 문단 두 개     분류마다 제목이 다르다 — 공모전 '참가 동기 / 아이디어·준비 계획', 기자재 대여 '사용 목적 / 사용 계획',
                         취업·인턴 '지원 동기 / 직무 관련 경험·포부', 그 밖 '지원 동기 / 참여 계획·포부'
@@ -15,9 +16,11 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Callable, Optional
 
 from . import llm as L
+from scholarship import basicinfo
 
 HEADINGS = {
     "rental": ("사용 목적", "사용 계획 (품목·기간·장소)"),
@@ -32,7 +35,7 @@ DEFAULT_HEADINGS = ("지원 동기", "참여 계획·포부")
 SYSTEM = """너는 대학생이 교내 프로그램·공모전·대외활동·기자재 대여에 내는 신청서 문단을 돕는다. 반드시 지킬 것:
 1. 학생이 준 '재료'와 '관심사'에 있는 사실만 쓴다. 재료에 없는 경험·수상·봉사·자격증·숫자를 지어내지 않는다.
 2. 근거가 없는 자리는 {{무엇을 채울지 적은 빈칸}} 으로 남긴다. 예: {{구체적인 활동 경험을 적어 주세요}}
-3. 이름·학번·연락처는 쓰지 않는다. 필요하면 {{이름}} 으로 둔다.
+3. 이름·학번·연락처는 쓰지 않는다(받지도 않는다). 필요하면 {{이름}} 으로 둔다 — 학생의 PC 가 나중에 채운다.
 4. 두 문단을 쓴다. 각 250~450자, 존댓말 1인칭('저는'). 공지가 분량을 정했으면 그에 맞춘다.
 5. 출력 형식: 첫 줄 '### <첫 문단 제목>', 문단, 빈 줄, '### <둘째 문단 제목>', 문단. 다른 말은 쓰지 않는다."""
 
@@ -113,8 +116,8 @@ def _paragraphs_llm(d: dict, p: dict, m: dict, chat: Callable[[str, str], str]) 
 
 
 def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
-          llm: Optional[Callable[[str, str], str]] = None) -> tuple[str, str]:
-    """→ (마크다운 본문, generated_by: template | llm | borrowed)."""
+          llm: Optional[Callable[[str, str], str]] = None, today: Optional[date] = None) -> tuple[str, str]:
+    """→ (마크다운 본문, generated_by: template | llm | borrowed). m['basic'] = 기본 정보(service.materials 가 채운 것)."""
     h1, h2 = headings(d.get("category"))
     by = "template"
     note = None
@@ -135,7 +138,7 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         if by != "llm":
             para1, para2 = _paragraphs_template(d, p, m)
 
-    who = " · ".join(x for x in (p.get("college"), p.get("department"), p.get("major")) if x) or "{{소속}}"
+    basic = m.get("basic") or basicinfo.resolve(None, p)[0]
     grade_note = ""
     if d.get("grades") and p.get("grade"):
         grade_note = f" (내 {p['grade']}학년 {'포함' if p['grade'] in d['grades'] else '— 대상 학년이 아닐 수 있습니다'})"
@@ -154,11 +157,7 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         *(["> " + note] if note else []),
         "",
         "## 1. 기본 정보",
-        "- 이름: {{이름}}",
-        "- 학번: {{학번}}",
-        "- 연락처: {{연락처}}",
-        f"- 소속: {who}",
-        f"- 학년·학적: {p.get('grade') or '{{학년}}'}학년 · {p.get('enrollmentStatus') or '{{학적}}'}",
+        *basicinfo.lines(basic, p, today),
         "",
         "## 2. 모집 정보 정리",
         "| 항목 | 공지 |",
@@ -184,4 +183,4 @@ def build(d: dict, p: dict, m: dict, *, borrowed: Optional[dict] = None,
         "- 제출은 시스템이 하지 않습니다. 확인 후 본인이 직접 제출하세요.",
         "- {{ }} 로 남은 빈칸을 모두 채웠는지, 공지의 신청 양식(HWP·구글폼 등)이 따로 있으면 그 양식에 옮겨 적었는지 확인하세요.",
     ]
-    return "\n".join(parts).strip() + "\n", by
+    return basicinfo.fill("\n".join(parts).strip() + "\n", basic), by

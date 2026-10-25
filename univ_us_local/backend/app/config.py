@@ -2,7 +2,7 @@
 
 원칙
   - 127.0.0.1 에만 바인딩한다. LAN 에 열려면 인증·HTTPS 를 먼저 붙인다.
-  - 기능마다 폴더가 따로 있다(C1 · F6_Eclass_agent · F1 · C2 · F2 · F3 · F4 · F5 · F7 · F8 · F11 · F12). 이 서버는 그 API 를 붙이기만 한다.
+  - 기능마다 폴더가 따로 있다(C1 · F6_Eclass_agent · F1 · C2 · F2 · F3 · F4 · F5 · F7 · F8 · F11 · F12 · C4). 이 서버는 그 API 를 붙이기만 한다.
     학교 로그인·브라우저는 C3_Login_agent 몫이다 — 이 서버의 .venv 에는 playwright 가 없다.
   - 내 일정·할 일도 C1_Calendar_agent 로 나갔다 (그 폴더의 data/univus.db). 여기에는 DB 가 없다.
 """
@@ -29,6 +29,7 @@ F7_AGENT_DIR = Path(os.environ.get("F7_AGENT_DIR") or PROJECT_ROOT / "F7_Task_ag
 F8_AGENT_DIR = Path(os.environ.get("F8_AGENT_DIR") or PROJECT_ROOT / "F8_Plan_agent")       # F8 공강 학습 플랜 (placement.api)
 F11_AGENT_DIR = Path(os.environ.get("F11_AGENT_DIR") or PROJECT_ROOT / "F11_Scholarship_agent")  # F11 장학 매칭 (scholarship.api)
 F12_AGENT_DIR = Path(os.environ.get("F12_AGENT_DIR") or PROJECT_ROOT / "F12_Activity_agent")     # F12 대외활동 (activity.api)
+C4_AGENT_DIR = Path(os.environ.get("C4_AGENT_DIR") or PROJECT_ROOT / "C4_Briefing_agent")        # C4 브리핑 (briefing.api) — 다른 기능을 모은다
 
 FRONTEND_OUT = ROOT / "frontend" / "out"                     # `npm run build` 결과 (정적 export)
 

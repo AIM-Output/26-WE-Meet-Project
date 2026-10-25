@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Bookmark,
   BookmarkCheck,
   CalendarCheck,
   CalendarPlus,
+  Check,
   ChevronDown,
   Copy,
   ExternalLink,
@@ -27,6 +28,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Banner, EmptyState, ErrorPanel, SkeletonList, SyncBanner } from "@/components/ui/Feedback";
 import { Chip, DdayChip, StatusBadge } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
+import { OcrText } from "@/components/ui/OcrText";
+import { DraftBasicFields } from "@/components/ui/DraftBasicFields";
 import { useToast } from "@/components/ui/Toast";
 import { useAppData } from "@/components/app/AppData";
 import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
@@ -443,13 +446,14 @@ function InfoView({ d, a, onDraft }: { d: ActDetail; a: Act; onDraft: () => void
                   <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     {f.name}
                   </a>
-                  {f.read && <span className="text-faint"> · 글자 읽음</span>}
+                  {f.read && <span className="text-faint"> · {f.ocr ? "OCR 로 읽음" : "글자 읽음"}</span>}
                 </li>
               ))}
             </ul>
           )}
         </details>
       )}
+      {d.ocrText && <OcrText text={d.ocrText} />}
       <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
         <button
           type="button"
@@ -734,7 +738,17 @@ function ApplyView({ d, a }: { d: ActDetail; a: Act }) {
   );
 }
 
-/** 관심사 — C2 프로필의 interests 칸에 저장한다(F12-R13). 저장하면 프로필이 바뀌어 목록 전체가 다시 매겨진다(F12-R15). */
+/** 입력칸 글자 → 키워드들. 쉼표·줄바꿈으로 여러 개를 한 번에 ('반도체, 창업') — 두 글자 미만은 버린다 */
+const splitWords = (v: string) =>
+  v
+    .split(/[,，;\n]/)
+    .map((x) => x.replace(/\s+/g, " ").trim())
+    .filter((x) => x.length >= 2);
+const mergeWords = (list: string[], more: string[]) => [...list, ...more.filter((x, i) => !list.includes(x) && more.indexOf(x) === i)];
+
+/** 관심사 — C2 프로필의 interests 칸에 저장한다(F12-R13). 저장하면 프로필이 바뀌어 목록 전체가 다시 매겨진다(F12-R15).
+ *  태그·키워드·제외어 모두 여러 개. 저장된 값은 **창을 열 때 한 번만** 불러온다 — 목록이 뒤에서 다시 불려도(LLM 판단·수집이
+ *  updatedAt 을 올린다) 고르던 것을 덮어쓰지 않는다 (2026-10-25: 두 번째 태그를 고르는 사이 판단이 끝나 첫 선택이 지워졌다). */
 function InterestsModal({ open, onClose, data }: { open: boolean; onClose: () => void; data: ActOverview | null }) {
   const toast = useToast();
   const { updateProfile } = useAppData();
@@ -744,35 +758,53 @@ function InterestsModal({ open, onClose, data }: { open: boolean; onClose: () =>
   const [kw, setKw] = useState("");
   const [ex, setEx] = useState("");
   const [saving, setSaving] = useState(false);
+  const loaded = useRef(false);
   useEffect(() => {
-    if (!open || !data) return;
+    if (!open) {
+      loaded.current = false;
+      return;
+    }
+    if (loaded.current || !data) return;
+    loaded.current = true;
+    const saved = data.interests;
     void Promise.resolve().then(() => {
-      setTags(data.interests.tags);
-      setKeywords(data.interests.keywords);
-      setExcludes(data.interests.exclude);
+      setTags(saved.tags);
+      setKeywords(saved.keywords);
+      setExcludes(saved.exclude);
+      setKw("");
+      setEx("");
     });
   }, [open, data]);
   const add = (v: string, list: string[], set: (x: string[]) => void, clear: () => void) => {
-    const t = v.replace(/\s+/g, " ").trim();
-    if (t.length < 2) {
+    const words = splitWords(v);
+    if (!words.length) {
       toast("두 글자 이상 입력하세요", { tone: "error" });
       return;
     }
-    if (list.length >= 20) {
+    const next = mergeWords(list, words);
+    if (next.length > 20) {
       toast("20개까지 넣을 수 있습니다", { tone: "error" });
       return;
     }
-    if (!list.includes(t)) set([...list, t]);
+    set(next);
     clear();
   };
   const save = async () => {
+    // 입력칸에 적고 Enter 를 안 누른 것도 넣는다
+    const kwAll = mergeWords(keywords, splitWords(kw));
+    const exAll = mergeWords(excludes, splitWords(ex));
+    if (kwAll.length > 20 || exAll.length > 20) {
+      toast("키워드·제외어는 각각 20개까지 넣을 수 있습니다", { tone: "error" });
+      return;
+    }
     setSaving(true);
-    const interests: Interests = { tags, keywords, exclude: excludes };
+    const interests: Interests = { tags, keywords: kwAll, exclude: exAll };
     const doc = await updateProfile({ interests });
     setSaving(false);
     if (!doc) return;
     onClose();
-    toast(tags.length || keywords.length ? `관심사를 저장했습니다 — 공지 ${data?.counts.total ?? 0}건을 다시 분류합니다` : "관심사를 비웠습니다 — 알림을 보내지 않습니다", { tone: "success" });
+    const n = tags.length + kwAll.length;
+    toast(n ? `관심사 ${n}개를 저장했습니다 — 공지 ${data?.counts.total ?? 0}건을 다시 분류합니다` : "관심사를 비웠습니다 — 알림을 보내지 않습니다", { tone: "success" });
   };
   const chipList = (list: string[], set: (x: string[]) => void) =>
     list.map((k) => (
@@ -796,12 +828,16 @@ function InterestsModal({ open, onClose, data }: { open: boolean; onClose: () =>
     >
       <div className="space-y-5 pt-1">
         <fieldset>
-          <legend className="label">태그 — 제목에 걸리면 &lsquo;내 관심사&rsquo;, 본문에만 걸리면 &lsquo;관련 있음&rsquo;</legend>
+          <legend className="label">
+            태그 — 여러 개 고를 수 있습니다 · 제목에 걸리면 &lsquo;내 관심사&rsquo;, 본문에만 걸리면 &lsquo;관련 있음&rsquo;
+            {tags.length > 0 && <span className="ml-1 font-semibold text-primary">({tags.length}개 선택)</span>}
+          </legend>
           <div className="flex flex-wrap gap-2">
             {(data?.tags ?? []).map((t) => {
               const on = tags.includes(t.key);
               return (
-                <button key={t.key} type="button" title={`${t.words.join(", ")} …`} aria-pressed={on} onClick={() => setTags(on ? tags.filter((x) => x !== t.key) : [...tags, t.key])} className={`btn btn-sm ${on ? "border-primary bg-primary-soft text-primary" : ""}`}>
+                <button key={t.key} type="button" title={`${t.words.join(", ")} …`} aria-pressed={on} onClick={() => setTags((cur) => (cur.includes(t.key) ? cur.filter((x) => x !== t.key) : [...cur, t.key]))} className={`btn btn-sm ${on ? "border-primary bg-primary-soft font-semibold text-primary" : ""}`}>
+                  {on && <Check aria-hidden />}
                   {t.key}
                 </button>
               );
@@ -809,8 +845,8 @@ function InterestsModal({ open, onClose, data }: { open: boolean; onClose: () =>
           </div>
         </fieldset>
         {[
-          { label: "키워드 — 제목·본문 어디든 걸리면 '내 관심사' (최대 20)", list: keywords, set: setKeywords, v: kw, setV: setKw, ph: "예: 반도체" },
-          { label: "제외 — 걸리면 무조건 '관심 밖'", list: excludes, set: setExcludes, v: ex, setV: setEx, ph: "예: 대학원생" },
+          { label: "키워드 — 제목·본문 어디든 걸리면 '내 관심사' (여러 개, 최대 20)", list: keywords, set: setKeywords, v: kw, setV: setKw, ph: "예: 반도체, 해커톤" },
+          { label: "제외 — 걸리면 무조건 '관심 밖' (여러 개, 최대 20)", list: excludes, set: setExcludes, v: ex, setV: setEx, ph: "예: 대학원생" },
         ].map((f) => (
           <div key={f.label}>
             <p className="label">{f.label}</p>
@@ -823,11 +859,15 @@ function InterestsModal({ open, onClose, data }: { open: boolean; onClose: () =>
                   add(f.v, f.list, f.set, () => f.setV(""));
                 }}
               >
-                <input className="field field-sm w-32" value={f.v} onChange={(e) => f.setV(e.target.value)} placeholder={f.ph} aria-label={f.label} />
+                <input className="field field-sm w-40" value={f.v} onChange={(e) => f.setV(e.target.value)} placeholder={f.ph} aria-label={f.label} />
+                <button type="submit" className="btn btn-sm" disabled={!f.v.trim()}>
+                  추가
+                </button>
               </form>
             </div>
           </div>
         ))}
+        <p className="hint">쉼표로 여러 개를 한 번에 넣을 수 있습니다(예: 반도체, 해커톤). 칸에 적어 두고 &lsquo;추가&rsquo;를 안 눌러도 저장할 때 같이 넣습니다.</p>
         <p className="hint">공백·대소문자는 무시하고, 영문 세 글자 이하(AI·SW)는 앞에 영문이 붙으면 걸리지 않습니다(RAIN 의 AI). 관심사는 내 프로필에 저장되고 이 PC 밖으로 나가지 않습니다.</p>
       </div>
     </Modal>
@@ -873,7 +913,7 @@ function MaterialsModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
             disabled={!m}
             onClick={async () => {
               if (!m) return;
-              await api.putOpportunityMaterials({ careerGoal: m.careerGoal, activities: m.activities, skills: m.skills, highlights: m.highlights });
+              await api.putOpportunityMaterials({ careerGoal: m.careerGoal, activities: m.activities, skills: m.skills, highlights: m.highlights, basic: m.basic });
               toast("저장했습니다 — 다음 초안부터 쓰입니다", { tone: "success" });
               onClose();
               onSaved();
@@ -886,6 +926,14 @@ function MaterialsModal({ open, onClose, onSaved }: { open: boolean; onClose: ()
     >
       <div className="space-y-4 pt-1">
         <p className="hint">한 번 적어 두면 이후 초안에 다시 쓰입니다(이미 만든 초안은 그대로). 적은 것만 근거로 쓰고, 없는 경험은 지어내지 않고 빈칸으로 남깁니다. 장학 초안 재료와 따로 저장되고 따로 지울 수 있습니다.</p>
+        {m && (
+          <DraftBasicFields
+            idPrefix="act-mat-basic"
+            value={m.basic}
+            onChange={(basic) => setM({ ...m, basic })}
+            fromNote={m.basicFrom === "scholarship" ? "장학 초안 재료에 적어 둔 기본 정보를 불러왔습니다." : m.basicFrom === "profile" ? "학과·학년은 프로필에서 불러왔습니다." : null}
+          />
+        )}
         {m?.from === "scholarship" && <p className="text-[12px] text-faint">장학 초안 재료를 불러왔습니다 — 저장하면 대외활동 초안에 쓰입니다.</p>}
         {m?.from === "profile" && <p className="text-[12px] text-faint">프로필에 적어 둔 초안 재료를 불러왔습니다.</p>}
         {fields.map((f) => (

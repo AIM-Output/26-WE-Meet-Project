@@ -13,7 +13,8 @@
     GET    /api/opportunities/sources                  원천 — F11 과 같은 목록(장학 전용 원천 제외) · 내 학과와 관련 여부 · 켜짐
     PATCH  /api/opportunities/sources/{key}            {enabled: true|false|null(기본값으로)}
     POST   /api/opportunities/sync                     지금 수집 {sources?}
-    GET|PUT|DELETE /api/opportunities/materials        초안 재료(진로·활동·보유 역량·강조점) — 비어 있으면 장학 초안 재료를 불러온다
+    GET|PUT|DELETE /api/opportunities/materials        초안 재료(기본 정보 basic · 진로·활동·보유 역량·강조점) — 비어 있으면 장학 초안 재료를
+                                                       불러온다. 기본 정보(이름·학번·연락처 …)는 LLM 에 보내지 않는다
 
 관심사(태그·키워드·제외어)는 C2 프로필의 interests 칸 — 화면이 PATCH /api/profile 로 저장하면 프로필 updatedAt 이 바뀌어 다시 부른다.
 의존성: fastapi·pydantic + 표준 라이브러리. 수집(requests·bs4)은 runner 가 자식 프로세스로 띄운다.
@@ -65,11 +66,22 @@ class SyncIn(BaseModel):
     sources: Optional[list[str]] = None
 
 
+class BasicIn(BaseModel):
+    """초안 기본 정보 — 이 PC 의 초안 재료에만 둔다(프로필·LLM 에는 가지 않는다, F11 basicinfo)."""
+    name: str = Field(default="", max_length=40)
+    studentId: str = Field(default="", max_length=20)
+    department: str = Field(default="", max_length=80)
+    grade: str = Field(default="", max_length=10)
+    phone: str = Field(default="", max_length=30)
+    email: str = Field(default="", max_length=80)
+
+
 class MaterialsIn(BaseModel):
     careerGoal: str = Field(default="", max_length=2000)
     activities: str = Field(default="", max_length=2000)
     skills: str = Field(default="", max_length=2000)
     highlights: str = Field(default="", max_length=2000)
+    basic: Optional[BasicIn] = None
 
 
 _deliver_cache: dict = {"at": 0.0, "stamp": None}
@@ -123,7 +135,8 @@ def touch() -> None:
 
 
 def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = None, remove_event: Optional[RemoveEvent] = None,
-                 shared_materials: Optional[Shared] = None) -> APIRouter:
+                 shared_materials: Optional[Shared] = None, shared_basic: Optional[Shared] = None) -> APIRouter:
+    """shared_materials = 장학(F11) 초안 재료 전체(대외활동 재료가 비어 있을 때) · shared_basic = 장학 재료의 기본 정보(기본 정보 칸이 비어 있을 때)."""
     r = APIRouter(prefix="/api/opportunities", tags=["F12 대외활동"])
 
     def _404(nid: str):
@@ -161,7 +174,7 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
             if not mats["exists"] and not body.borrowFrom:
                 raise HTTPException(409, "needsMaterials")
             try:
-                return service.make_draft(con, nid, profile, body.borrowFrom, add_event=add_event)
+                return service.make_draft(con, nid, profile, body.borrowFrom, add_event=add_event, other_basic=shared_basic)
             except service.NotFound:
                 _404(nid)
             except service.Invalid as e:
@@ -238,18 +251,18 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
     @r.get("/materials")
     def get_materials() -> dict:
         with store.connect() as con:
-            return service.materials(con, get_profile(), shared_materials)
+            return service.materials(con, get_profile(), shared_materials, shared_basic)
 
     @r.put("/materials")
     def put_materials(body: MaterialsIn) -> dict:
         with store.connect() as con:
-            return service.put_materials(con, body.model_dump())
+            return service.put_materials(con, body.model_dump(exclude_unset=True), get_profile(), shared_basic)
 
     @r.delete("/materials")
     def delete_materials() -> dict:
         with store.connect() as con:
             service.delete_materials(con)
-            return service.materials(con, None)
+            return service.materials(con, get_profile(), shared_materials, shared_basic)
 
     return r
 

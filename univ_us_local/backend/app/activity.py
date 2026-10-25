@@ -4,7 +4,8 @@
   - 라우터(/api/opportunities*)를 include 하고,
   - 등급 재료로 C2 프로필(관심사 interests · 소속 · 학년)을 넘기고,
   - 담기·'캘린더에 넣기 · 할 일로 보내기'를 C1 내 일정·할 일로 만들고(출처 act:<id>, 담기를 풀면 그 일정을 지운다),
-  - 초안 재료가 비어 있으면 F11 장학 초안 재료를 불러오게 넘기고(같은 사람이 두 번 적지 않게),
+  - 초안 재료가 비어 있으면 F11 장학 초안 재료를, 기본 정보(이름·학번·소속 …)가 비어 있으면 장학 쪽 기본 정보를 불러오게 넘기고
+    (같은 사람이 두 번 적지 않게 — 장학 쪽도 반대로 대외활동의 기본 정보를 빌린다, scholarship._activity_basic),
   - 알림을 대시보드 알림 센터(F1 notifications, kind=opportunity)에 넣고, /api/status 에 타일 숫자를 싣는다.
 F12 쪽 모듈은 표준 라이브러리 + fastapi 만 쓰므로 더 설치할 것이 없다. 수집(requests·bs4)은 자식 프로세스(`-m activity sync`).
 
@@ -66,6 +67,15 @@ def _shared_materials() -> Optional[dict]:
     return m if m.get("exists") else None
 
 
+def _scholarship_basic() -> Optional[dict]:
+    """F11 장학 초안 재료의 기본 정보(이름·학번·소속 …) — 대외활동 재료의 기본 정보가 비어 있을 때 미리 채운다."""
+    if not scholarship.f11:
+        return None
+    from scholarship import service as f11service, store as f11store   # type: ignore[import-not-found]
+    with f11store.connect() as con:
+        return f11service.saved_basic(con)
+
+
 def _push(nid: str, ref_id: str, title: str, body: str, href: Optional[str], upsert: bool = False) -> None:
     try:
         from bachelor import notify as f1notify, store as f1store   # type: ignore[import-not-found]
@@ -77,7 +87,8 @@ def _push(nid: str, ref_id: str, title: str, body: str, href: Optional[str], ups
 
 def router():
     # C1 일정 만들기는 장학과 같은 함수(출처가 같으면 새로 만들지 않는다)를 쓴다
-    return f12.build_router(get_profile, scholarship._add_event, _remove_event, _shared_materials) if f12 else None
+    return (f12.build_router(get_profile, scholarship._add_event, _remove_event, _shared_materials, _scholarship_basic)
+            if f12 else None)
 
 
 def touch() -> None:

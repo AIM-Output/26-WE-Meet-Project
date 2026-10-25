@@ -16,6 +16,7 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
 ├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11·F12 가 같이 씀)
 ├── C3_Login_agent/           C3 학교(SSO) 자동 로그인 — F6·C2·F2 가 같이 씀 · 자동 로그인 정보(DPAPI/키체인)
+├── C4_Briefing_agent/        C4 브리핑 (요구사항 F10) — 모든 기능의 오늘 할 것·임박 마감·새 알림을 모아 하루 한 번 스냅샷
 ├── F1_Bachelor_agent/        F1 학사일정 자동 등록·알림 (학교 공개 페이지 수집 — 로그인 불필요)
 ├── F2_Graduation_agent/      F2 졸업요건·학점 트래커
 ├── F3_Attendance_agent/      F3 출결·학사경고 예방
@@ -182,6 +183,7 @@ npx tauri build                        # Windows: src-tauri/target/release/bundl
 | [C1_Calendar_agent/README.md](C1_Calendar_agent/README.md) | 서비스 캘린더 — `/api/events` 합치기 규칙·내 일정·할 일 저장 |
 | [C2_Profile_agent/README.md](C2_Profile_agent/README.md) | 내 프로필 저장 규칙·학과 목록(교육과정검색)·학사정보시스템 가져오기·API |
 | [C3_Login_agent/README.md](C3_Login_agent/README.md) | 학교 SSO 자동 로그인 — 신뢰 기기·재인증 순서·자동 로그인 정보·다른 기능이 빌려 쓰는 법 |
+| [C4_Briefing_agent/README.md](C4_Briefing_agent/README.md) | 브리핑 — 섹션별로 무엇을 어떤 규칙으로 모으는지·정시/놓친 브리핑·수집 기다리기·API |
 | [F1_Bachelor_agent/README.md](F1_Bachelor_agent/README.md) | 학사일정 수집 원천·규칙·매일 08:00 자동 수집 |
 | [F2_Graduation_agent/README.md](F2_Graduation_agent/README.md) | 졸업요건 계산 규칙·기본 룰셋과 근거·기이수성적 가져오기·API |
 | [F3_Attendance_agent/README.md](F3_Attendance_agent/README.md) | 출결 계산 규칙·시간표 자동 가져오기·자동 휴강·API |

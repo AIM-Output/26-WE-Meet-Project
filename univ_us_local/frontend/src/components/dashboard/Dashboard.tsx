@@ -20,7 +20,7 @@ import { api } from "@/lib/api";
 import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
 import { readStore, writeStore } from "@/lib/storage";
 import { useAcademic } from "@/lib/useAcademic";
-import { composeBriefing } from "@/lib/demo";
+import { todayGlance } from "@/lib/briefing";
 import type { UserEventInput } from "@/lib/types";
 import { addDays, parseLocal, toDateStr, toLocalIso, WEEKDAY_KO } from "@/lib/dates";
 
@@ -86,7 +86,8 @@ export default function Dashboard() {
   }, []);
   useEffect(() => writeStore("calendar", { view, filter }), [view, filter]);
 
-  const briefing = useMemo(() => (new Date().getHours() >= 8 ? composeBriefing(events, status?.priority?.top) : null), [events, status?.priority?.top]);
+  // 오늘 한눈에 — 지금 캘린더 기준(브리핑 스냅샷과 따로). 브리핑 카드는 서버(C4)가 만든 것을 그대로 그린다.
+  const glance = useMemo(() => todayGlance(events), [events]);
 
   const calEvents = useMemo(() => {
     // 수업 회차(F3 class)는 한 주에 10개 넘게 반복된다 — 월·학기 격자에서는 마감이 '+N개'로 밀리므로 주·목록 보기에서만 그린다
@@ -137,7 +138,6 @@ export default function Dashboard() {
   );
 
   const today = new Date();
-  const todayCount = briefing ? briefing.events.length : 0;
   const semester = view === "semester";
 
   return (
@@ -154,8 +154,8 @@ export default function Dashboard() {
         </div>
         <dl className="bezel flex items-stretch divide-x divide-border p-0" aria-label="오늘 한눈에">
           {[
-            { label: "오늘 일정", value: todayCount },
-            { label: "3일 안 마감", value: briefing?.deadlines.length ?? 0 },
+            { label: "오늘 일정", value: glance.today },
+            { label: "3일 안 마감", value: glance.soon },
             ...(status ? [{ label: "과목", value: status.counts.courses }] : []),
           ].map((s) => (
             <div key={s.label} className="flex min-w-[88px] flex-col justify-center px-4 py-2.5 md:min-w-[104px] md:px-5">
@@ -167,7 +167,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mb-5">
-        <BriefingCard b={briefing} />
+        <BriefingCard />
       </div>
 
       <div
