@@ -51,6 +51,8 @@ import type {
 import type { PriorityOverview, PrioritySettingsPatch, PrioritySettingsView } from "./priority";
 import type { AvailabilitySettings, AvailabilityView, PlacementPreview, RegisterResult, SavedBlock } from "./placement";
 import type { MaterialDetail, MaterialItem, MaterialKind, MaterialsOverview, MaterialsStatus, MaterialScan } from "./materials";
+import type { SchDetail, SchHistory, SchMaterials, SchOverview, SchProgress, SchSource, SchSources, SchSync } from "./scholarships";
+import type { ActDetail, ActGrade, ActHistory, ActMaterials, ActOverview, ActProgress, ActSources, ActSync } from "./activities";
 import type { DeptEntry, ImportState, JobState, MasterSummary, ProfileDoc, ProfilePatch } from "./profile";
 import type { AcademicSchedule, AcademicSync, CalEvent, Course, NotificationList, SourceRowApi, SourcesResponse, Status, SyncState, UserEventInput } from "./types";
 
@@ -377,4 +379,46 @@ export const api = {
   departments: () => req<MasterSummary & { entries: DeptEntry[] }>("/master/departments"),
   syncDepartments: () => req<JobState>("/master/departments/sync", { method: "POST" }),
   masterStatus: () => req<MasterSummary & { sync: JobState & { result: { colleges: number; count: number; year: number } | null } }>("/master/status"),
+
+  // F11 장학 (Frontend-Route 16절) — 판정은 서버가 부를 때마다 지금 프로필로 계산한다. 제출은 하지 않는다.
+  scholarships: () => req<SchOverview>("/scholarships"),
+  scholarship: (id: string) => req<SchDetail>(`/scholarships/items/${enc(id)}`),
+  /** verdict: 해당/비해당으로 뒤집기(null = 되돌리기) · progress: 진행 상태(null = 지우기) */
+  patchScholarship: (
+    id: string,
+    body: { verdict?: "eligible" | "ineligible" | null; reason?: string; progress?: SchProgress | null; note?: string; amount?: string; askedApplied?: boolean },
+  ) => req<SchDetail>(`/scholarships/items/${enc(id)}`, json("PATCH", body)),
+  /** 재료가 아직 없으면 409 needsMaterials — 화면이 재료 카드를 먼저 띄운다 */
+  makeScholarshipDraft: (id: string, borrowFrom?: string) => req<SchDetail>(`/scholarships/items/${enc(id)}/draft`, json("POST", { borrowFrom })),
+  saveScholarshipDraft: (id: string, body: string) => req<SchDetail>(`/scholarships/items/${enc(id)}/draft`, json("PUT", { body })),
+  deleteScholarshipDraft: (id: string) => req<SchDetail>(`/scholarships/items/${enc(id)}/draft`, { method: "DELETE" }),
+  scholarshipToCalendar: (id: string) => req<SchDetail>(`/scholarships/items/${enc(id)}/calendar`, { method: "POST" }),
+  scholarshipToTodo: (id: string, index: number) => req<SchDetail>(`/scholarships/items/${enc(id)}/todos`, json("POST", { index })),
+  scholarshipHistory: () => req<SchHistory>("/scholarships/history"),
+  scholarshipSources: () => req<SchSources>("/scholarships/sources"),
+  /** enabled: null = 기본값(내 학과와 관련 있으면 켬)으로 */
+  patchScholarshipSource: (key: string, enabled: boolean | null) => req<SchSource>(`/scholarships/sources/${enc(key)}`, json("PATCH", { enabled })),
+  syncScholarships: (sources?: string[]) => req<SchSync>("/scholarships/sync", json("POST", { sources })),
+  scholarshipMaterials: () => req<SchMaterials>("/scholarships/materials"),
+  putScholarshipMaterials: (body: Omit<SchMaterials, "exists" | "updatedAt" | "fromProfile">) => req<SchMaterials>("/scholarships/materials", json("PUT", body)),
+  deleteScholarshipMaterials: () => req<SchMaterials>("/scholarships/materials", { method: "DELETE" }),
+
+  // F12 대외활동 (Frontend-Route 17절) — 원천은 F11 과 같고 장학 외 공지를 관심사로 가른다. 관심사는 C2 프로필(patchProfile {interests}).
+  opportunities: () => req<ActOverview>("/opportunities"),
+  opportunity: (id: string) => req<ActDetail>(`/opportunities/items/${enc(id)}`),
+  /** grade: 내 관심사/관심 밖으로 뒤집기(null = 되돌리기) · saved: 담기(마감 → 캘린더) · progress: 진행 상태(null = 지우기) */
+  patchOpportunity: (id: string, body: { grade?: Exclude<ActGrade, "related"> | null; saved?: boolean; progress?: ActProgress | null; note?: string; askedApplied?: boolean }) =>
+    req<ActDetail>(`/opportunities/items/${enc(id)}`, json("PATCH", body)),
+  /** 재료가 아직 없으면 409 needsMaterials — 화면이 재료 카드를 먼저 띄운다 */
+  makeOpportunityDraft: (id: string, borrowFrom?: string) => req<ActDetail>(`/opportunities/items/${enc(id)}/draft`, json("POST", { borrowFrom })),
+  saveOpportunityDraft: (id: string, body: string) => req<ActDetail>(`/opportunities/items/${enc(id)}/draft`, json("PUT", { body })),
+  opportunityToCalendar: (id: string) => req<ActDetail>(`/opportunities/items/${enc(id)}/calendar`, { method: "POST" }),
+  opportunityToTodo: (id: string, index: number) => req<ActDetail>(`/opportunities/items/${enc(id)}/todos`, json("POST", { index })),
+  opportunityHistory: () => req<ActHistory>("/opportunities/history"),
+  opportunitySources: () => req<ActSources>("/opportunities/sources"),
+  patchOpportunitySource: (key: string, enabled: boolean | null) => req<SchSource>(`/opportunities/sources/${enc(key)}`, json("PATCH", { enabled })),
+  syncOpportunities: (sources?: string[]) => req<ActSync>("/opportunities/sync", json("POST", { sources })),
+  opportunityMaterials: () => req<ActMaterials>("/opportunities/materials"),
+  putOpportunityMaterials: (body: Omit<ActMaterials, "exists" | "updatedAt" | "from">) => req<ActMaterials>("/opportunities/materials", json("PUT", body)),
+  deleteOpportunityMaterials: () => req<ActMaterials>("/opportunities/materials", { method: "DELETE" }),
 };

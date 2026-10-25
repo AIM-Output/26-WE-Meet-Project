@@ -6,7 +6,7 @@
 
 패키지 이름으로 기능 폴더를 찾아 그 폴더에서 돌린다 (-m 은 현재 폴더를 import 경로에 둔다):
     calendar_core(C1) · student(C2) · login(C3) · bachelor(F1) · graduation(F2) · attendance(F3) · textbook(F4)
-    exams(F5) · eclass(F6) · tasks(F7) · placement(F8)
+    exams(F5) · eclass(F6) · tasks(F7) · placement(F8) · scholarship(F11) · activity(F12)
 데이터 폴더는 desktop.py 와 같은 규칙(C0 osenv.appdata.apply)으로 환경변수에 넣는다. 개발 데이터는 예약 실행을 끈다(F1_TASKS·F6_TASKS=off).
 개발 데이터 채우기: C0_Platform_agent 에서 `python -m osenv copy-data --to ../desktop/.dev-data` (설치된 앱 데이터를 복사).
 """

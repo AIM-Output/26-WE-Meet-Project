@@ -147,7 +147,7 @@ def self_check() -> int:
     import importlib
     import tempfile
     import traceback
-    os.environ.update(F1_TASKS="off", F6_TASKS="off", UNIVUS_NO_BROWSER_INSTALL="1")
+    os.environ.update(F1_TASKS="off", F6_TASKS="off", F11_AUTOSYNC="off", F12_AUTOSYNC="off", UNIVUS_NO_BROWSER_INSTALL="1")
     appdata.apply(Path(tempfile.mkdtemp(prefix="univus-check-")))
     roots = [d for d in sorted(BUNDLE.iterdir()) if d.is_dir() and (d.name[:1] in "CF") and d.name.endswith("_agent")]
     roots.append(BACKEND_DIR)
@@ -177,6 +177,8 @@ def serve(a: argparse.Namespace) -> int:
         # 개발 모드는 설치된 앱과 같은 작업 이름(UnivUs-F1-…·UnivUs-F6-…)을 쓰므로 예약 실행을 건드리지 않는다
         os.environ.setdefault("F1_TASKS", "off")
         os.environ.setdefault("F6_TASKS", "off")
+        os.environ.setdefault("F11_AUTOSYNC", "off")     # 장학 06·18시 자동 수집도 개발 모드에서는 끈다 ('지금 수집'은 된다)
+        os.environ.setdefault("F12_AUTOSYNC", "off")     # 대외활동도 같다
     # 묶인 앱은 Tauri 가 stderr 를 버리므로 기본으로 앱 데이터 폴더/logs/backend.log 에 쓴다
     log = Path(a.log) if a.log else (root / "logs" / "backend.log" if FROZEN else None)
     if log:

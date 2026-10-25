@@ -9,6 +9,8 @@ import type { PriorityStatus } from "./priority";
 import type { PlacementStatus, StudyProps } from "./placement";
 import type { GraduationSummary } from "./graduation";
 import type { MaterialsStatus } from "./materials";
+import type { ScholarshipStatus } from "./scholarships";
+import type { ActivityStatus } from "./activities";
 
 export type { ClassProps } from "./attendance";
 export type { StudyProps } from "./placement";
@@ -171,6 +173,8 @@ export interface Status {
   exams?: ExamsStatus; // F5 — 오늘 분량 · 다가오는 시험 · 확인 필요 · 밀린 계획 · updatedAt
   priority?: PriorityStatus; // F7 — 지금 해야 함 · 합계 · 놓친 마감 · 상위 3건
   placement?: PlacementStatus; // F8 — 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt
+  scholarship?: ScholarshipStatus; // F11 — 해당 · 확인 필요 · 마감 임박 · 수집 상태 · updatedAt
+  activity?: ActivityStatus; // F12 — 내 관심사 · 관련 있음 · 담은 것 · 마감 임박 · 수집 상태 · updatedAt
 }
 
 /* ---------------------------------------------------------------- F1 학사 원천·수집 */
@@ -274,7 +278,7 @@ export interface SourcesResponse {
 
 export interface AppNotification {
   id: string;
-  kind: "academic" | "change" | "system" | "deadline" | "briefing" | "opportunity" | "attendance" | "exam" | "eclass";
+  kind: "academic" | "change" | "system" | "deadline" | "briefing" | "opportunity" | "scholarship" | "attendance" | "exam" | "eclass";
   refId: string | null;
   title: string;
   body: string;

@@ -3,14 +3,14 @@
 import {
   BookOpen,
   ClipboardList,
-  Gift,
   GraduationCap,
+  HandCoins,
   Landmark,
   MessageCircle,
   Sun,
   Target,
+  Trophy,
   UserCheck,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,8 +29,10 @@ export const FEATURES: Feature[] = [
   { key: "attendance", label: "출결", href: "/attendance", icon: UserCheck, fid: "F3" },
   { key: "courses", label: "강의자료", href: "/courses", icon: BookOpen, fid: "F4" },
   { key: "exams", label: "시험·발표", href: "/exams", icon: Target, fid: "F5" },
-  { key: "opportunities", label: "기회", href: "/opportunities", icon: Gift, fid: "F11~13" },
-  { key: "team", label: "팀플", href: "/team", icon: Users, fid: "F16" },
+  // 2026-10-09 '기회'(F11~13 한 화면)를 나눴다 — 장학(F11)은 /scholarships, 대외활동·사업단(F12·F13)은 /opportunities.
+  // 팀플(F16, /team) 타일 자리에 대외활동을 둔다(10칸 배치 유지). /team 화면은 남아 있고 타일만 빠졌다.
+  { key: "scholarships", label: "장학", href: "/scholarships", icon: HandCoins, fid: "F11" },
+  { key: "opportunities", label: "대외활동", href: "/opportunities", icon: Trophy, fid: "F12·F13" },
   { key: "briefing", label: "브리핑", href: "/briefing", icon: Sun, fid: "F10" },
   { key: "chat", label: "대화", href: "/chat", icon: MessageCircle, fid: "F9" },
 ];

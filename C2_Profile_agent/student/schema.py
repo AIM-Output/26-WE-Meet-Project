@@ -79,10 +79,33 @@ def _flags(v: Any) -> dict:
     return {k: bool(x) for k, x in v.items() if x}
 
 
-def _interests(v: Any) -> list:
-    if not isinstance(v, list) or len(v) > 30:
-        raise Invalid("관심사는 30개 이내의 목록입니다")
-    return [str(x).strip()[:30] for x in v if str(x).strip()]
+INTEREST_KEYS = ("tags", "keywords", "exclude")
+
+
+def _interests(v: Any) -> dict:
+    """F12 관심사 — {tags: 태그, keywords: 자유 키워드, exclude: 제외 키워드} (요구사항정의서 F12-R10~R13).
+    예전 모양(글자 목록)도 받아 키워드로 둔다. 어떤 태그가 있는지는 F12(directory/interests.json)가 안다 — 여기서는 모양만 본다.
+    키워드는 두 글자 이상·30자 이내·각 20개까지 (F12 8절 '1글자 저장 거부', F12-R11)."""
+    if isinstance(v, list):
+        v = {"keywords": v}
+    if not isinstance(v, dict) or any(k not in INTEREST_KEYS for k in v):
+        raise Invalid("관심사는 {tags, keywords, exclude} 입니다")
+    out: dict[str, list] = {}
+    for k in INTEREST_KEYS:
+        xs = v.get(k) or []
+        if not isinstance(xs, list) or len(xs) > 20:
+            raise Invalid(f"{k} 는 20개 이내의 목록입니다")
+        clean: list[str] = []
+        for x in xs:
+            s = " ".join(str(x).split())
+            if len(s) < 2:
+                raise Invalid(f"키워드는 두 글자 이상이어야 합니다: {s!r}")
+            if len(s) > 30:
+                raise Invalid(f"키워드는 30자 이내로 적어 주세요: {s[:10]}…")
+            if s not in clean:
+                clean.append(s)
+        out[k] = clean
+    return out
 
 
 def _draft(v: Any) -> dict:

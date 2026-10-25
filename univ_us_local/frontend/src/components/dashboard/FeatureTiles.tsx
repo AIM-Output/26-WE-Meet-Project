@@ -7,7 +7,6 @@ import { FEATURES } from "@/lib/features";
 import { useAssignments } from "@/lib/useAssignments";
 import { useAcademic } from "@/lib/useAcademic";
 import { isOpen } from "@/lib/priority";
-import { demoOpportunities, demoTeam } from "@/lib/demo";
 import { useAppData } from "@/components/app/AppData";
 import { hm } from "@/lib/exams";
 
@@ -31,6 +30,8 @@ export default function FeatureTiles() {
   const attd = status?.attendance;
   const mats = status?.materials;
   const exams = status?.exams;
+  const sch = status?.scholarship;
+  const act = status?.activity;
   const feedUnread = status?.eclass?.feed?.unread ?? 0; // E클래스 새 공지·자료 (안 읽음)
 
   const data = useMemo<Record<string, TileData>>(() => {
@@ -38,7 +39,6 @@ export default function FeatureTiles() {
     const soon = openList.filter((a) => a.remainingHours !== null && a.remainingHours >= 0 && a.remainingHours <= 72).length;
     const urgent = openList.filter((a) => a.group === "now").length; // F7 '지금 해야 함' (서버 계산)
     const risky = attd?.risky ?? [];
-    const eligible = demoOpportunities.filter((o) => o.verdict === "해당").length;
     return {
       academic: reviewCount
         ? { value: `확인 필요 ${reviewCount}건`, sub: "공지에서 찾은 일정", tone: "warn" }
@@ -100,12 +100,30 @@ export default function FeatureTiles() {
               : exams.nextExam
                 ? { value: exams.nextExam.ddayLabel, sub: `${exams.nextExam.course} ${exams.nextExam.typeLabel}` }
                 : { value: "없음", sub: exams.eclassAvailable ? "등록된 시험이 없습니다" : "e클래스 동기화가 먼저입니다" },
-      opportunities: { value: `해당 ${eligible}건`, sub: "장학 · 대외활동", tone: eligible ? "ok" : "default", demo: true },
-      team: { value: "투표 중", sub: `${demoTeam.name} · 내일 18:00 마감`, demo: true },
+      // F11-S02 — 해당이 먼저, 그다음 확인 필요. 마감 임박(D-3)이 있으면 주황
+      scholarships: !sch?.available
+        ? { value: "—", sub: "장학 기능을 불러오지 못했습니다" }
+        : !sch.lastOkAt
+          ? { value: "수집 전", sub: sch.sync?.running ? "장학 공지를 모으는 중…" : "학교·부서·사업단·내 학과 장학 공지" }
+          : sch.eligible
+            ? { value: `해당 ${sch.eligible}건`, sub: `${sch.review ? `확인 필요 ${sch.review}건` : "확인 필요 없음"}${sch.soon ? ` · 마감 임박 ${sch.soon}건` : ""}`, tone: sch.soon ? "warn" : "ok" }
+            : sch.review
+              ? { value: `확인 필요 ${sch.review}건`, sub: sch.next ? `가장 가까운 마감 D-${sch.next.daysLeft} · ${sch.next.title}` : "조건을 하나씩 확인하세요", tone: sch.soon ? "warn" : "default" }
+              : { value: "없음", sub: sch.profileExists ? "지금 신청할 수 있는 장학이 없습니다" : "프로필을 넣으면 맞는 장학을 고릅니다" },
+      // F12-S02 — 내 관심사가 먼저, 담은 것의 마감 임박(D-3)이 있으면 주황. 관심사를 안 골랐으면 모집 중 건수
+      opportunities: !act?.available
+        ? { value: "—", sub: "대외활동 기능을 불러오지 못했습니다" }
+        : !act.lastOkAt
+          ? { value: "수집 전", sub: act.sync?.running ? "대외활동 공지를 모으는 중…" : "프로그램 · 공모전 · 취업 · 기자재 대여" }
+          : !act.interestsSet
+            ? { value: `모집 중 ${act.open ?? 0}건`, sub: "관심사를 고르면 맞는 것만 골라 드립니다", tone: "warn" }
+            : act.match
+              ? { value: `내 관심사 ${act.match}건`, sub: act.soon ? `담은 것 마감 임박 ${act.soon}건` : act.next ? `가장 가까운 마감 D-${act.next.daysLeft} · ${act.next.title}` : `관련 있음 ${act.related ?? 0}건`, tone: act.soon ? "warn" : "ok" }
+              : { value: "없음", sub: `지금 관심사에 맞는 기회가 없습니다${act.related ? ` · 관련 있음 ${act.related}건` : ""}` },
       briefing: { value: "오늘", sub: "지난 30일 브리핑" },
       chat: { value: "물어보기", sub: "일정 등록 · 조회 · 이동", demo: true },
     };
-  }, [list, academicStatus, reviewCount, grad, attd, mats, exams, feedUnread]);
+  }, [list, academicStatus, reviewCount, grad, attd, mats, exams, sch, act, feedUnread]);
 
   return (
     <section aria-labelledby="features-title">

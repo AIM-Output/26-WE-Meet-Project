@@ -37,6 +37,8 @@ LAYOUT: dict[str, tuple[Optional[str], Optional[str]]] = {
     "F6_Eclass_agent": ("F6_DATA_DIR", "F6_STATE_DIR"),
     "F7_Task_agent": ("F7_DATA_DIR", None),
     "F8_Plan_agent": ("F8_DATA_DIR", None),
+    "F11_Scholarship_agent": ("F11_DATA_DIR", "F11_STATE_DIR"),
+    "F12_Activity_agent": ("F12_DATA_DIR", "F12_STATE_DIR"),
 }
 BROWSERS = "pw-browsers"                                   # Playwright Chromium (첫 실행 때 내려받는다)
 

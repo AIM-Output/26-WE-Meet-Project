@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, CalendarCheck, CalendarDays, CalendarMinus, CalendarPlus, Check, ExternalLink, Eye, EyeOff, Lock, LockOpen, Paperclip, Pencil, RefreshCw, SquareCheck, Target, Trash2 } from "lucide-react";
+import { BookOpen, CalendarCheck, CalendarDays, CalendarMinus, CalendarPlus, Check, ExternalLink, Eye, EyeOff, HandCoins, Lock, LockOpen, Paperclip, Pencil, RefreshCw, SquareCheck, Target, Trash2, Trophy } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Chip, CourseChip, DdayChip, StatusBadge } from "@/components/ui/Chip";
 import { Banner } from "@/components/ui/Feedback";
@@ -798,6 +798,24 @@ function UserDetail({ ev, open, onClose }: { ev: CalEvent; open: boolean; onClos
               <CalendarDays className="size-3.5" aria-hidden />
               학사 일정에서 가져옴
             </button>
+          )}
+          {p.origin?.startsWith("sch:") && (
+            <Link
+              href={`/scholarships?item=${encodeURIComponent(p.origin.slice(4).replace(/:doc\d+$/, ""))}`}
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline"
+            >
+              <HandCoins className="size-3.5" aria-hidden />
+              장학 공지에서 가져옴
+            </Link>
+          )}
+          {p.origin?.startsWith("act:") && (
+            <Link
+              href={`/opportunities?item=${encodeURIComponent(p.origin.slice(4).replace(/:doc\d+$/, ""))}`}
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline"
+            >
+              <Trophy className="size-3.5" aria-hidden />
+              대외활동 공지에서 가져옴
+            </Link>
           )}
         </div>
         <p className="text-[15px] font-semibold">{when}</p>

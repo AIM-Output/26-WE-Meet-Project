@@ -19,6 +19,13 @@ _FLAG = {"disability": "disability", "veteranFamily": "veteran_family", "multiCh
 _DRAFT = {"careerGoal": "career_goal", "activities": "activities", "hardship": "hardship"}
 
 
+def _interests(v) -> Optional[list]:
+    """C2 관심사({tags, keywords, exclude} — F12) → notice_agent 의 글자 목록(태그 + 키워드)."""
+    if isinstance(v, dict):
+        v = [*(v.get("tags") or []), *(v.get("keywords") or [])]
+    return list(v) if v else None
+
+
 def to_notice(p: dict) -> dict:
     """C2 profile(화면 모양) → notice_agent Profile 필드. 값이 없는 항목은 넣지 않는다."""
     out = {
@@ -28,7 +35,7 @@ def to_notice(p: dict) -> dict:
         "gpa": p.get("gpa"), "last_semester_gpa": p.get("lastSemesterGpa"),
         "earned_credits": p.get("earnedCredits"), "last_semester_credits": p.get("lastSemesterCredits"),
         "income_bracket": p.get("incomeBracket"), "residence_region": p.get("residenceRegion"),
-        "high_school_region": p.get("highSchoolRegion"), "interests": p.get("interests") or None,
+        "high_school_region": p.get("highSchoolRegion"), "interests": _interests(p.get("interests")),
         "flags": {_FLAG[k]: v for k, v in (p.get("flags") or {}).items()} or None,
         "draft_context": {_DRAFT[k]: v for k, v in (p.get("draftContext") or {}).items()} or None,
     }

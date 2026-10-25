@@ -10,7 +10,7 @@
 univ_us_local/
 ├── backend/            FastAPI (127.0.0.1:<빈 포트>, 개발 모드 8020) — /api + 프론트 정적 서빙
 │   ├── desktop.py      사이드카 진입점 — 앱 데이터 폴더·빈 포트·세션 쿠키·Chromium 첫 실행 내려받기 · --run-module
-│   ├── app/main.py     라우트 (courses / status / sync) + C1·F6·C3·C2·F1·F2·F3·F4·F5 라우터 include + 캘린더 소스 배선 · 앱 세션 확인
+│   ├── app/main.py     라우트 (courses / status / sync) + C1·F6·C3·C2·F1·F2·F3·F4·F5·F7·F8·F11·F12 라우터 include + 캘린더 소스 배선 · 앱 세션 확인
 │   ├── app/login_creds.py ../C3_Login_agent 의 API(login.api)를 붙인다 — 자동 로그인 정보 저장·지우기 (C3)
 │   ├── app/calendar_events.py ../C1_Calendar_agent 의 API(calendar_core.api)를 붙인다 — /api/events · 내 일정·할 일 (C1)
 │   ├── app/eclass_data.py ../F6_Eclass_agent 의 API(eclass.api)를 붙인다 — 과제 마감·수집 실행·로그인 창·마감 알림 (F6)
@@ -22,11 +22,13 @@ univ_us_local/
 │   ├── app/exams.py    ../F5_Test_agent 의 API(exams.api)를 붙인다 — 시험·학습 계획·학습 블록 (F5)
 │   ├── app/priority.py ../F7_Task_agent 의 API(tasks.api)를 붙인다 — 과제 우선순위·오늘 남은 시간 (F7)
 │   ├── app/placement.py ../F8_Plan_agent 의 API(placement.api)를 붙인다 — 낮 공강 배치·학습 블록(kind=study)·공부 캘린더의 공강 공부 (F8)
+│   ├── app/scholarship.py ../F11_Scholarship_agent 의 API(scholarship.api)를 붙인다 — 장학 판정·초안·원천·알림, 마감·서류 → C1 (F11)
+│   ├── app/activity.py ../F12_Activity_agent 의 API(activity.api)를 붙인다 — 관심사 등급·담기·초안·원천·알림, 마감·서류 → C1 (F12)
 │   ├── app/config.py   기능 폴더 경로·포트·허용 Origin·과목 색·세션 쿠키
 │   └── tests/          사이드카 세션(실행 코드·쿠키·앱 데이터 폴더) — 개발 venv 로 pytest
 ├── frontend/           Next.js 16 + Tailwind 4 + FullCalendar 7 + motion + lucide-react
 │   ├── DESIGN.md       디자인 시스템 v3 Paper & Pine (토큰·글자·치수·공용 부품 — 라이트만)
-│   ├── src/app/        라우트 17개 (Frontend-Route 2-1) — 각 page.tsx 는 Suspense 로 감싼 클라이언트 화면
+│   ├── src/app/        라우트 18개 (Frontend-Route 2-1) — 각 page.tsx 는 Suspense 로 감싼 클라이언트 화면
 │   ├── src/components/ app(헤더·공용 데이터) · ui(공용 부품) · dashboard · events(상세·새 일정 모달) · pages(기능 화면)
 │   └── src/lib/        api · useQueryState(모달=push/탭=replace) · priority·usePriority(F7, 서버 순위를 여러 부품이 나눠 씀) · demo/(예시 데이터)
 └── README.md
@@ -51,13 +53,15 @@ univ_us_local/
 | `/` | 브리핑 카드 → 3단(등록·빠른 실행·확인 필요·대화 카드 / 캘린더 월·주·목록·학기 / 먼저 할 것·할 일) → 기능 타일 10개. `?event=` 상세 · `?new=event` 새 일정 · `?place=preview` 공강 배치 | **실제**(일정·마감·학사일정·동기화 2종 · 공강 배치 F8_Plan_agent — 학습 블록 `자동` 칩, 끌어 옮기면 고정) |
 | `/assignments` | 진행 중/완료/지난 마감 · 급한 순 그룹(F7 — 놓친 마감·지금 해야 함·이번 주·나중에·마감 없음, 이유 한 줄, 오늘 남은 시간 막대) · 소요시간 편집 · 내가 체크함 · `?setup=priority` 우선순위 설정 | **실제** (F6 원장 · F7_Task_agent — 순위는 서버 계산) |
 | `/academic` | 학기 선택 · 전체/내 해당/확인 필요/숨김 · 월 묶음 · 확인 필요 카드(날짜 고쳐 승인) · 내 캘린더에 담기 | **실제** (F1_Bachelor_agent) |
-| 헤더 🔔 | 알림 팝오버 — 놓친 알림 / 최근, 같은 시각 알림 묶음, 모두 읽음 | **실제** (학사일정 알림 · 출결 경고) |
+| 헤더 🔔 | 알림 팝오버 — 놓친 알림 / 최근, 같은 시각 알림 묶음, 모두 읽음 | **실제** (학사일정 알림 · 출결 경고 · e클래스 마감 · 새 장학) |
 | `/graduation` | 요약(남은 학점·판정·판정 근거·영역별·교양 영역 조건·졸업인증) · 이수 과목(구분 지정·제외·직접 입력) · 가정 계산(내 계획) · `?area=` 포함 과목 모달 | **실제** (F2_Graduation_agent) |
 | `/onboarding` · `/settings/*` 5개 | 첫 설정 3단계 · 프로필·수집 원천·졸업요건 기준·가용 시간·알림 | **첫 설정·내 프로필·졸업요건 기준·가용 시간(F8)은 실제**(C2 — 학과 목록 625곳, 학사시스템 가져오기 / F2 — 룰셋 보기·수정·되돌리기, 교과구분 매핑, 교육과정 받기), 수집 원천의 e클래스·학사·기이수성적 행과 알림 기준 시각도 실제, 나머지 예시. 프로필이 하나도 없으면 `/` 가 `/onboarding` 으로 보낸다 |
 | `/attendance` | 과목별 현황(결석/허용 횟수 막대·남은 여유·상태·근거 줄·누적 직접 수정·회차 목록 칩 출석·결석·지각·공결·휴강, 학사일정·e클래스 공지 휴강은 자동) · 이번 주 몰아서 입력 · 시간표 설정(자동 가져오기·요일·교시·한도·지각 환산·학기·휴업일·교시 시각). 캘린더 주·목록 보기의 수업을 눌러도 출결 | **실제** (F3_Attendance_agent) |
 | `/courses` | 과목별 강의자료 — 종류(강의자료·게시판 첨부·과제 첨부·직접 추가)·주차(추정)·쪽수·상태, 파일 끌어다 추가, 앱 안에서 열기·내려받기 | **자료 탭·원문 뷰어는 실제** (F4_Textbook_agent). 요약·문제·질문 탭은 예시 (모델 정해진 뒤) |
 | `/exams` | 시험 목록(공지에서 찾은 것·확인 필요·지난 시험) + 우측 패널 3단계(옵션 → 미리보기 → 진도) · 시험 추가·수정·삭제 | **실제** (F5_Test_agent). 캘린더의 시험·학습 블록 상세, 대시보드 `오늘 공부` 타일도 같은 데이터 |
-| `/briefing` `/chat` `/opportunities` `/team` | F7~F16 기능 화면 뼈대 | 예시 |
+| `/scholarships` | 장학(공지 / 상시 장학) — 해당 · 확인 필요 · 비해당·마감 접기, 상세(조건별 대조표 + 민감정보 그 자리 입력 · 초안 · 제출 준비) · 이력 · **원천**(학교·부서·사업단·내 학과, 내 학과 관련 여부·켜고 끄기) · `?item=` `?view=` `?kind=` | **실제** (F11_Scholarship_agent, 2026-10-09) |
+| `/opportunities` | 대외활동 — 장학 외 공지를 관심사로 '내 관심사 · 관련 있음 · 관심 밖(접힘) · 마감·결과(접힘)', 분류 필터·담은 것만, 상세(왜 걸렸나 · 대상·기간·장소·혜택 · 초안 · 제출 준비) · 관심사 설정 · 이력 · **원천**(F11 과 같은 목록, 켜고 끄기는 따로) · `?tab=` `?item=` `?view=` `?cat=` `?saved=1` `?interests=1` | **실제** (F12_Activity_agent, 2026-10-10) |
+| `/briefing` `/chat` `/team` | F9·F10·F16 기능 화면 뼈대 (`/team` 은 2026-10-09 타일 없음) | 예시 |
 
 - **예시 데이터**는 `src/lib/demo/` 에 모여 있고 화면마다 "예시 데이터" 띠로 표시한다. API 가 생기면 `lib/api.ts` 에 같은 모양의 함수를 만들고 바꿔 끼운다.
 - 모달·패널은 쿼리 파라미터 + `push`(뒤로가기로 닫힘), 탭·필터는 `replace` — `lib/useQueryState.ts` 한곳에서 처리.
@@ -98,6 +102,8 @@ univ_us_local/
 | POST | `/api/placement/preview` · `/api/placement` | F8 공강 배치(낮 09~18시) — 미리보기(저장 안 함: 주간 격자·과제·할 일·공부 블록·미배치·하루 합계·공부 과목 순서·조정 제안) · 등록(미리보기 signature 가 같을 때만). 옮기기·완료·지우기·충돌·`GET/PATCH /api/settings/availability` 는 [F8_Plan_agent/README.md](../F8_Plan_agent/README.md) |
 | GET | `/api/exams?semester=` | F5 시험 — 다가오는 시험·확인 필요·지난 시험·오늘 분량. 시험 추가·수정, 계획 미리보기·등록·진도·재조정은 [F5_Test_agent/README.md](../F5_Test_agent/README.md) |
 | POST | `/api/study-plans/preview` · `/api/study-plans` | 계획 계산(저장 안 함) · 등록(학습 블록 생성). 조정안은 본문에 `apply` 를 넣어 다시 부른다 |
+| GET | `/api/scholarships` · `/api/scholarships/items/{id}` | F11 장학 — 목록(판정·진행 상태·건수·수집 상태)·상세(조건별 근거·초안). 판정 뒤집기·진행 상태·초안·캘린더·할 일·원천·재료·수집은 [F11_Scholarship_agent/README.md](../F11_Scholarship_agent/README.md) |
+| GET | `/api/opportunities` · `/api/opportunities/items/{id}` | F12 대외활동 — 목록(관심사 등급·모집 상태·진행 상태·태그 사전)·상세(등급 이유·정보·초안). 등급 뒤집기·담기·초안·캘린더·할 일·원천·재료·수집은 [F12_Activity_agent/README.md](../F12_Activity_agent/README.md) |
 
 `/api/events` 에는 학사 일정 중 **내 캘린더에 등록된 것**(자동+내 해당, 승인, 담기)이 `extendedProps.kind = "academic"` 으로 섞여 온다.
 두 주가 넘는 신청 기간은 `id#start`·`id#end` 두 점으로 오고 `extendedProps.refId` 가 원래 id 다.
@@ -130,11 +136,13 @@ univ_us_local/
 - 시험·학습 계획(F5)은 `F5_Test_agent` 의 코드·DB(`data/exams.db`). 시험은 e클래스 공지(F6 가 모아 둔 글)에서 찾고 분량은 F4 의 쪽수를 읽는다 — 둘 다 읽기만 한다. 계산은 규칙 기반이고 LLM 호출이 없다. 그 폴더가 없으면 `/api/status` 의 `exams.available=false`.
 - 과제 우선순위(F7)는 `F7_Task_agent` 의 코드 + 설정(`data/settings.json`)뿐. 과제는 F6 원장을 읽고, 오늘 남은 시간에는 C1 내 일정·F3 수업·F5 시험·학습 분량을 백엔드가 넘겨준다. 순위는 저장하지 않는다. 그 폴더가 없으면 `/api/status` 의 `priority.available=false` 이고 과제 화면은 마감 순으로 보인다.
 - 공강 학습 플랜(F8)은 `F8_Plan_agent` 의 코드·DB(`data/placement.db` — 등록된 블록) + 설정(`data/settings.json`). 수업(F3)·내 일정·할 일(C1)·학사(F1)·시험·공부 진도율(F5 `study_targets`)·과제 순위(F7)는 백엔드가 넘겨준다(읽기만). 과제·할 일 블록은 `/api/events` 에 `kind=study` 로 섞이고, **공부 블록은 전체 캘린더에 넣지 않고 F5 공부 캘린더에만** 섞인다(`exams.router(extra_blocks=placement.study_source(_busy_events))`). 저녁(19~24시)은 F5 시험 공부 계획 전용이다. 그 폴더가 없으면 `/api/status` 의 `placement.available=false`.
+- 장학(F11)은 `F11_Scholarship_agent` 의 코드·DB(`data/scholarship.db` — 공지·진행 상태·초안·원천) + 원천 목록(`directory/sources.json`). 판정 재료로 C2 프로필을 **민감정보까지** 넘기고(`student_profile.get_full_profile`), '캘린더에 넣기·할 일로 보내기'는 C1 내 일정·할 일(출처 `sch:<id>`)로 만든다. 수집은 자식 프로세스(`-m scholarship sync`) — 앱이 떠 있으면 06·18시 자동(`/api/status` 가 확인, 개발 모드 끔). 그 폴더가 없으면 `/api/status` 의 `scholarship.available=false`.
+- 대외활동(F12)은 `F12_Activity_agent` 의 코드·DB(`data/activity.db` — 공지·진행 상태·초안·원천·LLM 판단 캐시). 게시판 수집기·원천 목록은 F11 것을 import 한다(그래서 백엔드가 F11 폴더도 import 경로에 둔다). 관심사는 C2 프로필 `interests`, 담기·캘린더·할 일은 C1(출처 `act:<id>`, 담기를 풀면 그 일정을 지운다). 수집은 `-m activity sync` — 06·18시 장학 수집이 끝난 뒤, 개발 모드 끔(`F12_AUTOSYNC=off`). 초안 재료가 비면 F11 장학 초안 재료를 불러온다.
 - `data/`·`.venv/`·`node_modules/`·`frontend/out/`(빌드 결과 — 사이드카 빌드가 매번 만든다)은 커밋하지 않는다. 데이터는 앱 데이터 폴더(`%LOCALAPPDATA%\kr.univus.desktop\data` / `~/Library/Application Support/kr.univus.desktop/data`)에 기능 폴더와 같은 모양으로 있다.
 
 ## 다음 단계 (아래 Features 칸 순서)
 
-~~F7 우선순위~~(2026-10-06 `F7_Task_agent`) → ~~F8 공강 배치~~(2026-10-06 `F8_Plan_agent`) → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → F11 장학 → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
+~~F7 우선순위~~(2026-10-06 `F7_Task_agent`) → ~~F8 공강 배치~~(2026-10-06 `F8_Plan_agent`) → F9 자연어 일정 → F10 브리핑(스케줄러 내장) → F4 강의자료 → ~~F11 장학~~(2026-10-09 `F11_Scholarship_agent`) → ~~F12 대외활동~~(2026-10-10 `F12_Activity_agent`) → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
 
 ## 알아둘 것
 

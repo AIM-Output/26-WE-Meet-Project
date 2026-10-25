@@ -25,7 +25,9 @@ _open = urllib.request.build_opener(_NoRedirect).open
 
 @pytest.fixture
 def sidecar(tmp_path):
-    env = {**__import__("os").environ, "F1_TASKS": "off", "F6_TASKS": "off", "PYTHONUTF8": "1"}
+    # 예약 실행·06·18시 자동 수집은 끈다 — 켜 두면 /api/status 가 장학(F11)·대외활동(F12) 수집을 띄워 학교 사이트에 접속한다
+    env = {**__import__("os").environ, "F1_TASKS": "off", "F6_TASKS": "off", "F11_AUTOSYNC": "off", "F12_AUTOSYNC": "off",
+           "PYTHONUTF8": "1"}
     p = subprocess.Popen([sys.executable, str(BACKEND / "desktop.py"), "--data-root", str(tmp_path), "--exit-with-stdin",
                           "--no-browser-install", "--log", str(tmp_path / "logs" / "backend.log")],
                          cwd=str(BACKEND), stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8", env=env)

@@ -16,7 +16,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 REPO = Path(SPECPATH).resolve().parents[1]
 AGENTS = ["C0_Platform_agent", "C1_Calendar_agent", "C2_Profile_agent", "C3_Login_agent", "F1_Bachelor_agent",
           "F2_Graduation_agent", "F3_Attendance_agent", "F4_Textbook_agent", "F5_Test_agent", "F6_Eclass_agent",
-          "F7_Task_agent", "F8_Plan_agent"]
+          "F7_Task_agent", "F8_Plan_agent", "F11_Scholarship_agent", "F12_Activity_agent"]
 TREES = [(REPO / a, f"univus/{a}") for a in AGENTS] + [
     (REPO / "univ_us_local" / "backend" / "app", "univus/univ_us_local/backend/app"),
     (REPO / "univ_us_local" / "frontend" / "out", "univus/univ_us_local/frontend/out"),

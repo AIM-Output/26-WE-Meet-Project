@@ -37,13 +37,14 @@
 | `/exams` | `app/exams/page.tsx` | **시험** — 시험 목록 + 계획 옵션/미리보기/진도 | **신규 (F5)** | F5 |
 | `/chat` | `app/chat/page.tsx` | **대화 전체 화면** — 날짜별 내역 (대화 입력은 대시보드에도) | **신규 (F9)** | F9 |
 | `/briefing` | `app/briefing/page.tsx` | **브리핑** — 지난 30일 목록 + 본문 (오늘 것은 대시보드 카드) | **신규 (F10)** | F10 |
-| `/opportunities` | `app/opportunities/page.tsx` | **기회** — 장학 / 대외활동 / 사업단 / 이력 탭 + 관심사 설정 | **신규 (F11·F12·F13)** | F11·F12·F13 |
-| `/team` | `app/team/page.tsx` | **팀플** — 일정 조율 / 할 일 / 팀원 탭 (**서버 필요**) | **신규 (F16)** | F16 |
+| `/scholarships` | `app/scholarships/page.tsx` | **장학** — 장학(공지 / 상시 장학) / 이력 / 원천 탭 + 상세(판정·초안·제출 준비) (2026-10-09 `/opportunities` 에서 분리) | **구현됨 (F11)** | F11 |
+| `/opportunities` | `app/opportunities/page.tsx` | **대외활동** — 대외활동 / 사업단 / 이력 탭 + 관심사 설정 (2026-10-09 장학 탭을 `/scholarships` 로 내보냄) | 예시 데이터 (F12·F13) | F12·F13 |
+| `/team` | `app/team/page.tsx` | **팀플** — 일정 조율 / 할 일 / 팀원 탭 (**서버 필요**). 2026-10-09 대시보드 타일 자리를 대외활동에 내줌 — 화면은 남아 있다 | 예시 데이터 (F16) | F16 |
 | `/assignments` | `app/assignments/page.tsx` | **E클래스 › 과제·동영상** — 진행 중/완료/지난 마감 탭 + **우선순위 그룹** | **신규 (F6·F7)** | F6·F7 |
 | `/eclass/posts` | `app/eclass/posts/page.tsx` | **E클래스 › 공지·자료** — 새로 올라온 공지·자료실 글·강의자료 (2026-10-03) | **신규 (F6)** | F6 |
 | `/onboarding` | `app/onboarding/page.tsx` | **첫 설정** — 학과·입학년도·이수유형·가져오기 3단계 | **신규 (C2)** | C2 |
 | `/settings/profile` | `app/settings/profile/page.tsx` | **내 프로필** — 소속·입학년도·성적·장학용 정보 | **신규 (C2)** | **C2**·F1·F2·F11 |
-| `/settings/sources` | `app/settings/sources/page.tsx` | **수집 원천** — 원천별 상태·주기·지금 수집 | **신규 (F1)** | F1·F2·F6·F11~F13 |
+| `/settings/sources` | `app/settings/sources/page.tsx` | **수집 원천** — 원천별 상태·주기·지금 수집 (F11 은 요약 + `/scholarships?tab=sources` 링크) | **신규 (F1)** | F1·F2·F6·F11~F13 |
 | `/settings/requirements` | `app/settings/requirements/page.tsx` | **졸업요건 기준** — 룰셋 보기·수정, 교과구분 매핑 | **신규 (F2)** | F2 |
 | `/settings/availability` | `app/settings/availability/page.tsx` | **가용 시간** — 낮(공강 배치 F8): 범위·공부 채우기·점심·주말·여유·블록 길이·기간 / 저녁(시험 공부 계획 F5): 저녁 시간대. 하루 상한 없음 (2026-10-07) | **신규 (F8)** | F8·F5 |
 | `/settings/notifications` | `app/settings/notifications/page.tsx` | **알림·브리핑** — 브리핑 시각·보관, 알림 기본 시각·시점 | **신규 (F10)** | F10·F1·F6 |
@@ -2006,11 +2007,15 @@ app/settings/notifications/page.tsx (신규)
 
 요구사항은 [요구사항정의서.md](요구사항정의서.md) F11 절. 이 프로젝트에서 **돈이 걸린 유일한 화면**이다. 판정 근거와 "제출은 본인이 한다"는 사실이 화면에서 한순간도 흐려지면 안 된다.
 
+> **2026-10-09 변경 (사용자 결정)**: 장학은 `/opportunities` 의 탭이 아니라 **자기 화면 `/scholarships`** 로 나갔다(F11-D8 개정). 대외활동·사업단(F12·F13)은 `/opportunities` 에 남는다.
+> 대시보드 기능 타일은 10칸 배치를 그대로 두고 **'기회' 자리 → 장학**, **'팀플' 자리 → 대외활동**으로 바꿨다(팀플 화면 `/team` 은 남고 타일만 빠짐).
+> 아래 16-1~16-10 은 구현(2026-10-09, `F11_Scholarship_agent`)에 맞춰 고쳤다. 처음 정의의 와이어프레임은 그대로 두되 경로·파라미터·API 는 구현 기준이다.
+
 ### 16-1. 화면 흐름도
 
 ```mermaid
 flowchart TD
-    N["알림 · 해당 장학 2건"] --> L["/opportunities?tab=scholarship"]
+    N["알림 · 해당 장학 2건"] --> L["/scholarships"]
     T["대시보드 기능 타일"] --> L
     L -->|"행 클릭"| D["?item=jnu_home_scholarship:70193"]
     D --> V["판정 대조표<br/>조건 / 내 값 / 통과·미달·모름 + 근거"]
@@ -2018,6 +2023,7 @@ flowchart TD
     ASK -->|"입력"| RE["프로필 저장 → 관련 공지 재판정"]
     ASK -->|"건너뛰기"| V
     V -->|"판정이 틀렸다"| FLIP["해당으로 표시 / 관심 없음<br/>내가 바꿈 칩"]
+    L -->|"원천 탭"| SRC["/scholarships?tab=sources<br/>학교 전체 · 부서 · 사업단 · 내 단과대학·학과<br/>내 학과와 관련 여부 · 켜고 끄기"]
     D -->|"초안 만들기 (첫 회)"| MAT["재료 입력 카드<br/>진로·활동·형편·강조점"]
     MAT --> DR["초안 생성"]
     D -->|"초안 만들기 (이후)"| DR
@@ -2025,7 +2031,7 @@ flowchart TD
     DR --> EDIT["초안 편집 · 빈칸 강조"]
     EDIT -->|"승인"| AP["승인 패널<br/>신청 링크 · 서류 · 마감 · 전체 복사"]
     AP -->|"서류 → 할 일"| TODO["할 일 생성(마감 하루 전)"]
-    AP -->|"마감 → 캘린더"| CAL["kind=scholarship"]
+    AP -->|"마감 → 캘린더"| CAL["C1 내 일정 (출처 sch:id)"]
     AP -->|"신청했어요"| APPLIED["신청함"]
     APPLIED -->|"결과 입력"| RES["선정 / 탈락 → 이력 탭"]
 ```
@@ -2034,22 +2040,23 @@ flowchart TD
 
 | 경로 | 화면 |
 |---|---|
-| `/opportunities` | **장학·대외활동·사업단·이력**을 탭으로 (F11·F12·F13 공유) |
+| `/scholarships` | **장학 / 이력 / 원천** 탭 (F11 전용, 2026-10-09) |
 
 | 파라미터 | 값 | 기본값 | 히스토리 |
 |---|---|---|---|
-| `tab` | `scholarship` `activity` `program` `history` | `scholarship` | `replace` |
-| `item` | 공지 id (`jnu_home_scholarship:70193`) — 상세 패널 | — | `push` |
+| `tab` | `list` `history` `sources` | `list` | `replace` |
+| `kind` | `notice`(게시판 공지) `catalog`(상시 장학 — 교내·교외 장학금 안내) — 장학 탭 안 필터 | `notice` | `replace` |
+| `item` | 공지 id (`www:70498` · `aisw:937224` · `cat:진리장학금`) — 상세 패널 | — | `push` |
 | `view` | `match` `draft` `apply` — 상세 안 단계 | `match` | `replace` |
-| `show` | `all` — 비해당·마감까지 펼치기 | 접힘 | `replace` |
+| `show` | `all` — 비해당·마감·대상 아님까지 펼치기 | 접힘 | `replace` |
 
-> F12·F13 은 **탭만 늘린다.** 목록·상세·판정 구조를 그대로 쓴다.
+> 공지 id 는 `<게시판 사이트>:<글 번호>` — 같은 게시판을 두 원천이 읽어도(장학안내 분류 + 전체 분류) 한 건이다. 알림·캘린더 일정의 링크는 `/scholarships?item=…`.
 
 ### 16-3. 목록
 
 ```
-┌ 🎁 기회                          [장학] [대외활동] [사업단] [이력]        │
-│                                        수집: 오늘 06:00 · 카탈로그 9/21   │
+┌ 🪙 장학                     [초안 재료] [지금 수집]     [장학] [이력] [원천] │
+│ [공지 17] [상시 장학 35]                 수집 19분 전 · 상시 안내 10/09     │
 ├───────────────────────────────────────────────────────────────────────────┤
 │ 🟢 해당 2                                                                 │
 │  두을장학재단 제29기        두을장학재단   300만원   D-5   [초안 대기]     │
@@ -2063,11 +2070,13 @@ flowchart TD
 
 | 요소 | 동작 |
 |---|---|
-| 판정 배지 | `해당`(초록) `확인 필요`(노랑) `비해당`(회색) `마감`(회색 취소선) — **글자 병기** |
-| 진행 칩 | `초안 대기` `승인` `신청함` `선정` `탈락` — 있을 때만 |
-| 확인 필요 사유 | 행 오른쪽에 `소득구간 모름` 처럼 **무엇 때문인지** 한 마디 |
-| 접기 | 비해당·마감은 기본 접힘(`?show=all` 로 펼침) |
-| 수집 상태 | 헤더 오른쪽. 카탈로그는 별도 날짜 표시(주 1회) |
+| 판정 배지 | `해당`(초록) `확인 필요`(노랑) `비해당` `마감`(취소선) `대상 아님`(회색) — **글자 병기** |
+| 진행 칩 | `초안 대기` `승인·제출 예정` `신청함` `선정` `탈락` — 있을 때만 |
+| 확인 필요 사유 | 행 오른쪽 칩 — `정보 입력 필요`(민감정보를 넣으면 판정) · `조건 충족 추정`(기타 조건만 남음) · `원문 확인` |
+| 접기 | 비해당·마감·대상 아님은 기본 접힘(`?show=all` 로 펼침). 해당이 0건이면 `지금 확실히 해당하는 장학은 없습니다 — 확인 필요 N건` |
+| 공지 / 상시 장학 | 상시 장학(교내·교외 장학금 안내 표, 주 1회)은 따로 — 공지와 섞으면 매번 같은 30여 건이 위를 차지한다 |
+| 새 글 | 첫 수집(알림 기준선) 뒤 이틀 안에 처음 본 공지만 `새 글` 칩 |
+| 수집 상태 | 헤더 오른쪽 `수집 N분 전 · 상시 안내 MM/DD` + `지금 수집`. 앱이 켜져 있으면 06:00·18:00 자동 |
 
 ### 16-4. 상세 — 판정 대조표 (`view=match`)
 
@@ -2090,7 +2099,7 @@ flowchart TD
 
 | 요소 | 동작 |
 |---|---|
-| 대조표 | **조건 / 내 값 / 판정 / 근거** 4열. 근거는 원문 인용 + 쪽수, 클릭하면 원문 링크 |
+| 대조표 | **조건 / 공지 / 내 값 / 판정 / 근거** 5열(구현). 근거는 원문 한 줄 인용(규칙 추출이 찾은 줄) |
 | 모름 + 민감정보 | 그 행 아래 **인라인 입력**. 저장하면 프로필에 들어가고 관련 공지가 모두 재판정된다 |
 | 기타 조건 | 구조화 못 한 조건을 **원문 그대로**. "자동 판정하지 않음" 명시 |
 | `해당으로 표시` | 판정을 뒤집는다 → `내가 바꿈` 칩 + 되돌리기. 미달 항목이 있으면 초안 상단에 경고 |
@@ -2120,7 +2129,7 @@ flowchart TD
 | 빈칸 | `{{…}}` 을 노랑 배경으로 강조 + `채워야 할 곳 3` 카운터 |
 | 출처 칩 | 이전 초안에서 가져온 문단에 `○○장학에서 가져옴` |
 | `이전 초안 가져오기` | 비슷한 장학 목록 → 문단 선택 이식 |
-| 생성 방식 | 하단에 `LLM 작성 · 프롬프트 v1` 또는 `템플릿만(LLM 미설정)` |
+| 생성 방식 | 칩 `LLM 작성` · `템플릿` · `가져옴` (LLM 슬롯이 비어 있으면 재료 문장을 그대로 잇는 템플릿 + 빈칸) |
 | 이름·학번 | `{{이름}}` `{{학번}}` 그대로 — **채우지 않는다** |
 
 ### 16-6. 승인·제출 패널 (`view=apply`)
@@ -2141,10 +2150,11 @@ flowchart TD
 | 요소 | 동작 |
 |---|---|
 | 고정 고지 | 패널 맨 위에 항상. 스크롤해도 보인다 |
-| `캘린더에 넣기` | `kind: scholarship` 일정 생성(승인 시 자동으로도 생성) |
+| `캘린더에 넣기` | C1 **내 일정**으로 마감 일정 생성(출처 `sch:<id>`, 같은 것을 두 번 넣지 않는다). 일정 상세에 `장학 공지에서 가져옴` 링크 |
 | `할 일로 보내기` | 마감 **하루 전** 기한의 할 일 생성 |
 | `초안 전체 복사` | 클립보드 복사 + 토스트 `복사했습니다` |
-| `신청했어요` | 진행 상태 → `신청함`. 이후 `선정` / `탈락` 버튼이 나온다 |
+| `승인 (제출 예정)` / `반려` | 초안 대기에서. 승인하면 마감 D-3·D-1 09:00 알림, 반려는 `관심 없음` |
+| `신청했어요` | 진행 상태 → `신청함`. 이후 `선정` / `탈락` 버튼이 나온다. 승인한 채 마감이 지나면 판정 탭에 `신청하셨나요?` |
 
 ### 16-7. 이력 탭
 
@@ -2157,29 +2167,24 @@ flowchart TD
 ### 16-8. 컴포넌트·API
 
 ```
-app/opportunities/page.tsx        (신규) 탭 4개 + 목록 + 상세 패널
-components/opportunities/
-  NoticeList.tsx        판정 배지·진행 칩·접기
-  MatchTable.tsx        조건 대조표(근거·인라인 민감정보 입력)
-  DraftEditor.tsx       초안 편집·빈칸 강조·출처 칩
-  MaterialForm.tsx      재료 1회 입력
-  ApplyPanel.tsx        승인·서류·복사·상태 전이
-  HistoryPanel.tsx      이력
+app/scholarships/page.tsx               (2026-10-09) Suspense + ScholarshipsPage
+components/pages/ScholarshipsPage.tsx   목록(판정 배지·진행 칩·사유 칩·접기) · 상세(판정 대조표 + 인라인 민감정보 입력 ·
+                                        초안 편집·빈칸 강조·출처 칩 · 제출 준비) · 초안 재료 모달 · 이력 탭 · 원천 탭
+lib/scholarships.ts · lib/useScholarships.ts   응답 모양 · 화면 데이터(수집 중 3초 폴링, scholarship.updatedAt·프로필이 바뀌면 다시 받기)
 ```
 
-| 시점 | 호출 |
+| 시점 | 호출 (F11_Scholarship_agent/scholarship/api.py) |
 |---|---|
-| 목록 | `GET /api/opportunities?tab=scholarship&show=` |
-| 상세 | `GET /api/opportunities/{id}` — 공지·요건·판정·근거·초안 상태 |
-| 민감정보 입력 | `PATCH /api/profile` → 응답에 **재판정된 결과** 포함 |
-| 판정 뒤집기 | `PUT /api/opportunities/{id}/verdict` `{verdict, reason}` |
-| 재료 | `GET/PUT /api/draft-material` |
-| 초안 생성 | `POST /api/drafts` `{noticeId, borrowFrom?}` |
-| 초안 수정 | `PATCH /api/drafts/{id}` `{markdown}` |
-| 승인·반려 | `POST /api/drafts/{id}/approve` · `/reject` |
-| 상태 전이 | `PATCH /api/applications/{id}` `{state, amount?}` |
-| 서류 → 할 일 | `POST /api/events` (`isTodo: true`) |
-| 수집 | `POST /api/sources/notice/sync` · `POST /api/sources/hakstd-catalog/sync`(SSO) |
+| 목록 | `GET /api/scholarships` — 판정·진행 상태·건수·수집 상태·프로필 요약 |
+| 상세 | `GET /api/scholarships/items/{id}` — 조건별 근거·본문·첨부(읽음 여부)·초안·진행 상태·이전 초안 목록 |
+| 민감정보 입력 | `PATCH /api/profile`(C2) → 프로필 updatedAt 이 바뀌어 목록·상세가 다시 판정된다(F11-R32) |
+| 판정 뒤집기 · 진행 상태 | `PATCH /api/scholarships/items/{id}` `{verdict: eligible·ineligible·null, reason}` · `{progress, note, amount}` |
+| 재료 | `GET/PUT/DELETE /api/scholarships/materials` (프로필과 따로 저장·삭제) |
+| 초안 | `POST /api/scholarships/items/{id}/draft` `{borrowFrom?}` (재료가 없으면 409 `needsMaterials` → 재료 카드 → 저장하면 바로 생성) · `PUT …/draft` `{body}` · `DELETE …/draft` |
+| 마감 → 캘린더 · 서류 → 할 일 | `POST …/calendar` · `POST …/todos` `{index}` — C1 내 일정·할 일(출처 `sch:<id>`) |
+| 이력 | `GET /api/scholarships/history` |
+| 원천 | `GET /api/scholarships/sources` · `PATCH /api/scholarships/sources/{key}` `{enabled: true·false·null(기본값)}` |
+| 수집 | `POST /api/scholarships/sync` — 앱이 떠 있으면 06:00·18:00 자동(`/api/status` 가 시각을 본다), 놓쳤으면 켜질 때 한 번 |
 
 ### 16-9. 로딩·빈·에러
 
@@ -2189,14 +2194,16 @@ components/opportunities/
 | 해당 0건 | `지금 해당하는 장학이 없습니다` + 확인 필요 건수 |
 | 이미지 공지 | `본문이 이미지라 자동 판정하지 못했습니다` + 원문 링크 |
 | LLM 없음 | 초안 자리에 `문단 자동 작성은 설정 후 가능합니다`, 체크리스트·신청 방법은 정상 |
-| 카탈로그 미수집 | `교내 상시 장학은 로그인이 필요합니다` + `지금 가져오기` |
+| 상시 장학 | 1차는 공개 페이지(교내·교외 장학금 안내)를 주 1회 — 로그인이 필요 없다. 학사정보시스템 맞춤형 장학(SSO)은 2차 |
+| 수집 전 | `아직 수집한 장학 공지가 없습니다` + `지금 수집` (06:00·18:00 자동 안내) |
+| 수집 중 | 회색 띠 `장학 공지를 모으는 중… 게시판마다 1.5초 간격으로` |
 | 원문 변경 | 초안 상단 `원문이 바뀌었습니다 — 다시 만들기` |
 
 ### 16-10. 반응형
 
 | 폭 | 구성 |
 |---|---|
-| ≥ 1280px | 왼쪽 목록 + 오른쪽 상세 2단 |
+| ≥ 1280px | 왼쪽 목록 + 오른쪽 상세 2단 — 상세는 화면 높이에 붙고 **그 안에서 따로 스크롤**(2026-10-25, 긴 상세를 끝까지 보려고 왼쪽 목록을 같이 내리지 않게). 대외활동(17절)도 같다 |
 | 768~1279px | 목록 → 상세 전환 |
 | < 768px | 상세는 전체 화면, 대조표는 조건마다 카드로 쌓기 |
 
@@ -2206,7 +2213,11 @@ components/opportunities/
 
 ## 17. F12 · F13 — 맞춤 기회 · 사업단 공지
 
-요구사항은 [요구사항정의서.md](요구사항정의서.md) F12·F13 절. **새 화면이 없다** — F11 의 `/opportunities` 에 **탭 두 개와 관심사 설정**을 더하고, 게시판 관리는 `/settings/sources` 에 얹는다.
+요구사항은 [요구사항정의서.md](요구사항정의서.md) F12·F13 절. `/opportunities` 에 **탭(대외활동·사업단·이력)과 관심사 설정**을 두고, 게시판 관리는 `/settings/sources` 에 얹는다.
+**2026-10-09**: 장학(F11)이 `/scholarships` 로 나가면서 `/opportunities` 는 F12·F13 전용(제목 '대외활동')이 됐다. 대시보드 타일은 팀플 자리에 놓였다.
+
+> **2026-10-10 구현 (사용자 결정, `F12_Activity_agent`)**: 원천은 **장학과 같다**(학교·부서·사업단·내 단과대학·학과). 장학 글은 장학 화면, **나머지 전부**(교내 프로그램·공모전·대외활동·취업·해외·창업·봉사·기자재 대여 …)가 여기. 장학이 '내 해당'을, 여기는 **'내 관심사'**를 가른다(등급 이름 `맞음` → **내 관심사**). **신청서 초안도 장학과 똑같이** 만든다.
+> 탭은 `대외활동` / `사업단` / `이력` / **`원천`**, 상세는 장학처럼 `공지·관심사` / `초안` / `제출 준비` 단계. 아래 17-1~17-6 의 와이어프레임은 처음 정의 그대로 두고, 파라미터·컴포넌트·API 는 구현 기준으로 고쳤다.
 
 ### 17-1. 화면 흐름도
 
@@ -2228,19 +2239,22 @@ flowchart TD
     ADD --> COL
 ```
 
-### 17-2. 탭과 파라미터 (F11 과 공유)
+### 17-2. 탭과 파라미터
 
 | 파라미터 | 값 | 비고 |
 |---|---|---|
-| `tab` | `scholarship` `activity` `program` `history` | `activity` = F12 대외활동 · `program` = F13 사업단 |
-| `item` | 공지 id | 상세 패널 (F11 과 같은 컴포넌트) |
-| `show` | `all` | `아님` 등급까지 펼치기 |
+| `tab` | `activity` `program` `history` `sources` | 기본 `activity` = 대외활동 전부 · `program` = 사업단 원천(또는 사업단이 학교 공지에 올린) 글만 · `sources` = 원천 켜고 끄기 (2026-10-10) |
+| `item` | 공지 id (`www:37467` · `aicoss:4119` · `ile:ko-learning-notice-11058`) | 상세 패널 (`push`) |
+| `view` | `info` `draft` `apply` | 상세 단계 — 공지·관심사 / 초안 / 제출 준비 (`replace`) |
+| `cat` | 분류 키 (`contest` `program` `career` `global` `rental` …) | 분류 필터 (`replace`) |
+| `show` | `all` | `관심 밖` · `마감·결과·대상 아님` 묶음까지 펼치기 |
 | `saved` | `1` | 담아 둔 것만 보기 |
+| `interests` | `1` | 관심사 설정 모달을 바로 연다 — 내 프로필의 '관심사 설정' 링크 |
 
 ### 17-3. 목록 — 등급과 이유
 
 ```
-┌ 🎁 기회                          [장학] [대외활동] [사업단] [이력]        │
+┌ 🏆 대외활동                               [대외활동] [사업단] [이력]       │
 │                                              [관심사 설정] [담은 것만]    │
 ├───────────────────────────────────────────────────────────────────────────┤
 │ 🟢 맞음 3                                                                 │
@@ -2319,20 +2333,25 @@ e클래스·학사일정과 **같은 화면**에 공지 게시판 목록을 둔�
 ### 17-7. 컴포넌트·API
 
 ```
-components/opportunities/
-  InterestSettings.tsx   태그·키워드·제외어 + 재판정
-  GradeBadge.tsx         맞음/관련 있음/아님 + 이유 칩
-  BoardManager.tsx       게시판 목록·추가·미리보기 (/settings/sources 안)
+app/opportunities/page.tsx              Suspense + OpportunitiesPage
+components/pages/OpportunitiesPage.tsx  (2026-10-10) 목록(등급 묶음·이유 칩·분류 필터·담은 것만) · 상세(왜 이 목록에 있나 · 대상·기간·장소·혜택 ·
+                                        초안 편집·빈칸 강조 · 제출 준비) · 관심사 설정 모달 · 초안 재료 모달 · 이력 탭 · 원천 탭
+lib/activities.ts · lib/useActivities.ts 응답 모양 · 화면 데이터(수집 중 3초 폴링, activity.updatedAt·프로필이 바뀌면 다시 받기)
+components/pages/SettingsPages.tsx      내 프로필 '관심사' 요약 + 링크 · 수집 원천 '대외활동 원천 (F12)' 요약
 ```
 
-| 시점 | 호출 |
+| 시점 | 호출 (F12_Activity_agent/activity/api.py — 2026-10-10 구현) |
 |---|---|
-| 목록 | `GET /api/opportunities?tab=activity&show=&saved=` |
-| 관심사 | `GET/PUT /api/interests` → 응답에 재판정 결과 수 |
-| 담기 | `POST /api/bookmarks` · `DELETE /api/bookmarks/{id}` |
-| 판정 뒤집기 | `PUT /api/opportunities/{id}/grade` `{grade}` |
-| 게시판 목록 | `GET /api/boards` · `POST /api/boards`(미리보기 포함) · `PATCH`/`DELETE` |
-| 수집 | `POST /api/sources/notice/sync` (F11 과 공용) |
+| 목록 | `GET /api/opportunities` — 전부 내려주고 탭·분류·담은 것은 화면이 거른다(관심사 등급·모집 상태·진행 상태·태그 사전·너무 넓은 키워드) |
+| 상세 | `GET /api/opportunities/items/{id}` — 등급 이유 · 정보 · 본문 · 첨부 · 초안 · 진행 상태 · 이전 초안 목록 |
+| 관심사 | `PATCH /api/profile {interests: {tags, keywords, exclude}}` (C2) → 프로필 updatedAt 이 바뀌어 목록이 다시 매겨진다 |
+| 담기 · 등급 뒤집기 · 진행 상태 | `PATCH /api/opportunities/items/{id}` `{saved}` · `{grade: match·other·null}` · `{progress, note}` — 담으면 마감 → C1 내 일정(출처 `act:<id>`) |
+| 초안 | `POST …/draft {borrowFrom?}`(재료가 없으면 409 `needsMaterials` → 재료 카드, 장학 초안 재료를 미리 채움) · `PUT …/draft` · `DELETE …/draft` · 재료 `GET/PUT/DELETE /api/opportunities/materials` |
+| 마감 → 캘린더 · 서류 → 할 일 | `POST …/calendar` · `POST …/todos {index}` |
+| 이력 | `GET /api/opportunities/history` |
+| 원천 | `GET /api/opportunities/sources` · `PATCH /api/opportunities/sources/{key}` `{enabled}` — F11 과 같은 목록, 켜고 끈 것은 따로 |
+| 수집 | `POST /api/opportunities/sync` — 06:00·18:00 자동(장학 수집이 끝난 뒤) |
+| 게시판 URL 추가 (F13) | 아직 — `/settings/sources` 의 '직접 추가한 게시판 (F13 · 예시)' |
 
 ### 17-8. 로딩·빈·에러
 
@@ -2702,15 +2721,17 @@ components/team/
 
 ### F12·F13 기회·사업단 공지
 
-- [ ] `/opportunities` 에 탭 2개 추가(`?tab=activity|program`) — 목록·상세는 F11 컴포넌트 재사용
-- [ ] 등급 배지(맞음/관련 있음/아님) + **이유 칩**(걸린 태그·키워드, LLM 판단 표시)
-- [ ] `아님` 접기(`?show=all`), `담은 것만`(`?saved=1`)
-- [ ] **관심사 설정** — 태그 10개 토글 + 키워드(최대 20, 1글자 거부) + 제외어, 저장 시 전체 재판정 토스트
-- [ ] 너무 넓은 키워드 안내(`"학생"에 32건이 걸렸습니다`)
-- [ ] `/settings/sources` 게시판 관리 — 기본/내 추가 구분, URL 추가 시 **구조 인식 + 미리보기 3건**
-- [ ] 기본 게시판은 삭제 불가·사용 중지만, 실패는 그 행만 빨강
-- [ ] 알림 — `맞음`만 즉시, **하루 5건 초과 시 묶음 1건**, 관심사 미설정이면 알림 없음
-- [ ] 담기 → 마감 캘린더 등록, 이력 탭에서 상태 남기기
+2026-10-10 `F12_Activity_agent` 로 구현 — 17절 머리말 참고.
+
+- [x] `/opportunities` 탭 `?tab=activity|program|history|sources` — 목록·상세·초안은 F11 화면 구조를 그대로
+- [x] 등급 배지(내 관심사/관련 있음/관심 밖) + **이유 칩**(걸린 태그·“키워드”·본문에서만 걸린 태그·LLM 판단·내 학과 관련 원천)
+- [x] `관심 밖`·`마감·결과` 접기(`?show=all`), `담은 것만`(`?saved=1`), 분류 필터(`?cat=`)
+- [x] **관심사 설정** — 태그 12개 토글 + 키워드(최대 20, 1글자 거부) + 제외어, 저장(C2 프로필) 시 전체 재분류 토스트
+- [x] 너무 넓은 키워드 안내(`키워드 "학생"에 모집 중인 공지 32건이 걸렸습니다`)
+- [ ] `/settings/sources` 게시판 URL 추가 — **구조 인식 + 미리보기 3건** (F13, 아직 예시)
+- [x] 원천 켜고 끄기(장학과 같은 목록, 따로 저장) · 실패는 그 행만 빨강
+- [x] 알림 — `내 관심사`만 즉시, **하루 5건 초과 시 묶음 1건**, 관심사 미설정이면 알림 없음
+- [x] 담기 → 마감 캘린더 등록(풀면 지움), 이력 탭에서 상태 남기기 · **신청서 초안**(2026-10-10 추가)
 
 ### F16 팀플 조율
 

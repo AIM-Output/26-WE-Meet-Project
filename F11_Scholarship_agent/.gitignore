@@ -1,0 +1,8 @@
+# 수집한 장학 공지 · 내 진행 상태 · 초안 · 수집 기록 — 공유하지 않는다
+data/
+state/
+.env
+
+__pycache__/
+*.pyc
+.pytest_cache/

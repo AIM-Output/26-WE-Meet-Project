@@ -44,6 +44,19 @@ def get_profile() -> Optional[dict]:
         return None
 
 
+def get_full_profile() -> Optional[dict]:
+    """화면이 받는 모양 그대로(민감정보·초안 재료 포함) — F11 장학 판정만 쓴다(C2 schema 의 usedBy F11). 없으면 None."""
+    if not c2:
+        return None
+    try:
+        from student import service, store as c2store   # type: ignore[import-not-found]
+        with c2store.connect() as con:
+            doc = service.get(con)
+        return doc["profile"] if doc["exists"] else None
+    except Exception:                            # noqa: BLE001
+        return None
+
+
 def router(on_change: Optional[Callable[[], None]] = None):
     return c2.build_router(on_change) if c2 else None
 

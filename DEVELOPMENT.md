@@ -14,8 +14,8 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── univ_us_local/            앱 안의 대시보드 — backend(FastAPI, 사이드카가 된다) + frontend(Next.js)
 ├── C0_Platform_agent/        C0 OS 공통 계층(osenv) — Windows·macOS 차이 · 앱 데이터 폴더 · 자식 프로세스 명령
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
-├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11 이 같이 씀)
-├── C3_Login_agent/           C3 학교(SSO) 자동 로그인 — F6·C2·F2·F11 이 같이 씀 · 자동 로그인 정보(DPAPI/키체인)
+├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11·F12 가 같이 씀)
+├── C3_Login_agent/           C3 학교(SSO) 자동 로그인 — F6·C2·F2 가 같이 씀 · 자동 로그인 정보(DPAPI/키체인)
 ├── F1_Bachelor_agent/        F1 학사일정 자동 등록·알림 (학교 공개 페이지 수집 — 로그인 불필요)
 ├── F2_Graduation_agent/      F2 졸업요건·학점 트래커
 ├── F3_Attendance_agent/      F3 출결·학사경고 예방
@@ -24,7 +24,9 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── F6_Eclass_agent/          F6 e클래스 과제·마감·자료 수집 → 캘린더·할 일·마감 알림
 ├── F7_Task_agent/            F7 과제 우선순위
 ├── F8_Plan_agent/            F8 공강 학습 플랜
-├── notice_agent/             (참고 코드) 장학 공지 매칭 — 나중에 앱 기능(F11)으로 옮길 때 참고
+├── F11_Scholarship_agent/    F11 장학 공지 매칭·신청서 초안 — 학교·부서·사업단·내 학과 장학 게시판 + 상시 장학 안내
+├── F12_Activity_agent/       F12 대외활동 — F11 과 같은 원천에서 장학 외 공지(프로그램·공모전·취업·기자재 대여 …)를 관심사로 가르고 신청서 초안
+├── notice_agent/             (참고 코드) 장학 공지 매칭 — 2026-10-09 앱 기능(F11_Scholarship_agent)으로 옮겼다
 ├── 요구사항정의서.md          기능별 요구사항 — 기능 개발 전 먼저 볼 문서
 ├── Frontend-Route.md         화면·라우트·흐름 정의
 ├── WE-Meet_데스크톱앱_맥지원_계획.md   데스크톱 앱 · macOS · 얇은 서버로 가는 단계별 계획과 진행 기록
@@ -188,6 +190,8 @@ npx tauri build                        # Windows: src-tauri/target/release/bundl
 | [F6_Eclass_agent/README.md](F6_Eclass_agent/README.md) · [AUTOMATION.md](F6_Eclass_agent/AUTOMATION.md) | e클래스 수집기·과제 원장 규칙·마감 알림 · 예약 수집(정각 4시간마다·따라잡기·재시도) |
 | [F7_Task_agent/README.md](F7_Task_agent/README.md) | 과제 우선순위 계산식·그룹 기준·오늘 남은 시간·API |
 | [F8_Plan_agent/README.md](F8_Plan_agent/README.md) | 공강 배치 규칙·미배치 이유·고정·충돌·API |
+| [F11_Scholarship_agent/README.md](F11_Scholarship_agent/README.md) | 장학 원천 목록(학교·부서·사업단·내 학과, 2026-10-09 실측)·판정 규칙·초안·API |
+| [F12_Activity_agent/README.md](F12_Activity_agent/README.md) | 대외활동 — F11 원천 위의 덮어쓰기·거르는 규칙·분류·관심사 등급·알림 상한·초안·API |
 | [WE-Meet_데스크톱앱_맥지원_계획.md](WE-Meet_데스크톱앱_맥지원_계획.md) | macOS 지원 → 데스크톱 앱 → 얇은 서버로 가는 단계별 계획과 진행 기록 |
 | [WE-Meet_서버_플랫폼_검토.md](WE-Meet_서버_플랫폼_검토.md) | 왜 "내 PC 안에서만" 구조인지 (설계 배경) |
-| [notice_agent/README.md](notice_agent/README.md) | (참고 코드) 장학 공지 매칭·신청서 초안 도구 |
+| [notice_agent/README.md](notice_agent/README.md) | (참고 코드) 장학 공지 매칭·신청서 초안 도구 — F11 의 출발점 |

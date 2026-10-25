@@ -4,7 +4,7 @@
 - /                 frontend/out (next build 결과) 가 있으면 정적으로 서빙. 없으면 안내 페이지.
 개발 모드(desktop/ 에서 npm run dev)에서는 `next dev`(3000) 가 /api·/desktop/launch 를 여기(8020)로 넘겨준다 (frontend/next.config.ts rewrites).
 
-이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8).
+이 파일은 **붙이는 곳**이다. 기능 코드는 전부 기능 폴더에 있다 (C1 캘린더 · F6 · C2 · F1 · F2 · F3 · F4 · F5 · F7 · F8 · F11 · F12).
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import academic, attendance, calendar_events, exams, graduation, materials, placement, priority
+from . import academic, activity, attendance, calendar_events, exams, graduation, materials, placement, priority, scholarship
 from . import config as C
 from . import eclass_data, login_creds, student_profile
 
@@ -107,6 +107,8 @@ def get_status() -> dict:
         "exams": exams.status(),             # F5: 오늘 분량 · 다가오는 시험 · 확인 필요 · 밀린 계획 · updatedAt (기능 타일)
         "priority": priority.status(),       # F7: 지금 해야 함 · 합계 · 놓친 마감 · 상위 3건 (대시보드 '먼저 할 것')
         "placement": placement.status(),     # F8: 앞으로 남은 학습 블록 · 오늘 블록 · updatedAt (바뀌면 화면이 캘린더를 다시 받는다)
+        "scholarship": scholarship.status(),  # F11: 해당 · 확인 필요 · 마감 임박 · 수집 상태 (겸사겸사 새 장학 알림 배달 · 06·18시 자동 수집)
+        "activity": activity.status(),        # F12: 내 관심사 · 관련 있음 · 담은 것 · 마감 임박 (겸사겸사 관심 기회 알림 · 장학 다음 06·18시 수집)
     }
 
 
@@ -117,10 +119,12 @@ def post_sync() -> dict:
 
 
 def _profile_changed() -> None:
-    """프로필이 바뀌면 F1 '내 해당'·F2 졸업요건 기준·F3 학사경고 안내가 달라진다 — updatedAt 을 올려 화면이 다시 받게 한다 (C2-R08)."""
+    """프로필이 바뀌면 F1 '내 해당'·F2 졸업요건 기준·F3 학사경고 안내·F11 장학 판정·F12 관심사 등급이 달라진다 — updatedAt 을 올려 화면이 다시 받게 한다 (C2-R08)."""
     academic.touch()
     graduation.touch()
     attendance.touch()
+    scholarship.touch()                  # 민감정보(소득구간·지역·해당 사항)를 넣으면 관련 장학을 모두 다시 판정 (F11-R32)
+    activity.touch()                     # 관심사(태그·키워드·제외어)를 바꾸면 대외활동 공지를 모두 다시 매긴다 (F12-R15)
 
 
 # ---------------------------------------------------------------- 기능 라우터
@@ -197,6 +201,19 @@ if (_f7_router := priority.router(lambda start, end: calendar_events.collect(_BU
 # 저녁(19~24시)은 F5 시험 공부 계획 몫. 미리보기는 저장하지 않고, '배치하기'를 눌렀을 때만 블록(kind=study)이 생긴다.
 if (_f8_router := placement.router(_busy_events)) is not None:
     app.include_router(_f8_router)
+
+
+# F11 장학 공지 매칭·신청서 초안 — /api/scholarships* (F11_Scholarship_agent/scholarship/api.py)
+# 학교 장학안내 · 부서 · 사업단 · 내 단과대학·학과 게시판과 상시 장학 안내를 모아 C2 프로필(민감정보 포함)과 조건별로 대조한다.
+# 신청 마감은 '캘린더에 넣기'로 C1 내 일정이, 제출 서류는 할 일이 된다. 제출은 하지 않는다 — 초안·체크리스트·링크까지.
+if (_f11_router := scholarship.router()) is not None:
+    app.include_router(_f11_router)
+
+# F12 대외활동(맞춤 기회) — /api/opportunities* (F12_Activity_agent/activity/api.py)
+# F11 과 같은 원천(게시판 수집기·원천 목록을 빌려 쓴다)에서 장학이 아닌 공지 — 교내 프로그램·공모전·대외활동·취업·해외·창업·기자재 대여 … —
+# 를 모아 C2 프로필의 관심사로 '내 관심사 / 관련 있음 / 관심 밖'을 가른다. 담으면 신청 마감이 C1 내 일정이 되고, 신청서 초안까지 만든다(제출은 하지 않는다).
+if (_f12_router := activity.router()) is not None:
+    app.include_router(_f12_router)
 
 
 # ---------------------------------------------------------------- 데스크톱 앱

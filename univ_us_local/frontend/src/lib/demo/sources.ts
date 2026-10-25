@@ -13,12 +13,8 @@ export interface SourceRow {
   error?: string;
 }
 
-export const demoSources: SourceRow[] = [
-  { key: "hakstd-scholar", name: "학사정보시스템 › 장학 카탈로그 (F11)", kind: "학사시스템", interval: "주 1회", last: "9/21 22:10", count: "장학 96", state: "login", enabled: true, builtin: true },
-];
-
+// F11 장학 원천(학교 장학안내·부서·사업단·내 학과·상시 장학 안내)은 2026-10-09 실제 값 — /api/scholarships/sources (장학 화면 '원천' 탭).
 export const demoBoards: SourceRow[] = [
-  { key: "home-scholar", name: "전남대 홈페이지 › 장학안내", kind: "게시판", interval: "06·18시", last: "오늘 06:00", count: "12건", state: "ok", enabled: true, builtin: true },
   { key: "aicoss", name: "AICOSS 사업단", kind: "게시판", interval: "06·18시", last: "오늘 06:00", count: "3건", state: "ok", enabled: true, builtin: true },
   { key: "my-board", name: "우리 학과 산학협력단", kind: "게시판", interval: "06·18시", last: "오늘 06:00", count: "—", state: "failed", enabled: true, builtin: false, error: "게시판 목록을 찾지 못했습니다" },
 ];

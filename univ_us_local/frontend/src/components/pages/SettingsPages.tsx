@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Download, LogIn, Plus, Settings } from "lucide-react";
 import { Page, PageHeader, Section, Toggle } from "@/components/ui/Layout";
-import { Banner, DemoNotice, ErrorPanel } from "@/components/ui/Feedback";
+import { Banner, ErrorPanel } from "@/components/ui/Feedback";
 import { Chip, StatusBadge, type Tone } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -16,12 +16,14 @@ import { useProfile, useProfileImport } from "@/lib/useProfile";
 import { useStored } from "@/lib/storage";
 import { closeQuery, navigateQuery, useQueryValue } from "@/lib/useQueryState";
 import { SETTINGS } from "@/lib/features";
-import { demoBoards, demoSources, type SourceRow } from "@/lib/demo";
+import { demoBoards, type SourceRow } from "@/lib/demo";
+import type { SchSource, SchSources } from "@/lib/scholarships";
+import type { ActSources } from "@/lib/activities";
 import { EclassSourceSection } from "@/components/assignments/EclassSource";
 import type { FeedSettings, ReminderSettings } from "@/lib/assignments";
 import { RequirementsEditor } from "@/components/graduation/RequirementsEditor";
 import { useGradImport } from "@/lib/useGraduation";
-import { ENROLLMENT, FIELD_LABEL, FLAG_LABEL, INCOME_BRACKETS, REGIONS, TRACK_LABEL, type Enrollment, type Track } from "@/lib/profile";
+import { ENROLLMENT, FIELD_LABEL, FLAG_LABEL, INCOME_BRACKETS, REGIONS, TRACK_LABEL, type Enrollment, type ProfileFields, type Track } from "@/lib/profile";
 import { api } from "@/lib/api";
 import { AcademicSourcesSection } from "@/components/academic/AcademicSources";
 import { addDays, fmtRelative, fmtShortStamp, toDateStr } from "@/lib/dates";
@@ -314,6 +316,8 @@ export function ProfileSettings() {
         </p>
       </Section>
 
+      <InterestsSummary interests={p.interests} />
+
       <section className="card">
         <button type="button" className="flex w-full items-center gap-2 p-4 text-left md:p-5" aria-expanded={sensOpen} onClick={() => setSensOpen((v) => !v)}>
           <span className="flex-1 text-[15px] font-bold">장학 매칭용 정보 (선택)</span>
@@ -452,6 +456,48 @@ export function ProfileSettings() {
   );
 }
 
+/** F12 관심사 요약 — 고치는 곳은 대외활동 화면의 '관심사 설정' 한 곳 (태그 사전이 거기 있다, F12-R13) */
+function InterestsSummary({ interests }: { interests: ProfileFields["interests"] }) {
+  const i = Array.isArray(interests) ? { tags: [], keywords: interests, exclude: [] } : (interests ?? { tags: [], keywords: [], exclude: [] });
+  const set = i.tags.length + i.keywords.length > 0;
+  return (
+    <Section
+      title={
+        <span className="flex items-center gap-2">
+          관심사 <UsedBy f={["F12"]} />
+        </span>
+      }
+      action={
+        <Link href="/opportunities?interests=1" className="btn btn-sm">
+          관심사 설정
+        </Link>
+      }
+    >
+      {set ? (
+        <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
+          {i.tags.map((t) => (
+            <Chip key={t} tone="primary" square>
+              {t}
+            </Chip>
+          ))}
+          {i.keywords.map((k) => (
+            <Chip key={k} square>
+              &ldquo;{k}&rdquo;
+            </Chip>
+          ))}
+          {i.exclude.map((k) => (
+            <Chip key={k} tone="danger" square>
+              제외 &ldquo;{k}&rdquo;
+            </Chip>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[14px] text-muted">아직 고르지 않았습니다 — 고르면 대외활동 공지 중 맞는 것만 위로 올리고 알려 드립니다.</p>
+      )}
+    </Section>
+  );
+}
+
 /** 가져오기 문제 안내 — 로그인이 필요하면 로그인 창을 여는 버튼 (Frontend-Route 5-7) */
 export function ImportProblem({ imp }: { imp: ReturnType<typeof useProfileImport> }) {
   if (!imp.problem) return null;
@@ -572,7 +618,6 @@ function GraduationSource() {
 
 export function SourcesSettings() {
   const toast = useToast();
-  const [rows, setRows] = useState(demoSources);
   const [boards, setBoards] = useState(demoBoards);
   const [adding, setAdding] = useState(false);
 
@@ -582,16 +627,16 @@ export function SourcesSettings() {
 
       <AcademicSourcesSection />
 
-      <Section title="학사정보시스템 (F2·F11)">
+      <Section title="학사정보시스템 (F2)">
         <GraduationSource />
-        <div className="mt-3 border-t border-border pt-3">
-          <DemoNotice what="장학 카탈로그(F11) 원천" />
-          <SourceList list={rows} set={setRows} onSync={(r) => toast(`${r.name} 수집 API 가 아직 없습니다`)} />
-        </div>
       </Section>
 
+      <ScholarshipSourcesSection />
+
+      <ActivitySourcesSection />
+
       <Section
-        title="공지 게시판 (F11·F12·F13)"
+        title="직접 추가한 게시판 (F13 · 예시)"
         action={
           <button type="button" className="btn btn-sm" onClick={() => setAdding(true)}>
             <Plus aria-hidden />
@@ -624,6 +669,83 @@ export function SourcesSettings() {
         <p className="hint">공개 게시판만 지원합니다. 인식에 성공하면 최근 글 3건을 미리 보여 드립니다.</p>
       </Modal>
     </SettingsShell>
+  );
+}
+
+/** F11 장학 원천 요약 — 원천 목록·켜고 끄기는 장학 화면의 '원천' 탭 한 곳에서 (같은 목록을 두 군데서 고치지 않게). */
+function ScholarshipSourcesSection() {
+  const [d, setD] = useState<SchSources | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    void api.scholarshipSources().then(setD, () => setErr(true));
+  }, []);
+  const on = d?.sources.filter((x) => x.enabled) ?? [];
+  const failed = on.filter((x) => x.error && !x.relay);
+  const last = on.map((x) => x.lastOkAt).filter(Boolean).sort().pop() ?? null;
+  const by = (g: SchSource["group"]) => on.filter((x) => x.group === g).length;
+  return (
+    <Section
+      title="장학 원천 (F11)"
+      action={
+        <Link href="/scholarships?tab=sources" className="btn btn-sm">
+          장학 원천 관리
+        </Link>
+      }
+    >
+      {err ? (
+        <p className="text-[14px] text-danger-text">장학 원천을 불러오지 못했습니다</p>
+      ) : !d ? (
+        <p className="text-[14px] text-muted">불러오는 중…</p>
+      ) : (
+        <div className="space-y-1.5 text-[14px]">
+          <p>
+            켜진 원천 <b className="num">{on.length}</b>곳 — 학교 전체 {by("school")} · 부서 {by("office")} · 사업단 {by("project")} · 내 단과대학·학과 {by("mine")}
+          </p>
+          <p className="text-[13px] text-muted">
+            {last ? `마지막 수집 ${fmtRelative(last)}` : "아직 수집 전"} · {d.autosync ? `앱이 켜져 있으면 매일 ${d.slots.join(" · ")}` : "자동 수집 꺼짐(개발 모드)"} · 공개 게시판만, 로그인 불필요
+          </p>
+          {failed.length > 0 && <p className="text-[13px] text-danger-text">읽지 못한 원천 {failed.length}곳: {failed.map((x) => x.name).join(", ")}</p>}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** F12 대외활동 원천 요약 — 장학과 같은 원천 목록이지만 켜고 끈 것은 따로. 관리는 대외활동 화면의 '원천' 탭에서. */
+function ActivitySourcesSection() {
+  const [d, setD] = useState<ActSources | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    void api.opportunitySources().then(setD, () => setErr(true));
+  }, []);
+  const on = d?.sources.filter((x) => x.enabled && !x.relay) ?? [];
+  const failed = on.filter((x) => x.error);
+  const last = on.map((x) => x.lastOkAt).filter(Boolean).sort().pop() ?? null;
+  return (
+    <Section
+      title="대외활동 원천 (F12)"
+      action={
+        <Link href="/opportunities?tab=sources" className="btn btn-sm">
+          대외활동 원천 관리
+        </Link>
+      }
+    >
+      {err ? (
+        <p className="text-[14px] text-danger-text">대외활동 원천을 불러오지 못했습니다</p>
+      ) : !d ? (
+        <p className="text-[14px] text-muted">불러오는 중…</p>
+      ) : (
+        <div className="space-y-1.5 text-[14px]">
+          <p>
+            장학과 같은 원천에서 장학이 아닌 공지를 모읍니다 — 읽는 게시판 <b className="num">{on.length}</b>곳
+          </p>
+          <p className="text-[13px] text-muted">
+            {last ? `마지막 수집 ${fmtRelative(last)}` : "아직 수집 전"} · {d.autosync ? `앱이 켜져 있으면 매일 ${d.slots.join(" · ")} (장학 수집 뒤)` : "자동 수집 꺼짐(개발 모드)"} · 공개 게시판만
+          </p>
+          {failed.length > 0 && <p className="text-[13px] text-danger-text">읽지 못한 원천 {failed.length}곳: {failed.map((x) => x.name).join(", ")}</p>}
+        </div>
+      )}
+    </Section>
   );
 }
 

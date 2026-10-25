@@ -1,0 +1,401 @@
+{
+  "updatedAt": "2026-10-25",
+  "about": "전남대 안에서 장학 기회가 올라오는 곳 — 학교 전체 · 부서 · 사업단 · 내 단과대학·학과. 2026-10-09 실측(대표 홈페이지 '교내홈페이지' 목록 · 산학협력단 '사업단 현황' · 대표 공지 작성 부서 240건 · 각 사이트 게시판 구조). 근거와 다시 확인하는 법은 README '원천 목록'.",
+  "groups": {
+    "school": "학교 전체",
+    "office": "부서·센터",
+    "project": "사업단",
+    "mine": "내 단과대학·학과"
+  },
+  "campus": {
+    "여수": ["공학대학", "문화사회과학대학", "수산해양대학", "창의융합학부"]
+  },
+  "fields": {
+    "about": "계열 — 국가우수장학(이공계)·인문100년·예술체육비전·농어촌희망장학처럼 계열을 묻는 장학 판정용. 단과대학 기본값 + 학과 예외.",
+    "colleges": {
+      "간호대학": ["의약"], "경영대학": ["인문사회", "상경"], "공과대학": ["공학"], "공학대학": ["공학"],
+      "농업생명과학대학": ["자연과학", "농업"], "사범대학": ["인문사회", "교육"], "사회과학대학": ["인문사회"],
+      "생활과학대학": ["자연과학"], "수산해양대학": ["자연과학", "수산"], "수의과대학": ["의약"], "약학대학": ["의약"],
+      "예술대학": ["예체능"], "의과대학": ["의약"], "인문대학": ["인문사회"], "자연과학대학": ["자연과학"],
+      "AI융합대학": ["공학"], "문화사회과학대학": ["인문사회"], "치과대학": ["의약"], "법과대학": ["인문사회"],
+      "단과대학없음": ["인문사회"], "반도체특성화대학": ["공학"], "이차전지특성화대학": ["공학"],
+      "그린바이오혁신융합대학": ["자연과학", "농업"], "차세대통신혁신융합대학": ["공학"],
+      "인문사회융합인재양성대학": ["인문사회"], "광주전남지역혁신": ["공학"]
+    },
+    "departments": {
+      "체육교육과": ["예체능", "교육"], "음악교육과": ["예체능", "교육"], "미술학과": ["예체능"],
+      "물리교육과": ["자연과학", "교육"], "화학교육과": ["자연과학", "교육"], "생물교육과": ["자연과학", "교육"],
+      "지구과학교육과": ["자연과학", "교육"], "수학교육과": ["자연과학", "교육"], "가정교육과": ["자연과학", "교육"],
+      "생활환경복지학과": ["인문사회"], "조선해양공학과": ["공학", "수산"], "기관시스템공학과": ["공학", "수산"],
+      "해양경찰학과": ["인문사회", "수산"], "물류교통학과": ["공학"], "교통·물류시스템공학부": ["공학"],
+      "경제학부": ["인문사회", "상경"], "경영학부": ["인문사회", "상경"], "글로벌비즈니스학부": ["인문사회", "상경"],
+      "농업경제학과": ["인문사회", "농업"], "지역·바이오시스템공학과": ["공학", "농업"], "바이오에너지공학과": ["공학", "농업"],
+      "임산공학과": ["공학", "농업"], "식품영양과학부": ["자연과학"], "의류학과": ["자연과학"]
+    }
+  },
+  "sources": [
+    {
+      "key": "jnu_scholarship", "group": "school", "org": "학생처 학생과",
+      "name": "전남대 공지사항 › 장학안내",
+      "kind": "jnu_board", "base": "https://www.jnu.ac.kr", "listPath": "/WebApp/web/HOM/COM/Board/board.aspx",
+      "params": {"boardID": "5", "cate": "8"}, "pageParam": "page", "idParam": "key",
+      "filter": "all", "audience": {"scope": "all"},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5&cate=8",
+      "why": "국가장학·교내장학·교외 재단·지자체 장학이 거의 다 여기로 온다 (작성 부서 학생과 157/160건)",
+      "writers": ["학생과"]
+    },
+    {
+      "key": "jnu_notice", "group": "school", "org": "대학 본부 각 부서",
+      "name": "전남대 공지사항 › 전체 분류 (장학 말이 들어간 글)",
+      "kind": "jnu_board", "base": "https://www.jnu.ac.kr", "listPath": "/WebApp/web/HOM/COM/Board/board.aspx",
+      "params": {"boardID": "5"}, "pageParam": "page", "idParam": "key",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5",
+      "why": "사업단·단과대학·여수캠퍼스 교학과가 모집공고·대학생활 분류로 올리는 장학 (HUSS 마일리지 장학 · 단과대학 성취장학 · RISE 육성비)"
+    },
+    {
+      "key": "jnu_catalog", "group": "school", "org": "학생처 학생과",
+      "name": "교내·교외 장학금 안내 (상시 장학 목록)",
+      "kind": "catalog",
+      "urls": ["https://www.jnu.ac.kr/MainUniLife/UniInfor/Promotion/InternalScholarship",
+               "https://www.jnu.ac.kr/MainUniLife/UniInfor/Promotion/ExternalScholarship"],
+      "filter": "all", "audience": {"scope": "all"},
+      "url": "https://www.jnu.ac.kr/MainUniLife/UniInfor/Promotion/InternalScholarship",
+      "why": "공지 없이 매 학기 선발하는 장학 — 진리·창조·응원·가족·도전·미래성장·취업더하기·느티나무·발전기금 장학, 국가장학·국가근로·이공계·인문100년 (주 1회)"
+    },
+    {
+      "key": "jnu_events", "group": "school", "org": "전남대학교 (행사 등록 부서)",
+      "name": "CNU Events 전남대 행사일정",
+      "kind": "events", "base": "https://events.jnu.ac.kr",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://events.jnu.ac.kr/Search.aspx?mode=cate&query=",
+      "why": "학교 전체의 특강·세미나·워크숍·직무박람회·공연·전시·현장실습 모집 — 부서·사업단이 행사를 따로 올리는 곳 (2026-10-25 실측 43건)"
+    },
+    {
+      "key": "international", "group": "office", "org": "국제협력본부",
+      "name": "국제협력본부 공지 (교환학생·해외 장학)",
+      "kind": "aspx_board", "base": "https://international.jnu.ac.kr", "listPath": "/Board/Board.aspx",
+      "params": {"BoardID": "3", "Mode": "List"}, "pageParam": "PageNum", "idParam": "Seq", "viewParams": {"Mode": "View"},
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://international.jnu.ac.kr/Board/Board.aspx?BoardID=3&Mode=List",
+      "why": "교환학생 장학 · 외국 정부 초청 장학 · 해외연수 지원",
+      "writers": ["국제협력과"]
+    },
+    {
+      "key": "lec", "group": "office", "org": "언어교육원",
+      "name": "언어교육원 강좌소식",
+      "kind": "aspx_board", "base": "https://lec.jnu.ac.kr", "listPath": "/Board/Board.aspx",
+      "params": {"BoardID": "2", "Mode": "List"}, "pageParam": "PageNum", "idParam": "Seq",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://lec.jnu.ac.kr/Board/Board.aspx?BoardID=2",
+      "why": "외국어·공인시험(TOEIC·OPIc) 강좌 · 무료 영어 학습 코칭 (2026-10-25 추가)",
+      "writers": ["언어교육원"]
+    },
+    {
+      "key": "capd", "group": "office", "org": "진로취업지원실 · 대학일자리플러스센터",
+      "name": "취업진로포털 (학교 공지로 올라옴)",
+      "kind": "relay", "audience": {"scope": "all"},
+      "url": "https://capd.jnu.ac.kr/",
+      "why": "취업연계 장학 · 취업더하기 장학 · 희망사다리(중소기업 취업연계) — 포털 게시판은 로그인이 필요해(2026-10-09 실측) 같은 글이 올라오는 학교 공지(작성 부서 취업지원실, 240건 중 109건)로 받는다",
+      "writers": ["취업지원실", "진로취업지원실"]
+    },
+    {
+      "key": "ile", "group": "office", "org": "교육혁신본부",
+      "name": "교육혁신본부 학부·학습지원 공지",
+      "kind": "coursemos", "base": "https://ile.jnu.ac.kr", "paths": ["/ko/division/notice", "/ko/learning/notice"],
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://ile.jnu.ac.kr/ko/division/notice",
+      "why": "학습공동체 · 튜터링 · 멘토링 장학",
+      "writers": ["교육혁신정책실", "대학혁신지원과"]
+    },
+    {
+      "key": "grow", "group": "office", "org": "교육혁신본부 (성장마루)",
+      "name": "성장마루 · 비교과 통합 플랫폼 공지",
+      "kind": "coursemos", "base": "https://grow.jnu.ac.kr", "paths": ["/ko/info/notice"],
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://grow.jnu.ac.kr/ko/info/notice",
+      "why": "비교과 마일리지 · 자기주도 성장 장학"
+    },
+    {
+      "key": "fund", "group": "office", "org": "발전기금재단",
+      "name": "발전기금재단 공지",
+      "kind": "k2web", "base": "https://fund.jnu.ac.kr", "site": "fund", "board": "991",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://fund.jnu.ac.kr/fund/13512/subview.do",
+      "why": "용봉·대신·동원 장학 · 기부자 지정 장학"
+    },
+    {
+      "key": "alumni", "group": "office", "org": "총동창회",
+      "name": "총동창회 공지",
+      "kind": "k2web", "base": "https://home.jnu.ac.kr", "site": "home", "board": "454",
+      "filter": "keyword", "require": ["장학생", "선발", "모집", "신청"], "audience": {"scope": "all"},
+      "url": "https://home.jnu.ac.kr/home/4482/subview.do",
+      "why": "총동창회 장학재단 장학생 선발"
+    },
+    {
+      "key": "support", "group": "office", "org": "장애학생지원센터",
+      "name": "장애학생지원센터 공지",
+      "kind": "k2web", "base": "https://support.jnu.ac.kr", "site": "support", "board": "2603",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://support.jnu.ac.kr/support/7740/subview.do",
+      "why": "장애학생 장학 · 장애학생 도우미(근로장학) 모집"
+    },
+    {
+      "key": "counsel", "group": "office", "org": "학생생활상담센터",
+      "name": "학생생활상담센터 공지",
+      "kind": "k2web", "base": "https://counsel.jnu.ac.kr", "site": "counsel", "board": "2012",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://counsel.jnu.ac.kr/counsel/index.do",
+      "why": "집단상담 · 마음건강 예방교육 · 학업동기 향상 프로그램 참여자 모집 (2026-10-25 추가)",
+      "writers": ["학생생활상담센터"]
+    },
+    {
+      "key": "idcc", "group": "office", "org": "광주국제개발협력센터 (KOICA)",
+      "name": "광주국제개발협력센터 (학교 공지로 올라옴)",
+      "kind": "relay", "audience": {"scope": "all"},
+      "url": "https://blog.naver.com/gj-idcc",
+      "why": "KOICA 봉사단 · 국제개발협력 프로그램 — 센터 소식은 블로그라 학교 공지의 작성 부서로 받는다 (2026-10-25)",
+      "writers": ["전남대학교광주국제개발협력센터", "광주국제개발협력센터"]
+    },
+    {
+      "key": "rotc", "group": "office", "org": "학생군사교육단 (105 학군단)",
+      "name": "학군단 (학교 공지·상시 장학 안내로 받음)",
+      "kind": "relay", "audience": {"scope": "all"},
+      "url": "https://105rotc.jnu.ac.kr/105rotc/17299/subview.do",
+      "why": "학군단 장학 · 군 장학생 — 학군단 공지 게시판은 목록을 서버에서 그리지 않아(2026-10-09 실측) 읽지 못한다. 학군단 장학금은 상시 장학 안내에 있다",
+      "writers": ["학생군사교육단", "학군단"]
+    },
+    {
+      "key": "icee", "group": "office", "org": "공학교육혁신센터",
+      "name": "공학교육혁신센터 공지",
+      "kind": "k2web", "base": "https://icee.jnu.ac.kr", "site": "icee", "board": "2798",
+      "filter": "keyword",
+      "audience": {"scope": "related", "colleges": ["공과대학", "공학대학", "AI융합대학"], "fields": ["공학"]},
+      "url": "https://icee.jnu.ac.kr/icee/17915/subview.do",
+      "why": "공학교육 인증·캡스톤 관련 장학·시상"
+    },
+    {
+      "key": "startuphub", "group": "project", "org": "창업중심대학사업단",
+      "name": "창업중심대학사업단 공지",
+      "kind": "k2web", "base": "https://startuphub.jnu.ac.kr", "site": "startuphub", "board": "3636",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://startuphub.jnu.ac.kr/startuphub/21687/subview.do",
+      "why": "창업 장학 · 학생 창업 지원금",
+      "writers": ["창업중심대학사업단", "창업지원본부", "실험실특화형창업선도대학사업단"]
+    },
+    {
+      "key": "startup_center", "group": "project", "org": "창업보육센터 · 창업포털",
+      "name": "창업보육센터 공지 (실험실 창업·메이커톤·창업 아카데미)",
+      "kind": "xe", "base": "http://startup.jnu.ac.kr", "mids": ["board_MRLV57"],
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "http://startup.jnu.ac.kr/board_MRLV57",
+      "why": "실험실특화형창업선도대학·창업지원본부가 올리는 실험실 창업 아카데미 · 기술창업 메이커톤 · 학생창업주간 (2026-10-25 추가 — https 인증서 이름이 맞지 않아 사이트가 안내하는 http 로 읽는다)"
+    },
+    {
+      "key": "cibi", "group": "project", "org": "창업교육혁신선도대학사업단",
+      "name": "창업교육혁신선도대학사업단 (학교 공지로 올라옴)",
+      "kind": "relay", "audience": {"scope": "all"},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5",
+      "why": "로컬 청년마을 아이디어톤 · 창업교육 프로그램 — 자체 게시판을 찾지 못해(2026-10-25) 학교 공지의 작성 부서로 받는다",
+      "writers": ["창업교육혁신선도대학사업단"]
+    },
+    {
+      "key": "rise_jn", "group": "project", "org": "전남 RISE 사업단 (앵커사업단)",
+      "name": "전남 RISE · 앵커사업단 공지",
+      "kind": "k2web", "base": "https://rise.jnu.ac.kr", "site": "rise", "board": "3734",
+      "filter": "keyword", "audience": {"scope": "campus", "campus": "여수"},
+      "url": "https://rise.jnu.ac.kr/rise/22058/subview.do",
+      "why": "전남(여수캠퍼스 중심) RISE 학생 우수인재육성비 · 서포터즈 활동비",
+      "writers": ["전남대학교앵커사업단", "앵커사업단"]
+    },
+    {
+      "key": "aicoss", "group": "project", "org": "인공지능혁신융합대학사업단 (AICOSS)",
+      "name": "AICOSS 공지",
+      "kind": "coss", "base": "https://aicoss.kr", "listPath": "/www/notice/", "cate": "전남대학교",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["AI융합대학"],
+                   "departments": ["인공지능학부", "소프트웨어공학과", "컴퓨터정보통신공학과", "전자컴퓨터공학부", "전자공학과",
+                                   "빅데이터융합학과", "수학과", "통계학과"],
+                   "keywords": ["인공지능", "컴퓨터", "소프트웨어", "데이터", "AI"]},
+      "url": "https://aicoss.kr/www/notice/",
+      "why": "AI 마이크로디그리·융합전공 참여 학생 성과장학 · 근로장학 · 성적우수장학 (마일리지 연동). 7개 대학 연합 게시판이라 말머리 '전남대학교' 글만 읽는다 (2026-10-25)",
+      "writers": ["인공지능혁신융합대학사업단"]
+    },
+    {
+      "key": "nccoss", "group": "project", "org": "차세대통신혁신융합대학사업단",
+      "name": "차세대통신 혁신융합대학 공지",
+      "kind": "coss", "base": "https://jnu.nccoss.kr", "listPath": "/www/notice/",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["차세대통신혁신융합대학"],
+                   "departments": ["전자공학과", "컴퓨터정보통신공학과", "전자컴퓨터공학부", "전기공학과", "인공지능학부",
+                                   "소프트웨어공학과", "물리학과"],
+                   "keywords": ["통신", "전자", "양자"]},
+      "url": "https://jnu.nccoss.kr/www/notice/",
+      "why": "차세대통신 마이크로디그리·융합전공 참여 학생 장학 · 캡스톤 지원",
+      "writers": ["차세대통신혁신융합대학사업단"]
+    },
+    {
+      "key": "nccoss_apply", "group": "project", "org": "차세대통신혁신융합대학사업단",
+      "name": "차세대통신 혁신융합대학 프로그램 신청",
+      "kind": "coss_apply", "base": "https://jnu.nccoss.kr", "site": "nccossapply", "listPath": "/www/apply_program/",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["차세대통신혁신융합대학"], "departments": ["전자공학과", "컴퓨터정보통신공학과", "전자컴퓨터공학부", "전기공학과", "인공지능학부", "소프트웨어공학과", "물리학과"], "keywords": ["통신", "전자", "양자"]},
+      "url": "https://jnu.nccoss.kr/www/apply_program/",
+      "why": "사업단 교과·비교과 프로그램을 신청 기간·진행 기간·상태(신청중·마감)와 함께 — 공지 게시판에 없는 프로그램도 있다 (2026-10-25 추가)"
+    },
+    {
+      "key": "battery", "group": "project", "org": "이차전지특성화대학사업단",
+      "name": "이차전지특성화대학사업단 공지",
+      "kind": "k2web", "base": "https://battery.jnu.ac.kr", "site": "battery", "board": "3351",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["이차전지특성화대학"],
+                   "departments": ["신소재공학부", "화학공학부", "고분자융합소재공학부", "화학과", "전기공학과", "기계공학부",
+                                   "에너지자원공학과", "환경에너지공학과"],
+                   "keywords": ["이차전지", "배터리", "소재", "화학", "에너지"]},
+      "url": "https://battery.jnu.ac.kr/battery/20415/subview.do",
+      "why": "이차전지융합전공 참여 학생 장학(30학점 이상 이수 재학생, 2024 공고 기준 최대 200만원) · 해외연수",
+      "writers": ["이차전지특성화대학사업단"]
+    },
+    {
+      "key": "greenbio", "group": "project", "org": "그린바이오혁신융합대학사업단",
+      "name": "그린바이오 혁신융합대학 공지",
+      "kind": "k2web", "base": "https://greenbio.jnu.ac.kr", "site": "greenbio", "board": "3467",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["농업생명과학대학", "그린바이오혁신융합대학"],
+                   "departments": ["생명과학기술학부", "생물학과", "식품영양과학부"],
+                   "keywords": ["바이오", "식물", "식품", "원예", "농", "생명"]},
+      "url": "https://greenbio.jnu.ac.kr/greenbio/20997/subview.do",
+      "why": "디지털그린바이오 융합전공·G-COSS 마이크로디그리 장학 (사이트에 장학 지급 기준 메뉴가 따로 있다)",
+      "writers": ["그린바이오혁신융합대학사업단"]
+    },
+    {
+      "key": "sojoong", "group": "project", "org": "소프트웨어중심대학사업단",
+      "name": "SW중심대학사업단 (sojoong.kr)",
+      "kind": "kboard", "base": "https://sojoong.kr", "paths": ["/notice/notice-board/"],
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["AI융합대학"], "departments": ["인공지능학부", "소프트웨어공학과", "컴퓨터정보통신공학과", "전자컴퓨터공학부"], "keywords": ["소프트웨어", "컴퓨터", "인공지능", "SW"]},
+      "url": "https://sojoong.kr/notice/notice-board/",
+      "why": "SW 경진대회·해커톤 · TOPCIT · SW 일경험 · 해외 인턴 · 마일리지 장학 공지 — 사업단 자체 사이트(워드프레스 KBoard, '소중마일리지' 메뉴는 게시판이 아닌 안내 표). 2026-10-25 전까지는 인공지능학부 게시판의 'SW중심대학' 말머리로만 읽었다",
+      "writers": ["소프트웨어중심대학사업단", "SW중심대학사업단"]
+    },
+    {
+      "key": "aisw_sec", "group": "project", "org": "정보보호특성화대학지원사업단",
+      "name": "정보보호특성화대학 (인공지능학부 게시판 '정보보호특성화대학' 말머리)",
+      "kind": "k2web", "base": "https://aisw.jnu.ac.kr", "site": "aisw", "board": "64", "category": "536",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["AI융합대학"],
+                   "departments": ["인공지능학부", "소프트웨어공학과", "컴퓨터정보통신공학과", "전자컴퓨터공학부"],
+                   "keywords": ["보안", "정보보호", "컴퓨터", "소프트웨어"]},
+      "url": "https://aisw.jnu.ac.kr/bbs/aisw/64/artclList.do?bbsOpenWrdSeq=536",
+      "why": "정보보호 트랙 참여 학생 장학 · 활동 지원 — security.jnu.ac.kr 은 학교 밖에서 열리지 않아(2026-10-25 확인) 인공지능학부 게시판 말머리로 읽는다",
+      "writers": ["정보보호특성화대학지원사업단"]
+    },
+    {
+      "key": "semicon", "group": "project", "org": "반도체특성화대학사업단",
+      "name": "반도체특성화대학사업단 (학교 공지로 올라옴)",
+      "kind": "relay",
+      "audience": {"scope": "related", "open": true, "colleges": ["반도체특성화대학"],
+                   "departments": ["전자공학과", "전기공학과", "신소재공학부", "물리학과", "화학공학부", "컴퓨터정보통신공학과",
+                                   "전자컴퓨터공학부", "반도체학과"],
+                   "keywords": ["반도체", "전자", "전기", "소재"]},
+      "url": "https://sanhak.jnu.ac.kr/sanhak/10011/subview.do",
+      "why": "반도체융합전공 참여 학생 장학 (전북대와 연합, 2023~) — 자체 게시판을 찾지 못해(2026-10-25 다시 확인) 학교 공지·학과 공지로 받는다",
+      "writers": ["반도체특성화대학사업단"]
+    },
+    {
+      "key": "huss", "group": "project", "org": "인문사회융합인재양성사업단 (HUSS)",
+      "name": "HUSS 인문사회융합인재양성사업단 (학교 공지로 올라옴)",
+      "kind": "relay",
+      "audience": {"scope": "related", "open": true,
+                   "colleges": ["인문대학", "사회과학대학", "경영대학", "문화사회과학대학", "인문사회융합인재양성대학"],
+                   "keywords": ["디지털경제", "경제", "경영", "인문", "사회"]},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5&cate=8",
+      "why": "디지털경제 융합전공 참여 학생 마일리지 장학 (2026-08 공지 실측) — 전남대 HUSS 자체 사이트는 찾지 못했다(2026-10-25, huss.kr 은 다른 기관)",
+      "writers": ["인문사회융합인재양성사업단"]
+    },
+    {
+      "key": "ris", "group": "project", "org": "광주전남 지역혁신 (신에너지 RIS 사업단)",
+      "name": "광주전남 지역혁신 융합전공 (학교 공지로 올라옴)",
+      "kind": "relay",
+      "audience": {"scope": "related", "open": true, "colleges": ["광주전남지역혁신"],
+                   "departments": ["전기공학과", "기계공학부", "에너지자원공학과", "환경에너지공학과", "신소재공학부",
+                                   "조선해양공학과", "화학공학부"],
+                   "keywords": ["에너지", "모빌리티", "해상풍력", "선박", "부품소재"]},
+      "url": "https://sanhak.jnu.ac.kr/sanhak/10011/subview.do",
+      "why": "도심항공모빌리티·미래에너지·신재생에너지·해상풍력 등 융합전공 참여 학생 장학 — ris.jnu.ac.kr 은 학교 밖에서 열리지 않는다(2026-10-25)",
+      "writers": ["신에너지 RIS 사업단", "신에너지RIS사업단", "광주전남지역혁신플랫폼", "지역혁신플랫폼"]
+    },
+    {
+      "key": "rise_gj", "group": "project", "org": "광주 RISE 사업단",
+      "name": "광주 RISE 사업단 (학교·학과 공지로 올라옴)",
+      "kind": "relay", "audience": {"scope": "campus", "campus": "광주"},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5",
+      "why": "RISE 학부생 사업 우수 참여자 우수인재육성비 · 캡스톤 지원 (2026-02 기계공학부 공지 실측)",
+      "writers": ["광주RISE사업단", "광주 RISE사업단", "RISE사업단"]
+    },
+    {
+      "key": "linc", "group": "project", "org": "산학협력 (LINC 3.0 · 산학연협력단지)",
+      "name": "산학협력 사업단 (학교 공지로 올라옴)",
+      "kind": "relay", "audience": {"scope": "all"},
+      "url": "https://sanhak.jnu.ac.kr/sanhak/10011/subview.do",
+      "why": "현장실습 지원금 · 캡스톤디자인 지원 — linc.jnu.ac.kr 은 403(2026-10-25), 현장실습 모집은 CNU Events·학교 공지로 온다",
+      "writers": ["LINC3.0사업단", "LINC 3.0 사업단", "산학연협력단지조성지원사업단", "산학협력단", "전남대학교산학협력단",
+                  "전남대학교캠퍼스혁신파크사업단"]
+    },
+    {
+      "key": "futurecar", "group": "project", "org": "전남대 미래차 부트캠프사업단",
+      "name": "미래차 부트캠프사업단 공지 (futurecar.kr)",
+      "kind": "coss", "base": "https://futurecar.kr", "listPath": "/notice/", "viewPath": "/notice/view/",
+      "filter": "keyword",
+      "audience": {"scope": "related", "open": true, "colleges": ["공과대학", "AI융합대학"],
+                   "departments": ["기계공학부", "전기공학과", "전자공학과", "지능형모빌리티융합학과", "컴퓨터정보통신공학과",
+                                   "인공지능학부", "소프트웨어공학과", "전자컴퓨터공학부", "화학공학부", "신소재공학부"],
+                   "keywords": ["자동차", "모빌리티", "기계", "전기", "전자"]},
+      "url": "https://futurecar.kr/notice/",
+      "why": "첨단산업 인재양성 부트캠프(미래차 분야) — 실전·산업체험 캠프 · 라운드업 · 교육생 모집 (2026-10-25 추가, futurecar.jnu.ac.kr → futurecar.kr)",
+      "writers": ["첨단산업인재양성부트캠프(미래", "미래차부트캠프"]
+    },
+    {
+      "key": "bootcamp", "group": "project", "org": "첨단산업 인재양성 부트캠프 — AI 분야 (CNU SPARK)",
+      "name": "AI 부트캠프 CNU SPARK (학교 공지로 올라옴)",
+      "kind": "relay",
+      "audience": {"scope": "related", "open": true, "colleges": ["AI융합대학", "공과대학"],
+                   "keywords": ["인공지능", "모빌리티", "반도체", "에너지", "소프트웨어"]},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5",
+      "why": "AI 부트캠프 교육생 모집 · 훈련장려금 — 자체 사이트를 찾지 못해(2026-10-25) 학교 공지의 작성 부서로 받는다. 미래차 분야는 futurecar",
+      "writers": ["첨단산업인재양성부트캠프(인공", "인공지능부트캠프", "첨단산업인재양성부트캠프"]
+    },
+    {
+      "key": "basicsci", "group": "project", "org": "이공계기초역량강화사업단",
+      "name": "이공계 기초역량강화 사업단 (학교 공지로 올라옴)",
+      "kind": "relay",
+      "audience": {"scope": "related", "open": false, "colleges": ["자연과학대학", "공과대학", "공학대학", "AI융합대학"],
+                   "fields": ["자연과학", "공학"]},
+      "url": "https://www.jnu.ac.kr/WebApp/web/HOM/COM/Board/board.aspx?boardID=5",
+      "why": "이공계 기초 교과 튜터링 · 학습 지원 — 자체 사이트 없음(2026-10-25 확인)",
+      "writers": ["이공계기초역량강화사업단"]
+    },
+    {
+      "key": "sanhak", "group": "project", "org": "산학협력단 (사업단 공지)",
+      "name": "산학협력단 공지 (RISE·앵커·공유대학 사업단이 올림)",
+      "kind": "k2web", "base": "https://sanhak.jnu.ac.kr", "site": "sanhak", "board": "1151",
+      "filter": "keyword", "audience": {"scope": "all"},
+      "url": "https://sanhak.jnu.ac.kr/bbs/sanhak/1151/artclList.do",
+      "why": "광주 RISE사업단 캡스톤·공유대학 특강 · 앵커·서남권 공유대학 사업단 공지 (2026-10-25 추가 — 대부분 연구·채용 행정이라 대외활동은 학생 대상 말이 있는 글만)"
+    },
+    {
+      "key": "my_college", "group": "mine", "org": "내 단과대학",
+      "name": "내 단과대학 공지 (장학)",
+      "kind": "profile_board", "level": "college",
+      "filter": "keyword", "audience": {"scope": "mine"},
+      "why": "단과대학 성취·성장 장학 · 동창회 장학 — 프로필의 단과대학 홈페이지에서 게시판을 찾는다"
+    },
+    {
+      "key": "my_dept", "group": "mine", "org": "내 학부(과)",
+      "name": "내 학부(과) 공지 (장학)",
+      "kind": "profile_board", "level": "dept",
+      "filter": "keyword", "audience": {"scope": "mine"},
+      "why": "학과 장학 · 학과 동문 장학 · 근로장학 — 게시판에 '장학' 말머리가 있으면 그것만 본다"
+    }
+  ]
+}

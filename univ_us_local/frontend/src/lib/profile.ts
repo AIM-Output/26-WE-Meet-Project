@@ -18,6 +18,13 @@ export const FLAG_LABEL: Record<string, string> = {
   basicLivelihood: "기초생활수급·차상위",
 };
 
+/** F12 관심사 — 태그(대외활동 화면의 태그 사전) · 자유 키워드 · 제외 키워드 (요구사항정의서 F12-R10~R13) */
+export interface Interests {
+  tags: string[];
+  keywords: string[];
+  exclude: string[];
+}
+
 export interface Gpa {
   value: number;
   scale: number; // 4.5 · 4.3 · 4.0 — 임의 환산하지 않는다
@@ -46,7 +53,7 @@ export interface ProfileFields {
   residenceRegion: string | null;
   highSchoolRegion: string | null;
   flags: Record<string, boolean> | null;
-  interests: string[] | null;
+  interests: Interests | string[] | null; // F12 관심사 {tags, keywords, exclude} — 예전 값은 글자 목록일 수 있다
   draftContext: Record<string, string> | null;
 }
 

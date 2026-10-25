@@ -118,6 +118,17 @@ def test_hakstd_parsers_never_read_name():
     assert parse_grades(GRADES) == {"earned_credits": 8, "semesters_completed": 2, "last_semester_credits": 3}
 
 
+def test_interests_shape(db):
+    service.patch(db, {"interests": {"tags": ["AI·SW"], "keywords": ["반도체  공정", "반도체 공정"], "exclude": ["대학원생"]}})
+    assert service.get(db)["profile"]["interests"] == {"tags": ["AI·SW"], "keywords": ["반도체 공정"], "exclude": ["대학원생"]}
+    service.patch(db, {"interests": ["창업"]})                                  # 예전 모양(목록)은 키워드로
+    assert service.get(db)["profile"]["interests"] == {"tags": [], "keywords": ["창업"], "exclude": []}
+    for bad in ({"keywords": ["a"]}, {"likes": ["AI"]}, {"tags": "AI"}):      # 1글자 거부 (F12 8절)
+        with pytest.raises(Invalid):
+            service.patch(db, {"interests": bad})
+    assert notice_bridge.to_notice({"interests": {"tags": ["AI·SW"], "keywords": ["반도체"], "exclude": ["x"]}}) ==         {"interests": ["AI·SW", "반도체"]}
+
+
 def test_notice_bridge():
     out = notice_bridge.to_notice({"grade": 3, "department": "인공지능학부", "flags": {"veteranFamily": True},
                                    "draftContext": {"careerGoal": "연구원"}, "incomeBracket": None})
