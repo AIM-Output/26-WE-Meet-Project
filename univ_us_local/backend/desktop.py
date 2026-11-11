@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import json
 import os
 import runpy
@@ -108,13 +109,46 @@ def _detach_stdin():
     return pipe
 
 
+def _say(msg: str) -> None:
+    """서버 로그 한 줄 (설치본은 앱 데이터 폴더/logs/backend.log) — 시각을 붙인다: 언제 끝났는지 알 수 있게 (2026-11-11)."""
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} desktop: {msg}", file=sys.stderr, flush=True)
+
+
+_stop_reason: list[str] = []                             # 서버가 끝나는 이유 — 먼저 적힌 것이 원인
+
+
 def _exit_with_stdin(server, pipe) -> None:
     try:
         while pipe.read(1):
             pass
-    except Exception:                                    # noqa: BLE001
-        pass
+        _stop_reason.append("앱과 이어진 표준입력이 닫힘 (앱 종료)")
+    except Exception as e:                               # noqa: BLE001
+        _stop_reason.append(f"앱과 이어진 표준입력을 읽지 못함 ({e!r})")
     server.should_exit = True
+
+
+_CTRL_EVENTS = {0: "CTRL_C", 1: "CTRL_BREAK", 2: "CTRL_CLOSE(콘솔 닫힘)", 5: "CTRL_LOGOFF(로그오프)", 6: "CTRL_SHUTDOWN(시스템 종료)"}
+_ctrl_handler = None                                     # ctypes 콜백은 살아 있어야 한다
+
+
+def _log_console_events() -> None:
+    """Windows 콘솔 제어 이벤트를 로그에 남긴다 — CTRL_CLOSE·LOGOFF·SHUTDOWN 은 파이썬 코드 없이 바로 끝나
+    (종료 코드 0xC000013A) 아무 흔적이 없다. 적기만 하고 False 를 돌려 원래 처리(종료·KeyboardInterrupt)는 그대로 둔다."""
+    global _ctrl_handler
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    def handler(event):
+        name = _CTRL_EVENTS.get(event, f"이벤트 {event}")
+        _stop_reason.append(f"Windows 콘솔 제어 이벤트 {name}")
+        _say(f"Windows 콘솔 제어 이벤트를 받음: {name}")
+        return False
+
+    _ctrl_handler = handler
+    ctypes.windll.kernel32.SetConsoleCtrlHandler(handler, True)
 
 
 def _ensure_browsers(root: Path) -> None:
@@ -184,6 +218,7 @@ def serve(a: argparse.Namespace) -> int:
     if log:
         log.parent.mkdir(parents=True, exist_ok=True)
         sys.stderr = open(log, "a", encoding="utf-8", buffering=1)        # noqa: SIM115 — 프로세스 끝까지 쓴다
+        faulthandler.enable(sys.stderr)                  # 파이썬 밖(네이티브)에서 죽어도 그때의 스택을 남긴다
     # 개발 모드는 Chromium 을 데이터 폴더가 아니라 venv(desktop/sidecar/.venv/pw-browsers)에 둔다 — .dev-data 를 지워도 다시 받지 않게
     if not FROZEN:
         os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(Path(sys.prefix) / "pw-browsers"))
@@ -205,8 +240,16 @@ def serve(a: argparse.Namespace) -> int:
         threading.Thread(target=_exit_with_stdin, args=(server, _detach_stdin()), daemon=True).start()
     if not (a.no_browser_install or os.environ.get("UNIVUS_NO_BROWSER_INSTALL") == "1"):   # 환경변수: CI·시험 실행용
         threading.Thread(target=_ensure_browsers, args=(root,), daemon=True).start()
-    print(f"desktop: 서버 시작 127.0.0.1:{port} · 데이터 {root}", file=sys.stderr, flush=True)
-    server.run()
+    _log_console_events()
+    note = os.environ.pop("UNIVUS_RESTART_NOTE", "")    # 앱(main.rs)이 뜻밖에 끝난 서버를 다시 띄울 때 붙인다
+    if note:
+        _say(f"다시 시작 — {note}")
+    _say(f"서버 시작 127.0.0.1:{port} · 데이터 {root} · pid {os.getpid()}")
+    try:
+        server.run()
+    finally:
+        # 정상 종료(앱 종료)도 남긴다 — 다음에 서버가 사라지면 이 줄이 있는지로 '스스로 끝남'과 '밖에서 끝냄'을 가른다
+        _say(f"서버 끝 — {_stop_reason[0] if _stop_reason else '이유 모름 (신호 또는 예외)'}")
     return 0
 
 

@@ -5,14 +5,18 @@
 //      → 서버가 한 번 쓰는 코드를 세션 쿠키로 바꿔 준다(univ_us_local/backend/app/main.py). 다른 프로그램은 API 를 못 부른다.
 //   3. 창을 닫으면 트레이로 숨는다(예약 수집·마감 알림이 계속 돈다). 트레이 메뉴: 열기 · 로그인할 때 실행 · 종료.
 //   4. 종료하면 사이드카의 표준입력을 닫아 스스로 끝나게 하고, 5초 안에 안 끝나면 강제로 끝낸다.
+//   5. 사이드카가 뜻밖에 끝나면 시작 화면으로 돌아가 다시 띄우고, 준비되면 보던 화면으로 돌아간다.
+//      종료 코드는 새 사이드카가 backend.log 에 적는다. 10분 안에 세 번 넘게 끝나면 그만두고 시작 화면에 알린다.
+//      (2026-11-11: 사이드카만 조용히 사라져 창이 127.0.0.1 연결 거부로 남았고, 로그에 언제·왜가 없었다)
 //   학교 사이트 등 바깥 주소는 앱 창이 아니라 기본 브라우저로 연다. 대시보드(127.0.0.1)에는 Tauri API 를 열지 않는다.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -27,7 +31,18 @@ const READY_PREFIX: &str = "UNIVUS_READY ";
 const PAPER: Color = Color(0xf8, 0xf4, 0xf0, 0xff);
 const HIDDEN_ARG: &str = "--hidden"; // 로그인할 때 자동 실행이면 창 없이 트레이로만
 
-struct Sidecar(Mutex<Option<Child>>);
+// 뜻밖에 끝난 사이드카를 다시 띄우는 한도 — 이 시간 안에 이만큼 넘게 끝나면 고장으로 보고 그만둔다
+const RESTART_WINDOW: Duration = Duration::from_secs(10 * 60);
+const MAX_RESTARTS: usize = 3;
+
+#[derive(Default)]
+struct Sidecar {
+    child: Mutex<Option<Child>>,
+    quitting: AtomicBool,                // 트레이 '종료'·앱 끝 — 이때 사이드카가 끝나는 것은 정상
+    restarts: Mutex<Vec<Instant>>,       // 최근 다시 띄운 시각 (RESTART_WINDOW 안의 것만 남긴다)
+    splash: Mutex<Option<Url>>,          // 시작 화면 주소 (첫 준비 줄 때 창이 보고 있던 주소)
+    resume: Mutex<Option<String>>,       // 다시 띄운 뒤 돌아갈 대시보드 경로 (/exams?tab=… 등)
+}
 
 /// 사이드카를 띄울 명령 — 설치본은 resources/sidecar/ 의 실행 파일.
 /// 디버그 빌드(`npm run dev` = tauri dev)는 저장소 소스를 desktop/sidecar/.venv(사이드카 빌드와 같은 venv)의 python 으로 바로 띄운다.
@@ -84,31 +99,24 @@ fn show_status(app: &AppHandle, msg: &str) {
     }
 }
 
-fn start_sidecar(app: &AppHandle) {
-    let mut cmd = match sidecar_command(app) {
-        Ok(c) => c,
-        Err(msg) => {
-            show_status(app, &msg);
-            return;
-        }
-    };
+/// 사이드카를 띄운다. `restart_note` 가 있으면 다시 띄우는 것 — 새 사이드카가 그 사연(앞 서버의 종료 코드)을 로그에 적는다.
+fn start_sidecar(app: &AppHandle, restart_note: Option<String>) -> Result<(), String> {
+    let mut cmd = sidecar_command(app)?;
     // 개발 모드는 서버 로그를 tauri dev 터미널에 그대로 보인다 (설치본은 앱 데이터 폴더/logs/backend.log)
     let stderr = if cfg!(debug_assertions) { Stdio::inherit() } else { Stdio::null() };
     cmd.arg("--exit-with-stdin").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(stderr);
+    if let Some(note) = restart_note {
+        cmd.env("UNIVUS_RESTART_NOTE", note);
+    }
     #[cfg(all(windows, not(debug_assertions)))]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW — 콘솔 창을 띄우지 않는다 (디버그 빌드는 tauri dev 콘솔을 같이 쓴다)
     }
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => {
-            show_status(app, &format!("로컬 서버를 시작하지 못했습니다: {e}"));
-            return;
-        }
-    };
+    let mut child = cmd.spawn().map_err(|e| format!("로컬 서버를 시작하지 못했습니다: {e}"))?;
+    let pid = child.id();
     let stdout = child.stdout.take();
-    app.state::<Sidecar>().0.lock().unwrap().replace(child);
+    app.state::<Sidecar>().child.lock().unwrap().replace(child);
 
     let handle = app.clone();
     std::thread::spawn(move || {
@@ -119,19 +127,141 @@ fn start_sidecar(app: &AppHandle) {
                 .ok()
                 .and_then(|v| v["launchUrl"].as_str().and_then(|s| Url::parse(s).ok()));
             match (url, handle.get_webview_window("main")) {
-                (Some(u), Some(w)) => {
+                (Some(mut u), Some(w)) => {
+                    let st = handle.state::<Sidecar>();
+                    // 시작 화면 주소는 처음 준비될 때 창에서 읽는다 — 창을 만든 직후에는 아직 about:blank 다 (2026-11-11 실측)
+                    let mut splash = st.splash.lock().unwrap();
+                    if splash.is_none() {
+                        *splash = w.url().ok().filter(|s| s.scheme() != "about");
+                    }
+                    drop(splash);
+                    // 다시 띄운 것이면 보던 화면으로 (서버의 /desktop/launch 가 같은 주소 안 경로만 받는다)
+                    if let Some(next) = st.resume.lock().unwrap().take() {
+                        u.query_pairs_mut().append_pair("next", &next);
+                    }
                     let _ = w.navigate(u);
                 }
                 _ => show_status(&handle, "로컬 서버 응답을 읽지 못했습니다"),
             }
         }
-        // 표준출력이 닫혔다 = 서버가 끝났다 (앱을 끝내는 중이면 창이 이미 없다)
-        show_status(&handle, "로컬 서버가 멈췄습니다 — 트레이에서 종료한 뒤 다시 실행해 주세요 (로그: 앱 데이터 폴더/logs)");
     });
+
+    // 끝났는지는 표준출력 EOF 가 아니라 프로세스로 본다 — 사이드카가 띄운 자식(수집기·로그인 창)이
+    // 표준출력 핸들을 물려받아 살아 있으면 사이드카가 죽어도 EOF 가 오지 않는다
+    let handle = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let status = {
+            let st = handle.state::<Sidecar>();
+            let mut slot = st.child.lock().unwrap();
+            match slot.as_mut() {
+                Some(c) if c.id() == pid => match c.try_wait() {
+                    Ok(None) => continue,
+                    Ok(Some(s)) => {
+                        slot.take();
+                        Ok(s)
+                    }
+                    Err(e) => {
+                        slot.take();
+                        Err(e)
+                    }
+                },
+                _ => return, // stop_sidecar 가 가져갔다(앱 종료) — 또는 이미 새 사이드카로 바뀌었다
+            }
+        };
+        on_sidecar_exit(&handle, status);
+        return;
+    });
+    Ok(())
+}
+
+/// 사이드카가 끝났다 — 앱을 끝내는 중이 아니면 뜻밖의 종료이므로 다시 띄운다.
+fn on_sidecar_exit(app: &AppHandle, status: std::io::Result<ExitStatus>) {
+    let st = app.state::<Sidecar>();
+    if st.quitting.load(Ordering::SeqCst) {
+        return;
+    }
+    let code = exit_code(status);
+
+    // 보던 대시보드 화면을 기억하고 시작 화면으로 — 죽은 서버 주소의 '연결 거부' 화면에 남지 않게
+    if let Some(w) = app.get_webview_window("main") {
+        let splash = st.splash.lock().unwrap().clone();
+        if let Some(path) = w.url().ok().and_then(|u| dashboard_path(&u, splash.as_ref())) {
+            st.resume.lock().unwrap().replace(path);
+        }
+    }
+    let now = Instant::now();
+    let allowed = {
+        let mut times = st.restarts.lock().unwrap();
+        times.retain(|t| now.duration_since(*t) < RESTART_WINDOW);
+        let ok = times.len() < MAX_RESTARTS;
+        if ok {
+            times.push(now);
+        }
+        ok
+    };
+    if !allowed {
+        show_splash(app, Some(&format!(
+            "로컬 서버가 계속 멈춥니다 (종료 코드 {code}) — 트레이에서 종료한 뒤 다시 실행해 주세요 (로그: 앱 데이터 폴더/logs/backend.log)"
+        )));
+        return;
+    }
+    show_splash(app, None);
+    std::thread::sleep(Duration::from_secs(1)); // 바로 다시 죽는 경우에 빈틈 없이 도는 것을 막는다
+    if st.quitting.load(Ordering::SeqCst) {
+        return;
+    }
+    if let Err(msg) = start_sidecar(app, Some(format!("앞 서버가 종료 코드 {code} 로 끝나서 앱이 다시 띄움"))) {
+        show_splash(app, Some(&msg));
+    }
+}
+
+/// 종료 코드 글자 — Windows 는 NTSTATUS 처럼 16진수(0xC000013A = Ctrl+C·콘솔 닫힘, 0xC0000005 = 메모리 접근 위반)
+fn exit_code(status: std::io::Result<ExitStatus>) -> String {
+    match status {
+        Ok(s) => match s.code() {
+            Some(c) if cfg!(windows) => format!("{:#010X}", c as u32),
+            Some(c) => c.to_string(),
+            None => s.to_string(), // 유닉스 신호
+        },
+        Err(e) => format!("알 수 없음({e})"),
+    }
+}
+
+/// 대시보드(로컬 서버) 주소이면 경로+쿼리 — 시작 화면·실행 코드 주소는 돌아갈 곳이 아니다
+/// (개발 모드의 시작 화면은 tauri dev 가 http://127.0.0.1:1430 에서 보여 주므로 주소의 출처로 가른다)
+fn dashboard_path(url: &Url, splash: Option<&Url>) -> Option<String> {
+    let local = matches!(url.scheme(), "http" | "https") && matches!(url.host_str(), Some("127.0.0.1") | Some("localhost"));
+    let is_splash = splash.is_some_and(|s| s.origin() == url.origin());
+    if !local || is_splash || url.path().starts_with("/desktop/") {
+        return None;
+    }
+    Some(match url.query() {
+        Some(q) => format!("{}?{q}", url.path()),
+        None => url.path().to_string(),
+    })
+}
+
+/// 창을 시작 화면으로 — error 가 없으면 '다시 시작하는 중', 있으면 오류 모양 (splash/index.html 이 쿼리를 읽는다)
+fn show_splash(app: &AppHandle, error: Option<&str>) {
+    // 처음 준비되기 전에 끝났으면 아직 모른다 — Tauri 2 의 앱 주소 (Windows http://tauri.localhost · 맥 tauri://localhost)
+    let saved = app.state::<Sidecar>().splash.lock().unwrap().clone();
+    let fallback = if cfg!(windows) { "http://tauri.localhost/index.html" } else { "tauri://localhost/index.html" };
+    let Some(mut url) = saved.or_else(|| Url::parse(fallback).ok()) else { return };
+    url.set_query(None);
+    match error {
+        Some(e) => url.query_pairs_mut().append_pair("error", e),
+        None => url.query_pairs_mut().append_pair("restart", "1"),
+    };
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.navigate(url);
+    }
 }
 
 fn stop_sidecar(app: &AppHandle) {
-    let Some(mut child) = app.state::<Sidecar>().0.lock().unwrap().take() else { return };
+    let st = app.state::<Sidecar>();
+    st.quitting.store(true, Ordering::SeqCst); // 이제 끝나는 사이드카는 다시 띄우지 않는다
+    let Some(mut child) = st.child.lock().unwrap().take() else { return };
     drop(child.stdin.take()); // 표준입력을 닫으면 사이드카가 스스로 끝난다 (--exit-with-stdin)
     for _ in 0..50 {
         if let Ok(Some(_)) = child.try_wait() {
@@ -209,7 +339,7 @@ fn main() {
         // 대시보드(127.0.0.1)에는 Tauri API 를 열지 않으므로 아무것도 열리지 않았다(e클래스·학사일정 '원문 보기', 2026-10-08).
         // 새 창 요청은 아래 on_new_window 가 받는다 — 바깥 주소는 기본 브라우저, 로컬 주소는 앱 창.
         .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())
-        .manage(Sidecar(Mutex::new(None)))
+        .manage(Sidecar::default())
         .setup(|app| {
             let handle = app.handle().clone();
             let nav = handle.clone();
@@ -245,7 +375,9 @@ fn main() {
                 })
                 .build()?;
             build_tray(&handle)?;
-            start_sidecar(&handle);
+            if let Err(msg) = start_sidecar(&handle, None) {
+                show_status(&handle, &msg);
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
