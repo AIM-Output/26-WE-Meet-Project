@@ -3,9 +3,11 @@
     univ_us_local/backend/.venv/bin/python -m pytest univ_us_local/backend/tests -q
 """
 import json
+import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -23,20 +25,25 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _open = urllib.request.build_opener(_NoRedirect).open
 
 
-@pytest.fixture
-def sidecar(tmp_path):
+def _spawn(root: Path, **extra_env):
     # 예약 실행·06·18시 자동 수집은 끈다 — 켜 두면 /api/status 가 장학(F11)·대외활동(F12) 수집을 띄워 학교 사이트에 접속한다
     env = {**__import__("os").environ, "F1_TASKS": "off", "F6_TASKS": "off", "F11_AUTOSYNC": "off", "F12_AUTOSYNC": "off",
-           "PYTHONUTF8": "1"}
-    p = subprocess.Popen([sys.executable, str(BACKEND / "desktop.py"), "--data-root", str(tmp_path), "--exit-with-stdin",
-                          "--no-browser-install", "--log", str(tmp_path / "logs" / "backend.log")],
+           "PYTHONUTF8": "1", **extra_env}
+    p = subprocess.Popen([sys.executable, str(BACKEND / "desktop.py"), "--data-root", str(root), "--exit-with-stdin",
+                          "--no-browser-install", "--log", str(root / "logs" / "backend.log")],
                          cwd=str(BACKEND), stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding="utf-8", env=env)
     ready = None
     for line in p.stdout:
         if line.startswith("UNIVUS_READY "):
             ready = json.loads(line[len("UNIVUS_READY "):])
             break
-    assert ready, (tmp_path / "logs" / "backend.log").read_text(encoding="utf-8", errors="replace")
+    assert ready, (root / "logs" / "backend.log").read_text(encoding="utf-8", errors="replace")
+    return p, ready
+
+
+@pytest.fixture
+def sidecar(tmp_path):
+    p, ready = _spawn(tmp_path)
     yield p, ready, tmp_path
     if p.poll() is None:
         p.kill()
@@ -68,3 +75,31 @@ def test_session_flow(sidecar):
     assert (root / "C1_Calendar_agent" / "data" / "univus.db").exists()   # 저장소가 아니라 앱 데이터 폴더에
     p.stdin.close()                                                # 앱이 끝나면
     assert p.wait(timeout=20) == 0
+
+
+@pytest.mark.parametrize("nxt, want", [
+    ("/exams?tab=plan", "/exams?tab=plan"),        # 앱이 다시 띄운 뒤 보던 화면으로
+    ("//evil.example/x", "/"),                     # 다른 사이트로 보내는 주소는 받지 않는다
+    ("/\\evil.example", "/"),                      # 브라우저는 /\ 를 // 처럼 읽는다
+    ("https://evil.example/", "/"),
+])
+def test_launch_next_stays_on_this_server(tmp_path, nxt, want):
+    p, ready = _spawn(tmp_path)
+    try:
+        base = f"http://127.0.0.1:{ready['port']}"
+        launch = ready["launchUrl"][len(base):] + "&" + urllib.parse.urlencode({"next": nxt})
+        status, headers = _get(base, launch)
+        assert status == 303 and headers["Location"] == want
+    finally:
+        p.kill()
+
+
+def test_restart_note_and_stop_reason_logged(tmp_path):
+    """앱(main.rs)이 다시 띄운 사연·서버가 끝난 이유를 시각과 함께 남긴다 — 사이드카가 조용히 사라져도 원인을 찾게 (2026-11-11)."""
+    p, _ = _spawn(tmp_path, UNIVUS_RESTART_NOTE="앞 서버가 종료 코드 0xC000013A 로 끝나서 앱이 다시 띄움")
+    p.stdin.close()
+    assert p.wait(timeout=20) == 0
+    log = (tmp_path / "logs" / "backend.log").read_text(encoding="utf-8")
+    assert re.search(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d desktop: 다시 시작 — 앞 서버가 종료 코드 0xC000013A", log, re.M)
+    assert re.search(r"desktop: 서버 시작 127\.0\.0\.1:\d+ .* pid \d+", log)
+    assert "desktop: 서버 끝 — 앱과 이어진 표준입력이 닫힘 (앱 종료)" in log

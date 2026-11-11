@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import hmac
 import sys
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -227,17 +228,19 @@ if (_c4_router := briefing.router(lambda start, end: calendar_events.collect(CAL
 # ---------------------------------------------------------------- 데스크톱 앱
 
 @app.get("/desktop/launch", include_in_schema=False)
-def desktop_launch(code: str = ""):
-    """앱 창이 맨 처음 여는 주소 — 한 번 쓰는 코드를 세션 쿠키로 바꾸고 첫 화면으로 보낸다."""
+def desktop_launch(code: str = "", next_path: str = Query("/", alias="next")):
+    """앱 창이 맨 처음 여는 주소 — 한 번 쓰는 코드를 세션 쿠키로 바꾸고 첫 화면으로 보낸다.
+    next: 로컬 서버가 멈춰 앱이 다시 띄웠을 때 돌아갈 화면(desktop/src-tauri main.rs). 이 서버 안의 경로만 받는다."""
     if not C.SESSION_TOKEN or not C.consume_launch_code(code):
         return JSONResponse({"detail": "이미 쓰였거나 맞지 않는 실행 코드입니다 — 앱을 다시 실행하세요"}, status_code=403)
-    resp = RedirectResponse("/", status_code=303)
+    same_site = next_path.startswith("/") and not next_path.startswith(("//", "/\\")) and next_path.isprintable()
+    resp = RedirectResponse(next_path if same_site else "/", status_code=303)
     # 맥(WKWebView)은 tauri:// 시작 화면에서 넘어온 이 이동을 다른 사이트 이동으로 봐서, 303 에 실은 Strict 쿠키를
     # 리다이렉트된 '/' 요청에 붙이지 않는다 → 첫 화면이 403 (2026-10-27 실측). 앱 창은 바깥 주소를 열지 않고(on_navigation)
     # 변경 요청은 Origin 검사가 막으므로 맥만 Lax 로 둔다. Windows(WebView2)는 그대로 Strict.
     samesite = "lax" if sys.platform == "darwin" else "strict"
     resp.set_cookie(C.SESSION_COOKIE, C.SESSION_TOKEN, httponly=True, samesite=samesite, path="/")
-    print("desktop: 앱 창이 연결됨 (실행 코드 사용)", file=sys.stderr, flush=True)
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} desktop: 앱 창이 연결됨 (실행 코드 사용)", file=sys.stderr, flush=True)
     return resp
 
 
