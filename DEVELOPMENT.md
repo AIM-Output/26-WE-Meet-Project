@@ -12,6 +12,7 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── DEVELOPMENT.md            ← 지금 보는 문서
 ├── desktop/                  데스크톱 앱 (Tauri 껍데기 + 사이드카 빌드) · 개발 모드 · cli.py — desktop/README.md
 ├── univ_us_local/            앱 안의 대시보드 — backend(FastAPI, 사이드카가 된다) + frontend(Next.js)
+├── server/                   얇은 서버 (Cloudflare Workers + D1, TypeScript) — 남의 데이터가 필요한 기능(F16 팀플부터) · 앱과 따로 배포 — server/README.md
 ├── C0_Platform_agent/        C0 OS 공통 계층(osenv) — Windows·macOS 차이 · 앱 데이터 폴더 · 자식 프로세스 명령
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
 ├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11·F12 가 같이 씀)
@@ -179,6 +180,7 @@ npx tauri build                        # Windows: src-tauri/target/release/bundl
 |---|---|
 | [desktop/README.md](desktop/README.md) | 데스크톱 앱 동작·보안·**개발 모드**·빌드·`cli.py`·알아 둘 함정 |
 | [univ_us_local/README.md](univ_us_local/README.md) | 대시보드 구조·API·화면 |
+| [server/README.md](server/README.md) | 얇은 서버 — 서버에 두는 것/두지 않는 것·로컬 실행·API·배포 순서·무료 한도 |
 | [C0_Platform_agent/README.md](C0_Platform_agent/README.md) | OS 공통 계층(`osenv`) — 자식 프로세스 명령·Chromium 자리·자격증명(DPAPI/키체인)·예약 실행·앱 데이터 폴더 |
 | [C1_Calendar_agent/README.md](C1_Calendar_agent/README.md) | 서비스 캘린더 — `/api/events` 합치기 규칙·내 일정·할 일 저장 |
 | [C2_Profile_agent/README.md](C2_Profile_agent/README.md) | 내 프로필 저장 규칙·학과 목록(교육과정검색)·학사정보시스템 가져오기·API |

@@ -1,0 +1,19 @@
+이 사이트가 함께 싣는 남의 저작물
+
+글꼴
+- Pretendard (fonts/pretendard/)
+  Copyright (c) 2021 Kil Hyung-jin, with Reserved Font Name Pretendard.
+  https://github.com/orioncactus/pretendard
+  SIL Open Font License 1.1 - https://openfontlicense.org
+- Plus Jakarta Sans (fonts/plus-jakarta-sans-latin.woff2, 라틴 글자만)
+  The Plus Jakarta Sans Project Authors
+  https://github.com/tokotype/PlusJakartaSans
+  SIL Open Font License 1.1 - https://openfontlicense.org
+
+아이콘
+- 내려받기 · 왼쪽 화살표 · 오른쪽 화살표 (index.html 안의 선 아이콘 3개)
+  Lucide - Copyright (c) Lucide Icons and Contributors
+  https://lucide.dev
+  ISC License
+
+그 밖의 그림(스케치북의 그림, 로고)은 이 프로젝트에서 그린 것이다.

@@ -139,7 +139,7 @@ univ_us_local/backend      로컬 백엔드 (앱에 들어감)
 univ_us_local/frontend     화면 (앱·서버 공용)
 shared/schema/             클라이언트 ↔ 서버 업로드 형식 (서버 단계)
 desktop/                   Tauri 껍데기 + Python 사이드카 빌드 설정
-server/                    얇은 서버 (나중에)
+server/                    얇은 서버 — Cloudflare Workers + D1 (2026-11-16 뼈대)
 ```
 
 - 폴더를 옮기면 하드코딩 경로가 줄줄이 깨지므로 **추가만** 한다.
@@ -188,9 +188,10 @@ server/                    얇은 서버 (나중에)
 - [x] CI 에서 설치 파일 빌드 — `release.yml`: 태그 `v*` → Windows nsis·맥 dmg(Apple Silicon, ad-hoc 서명) → Releases 초안 (2026-10-09)
 
 ### 5단계 — 얇은 서버 + 데스크톱 클라이언트
-- [ ] `shared/schema` 업로드 형식, `server/` 별도 앱(FastAPI + Postgres)
+- [x] `server/` 별도 앱 뼈대 (2026-11-16) — ~~FastAPI + Postgres~~ → **Cloudflare Workers + D1(TypeScript + Hono)**. 익명 등록·팀 만들기·합류 + 웹 첫 화면까지, 같은 날 배포(<https://univ-us-server.aim-output.workers.dev>). 결정 배경은 검토 문서 13절
+- [ ] `shared/schema` 업로드 형식
 - [ ] 프론트 API 클라이언트 로컬/원격 분리
-- [ ] CI import 경계 검사(서버 → C3·F6 금지), LLM 키 서버 프록시
+- [ ] ~~CI import 경계 검사(서버 → C3·F6 금지)~~ — 서버가 TypeScript 라 Python 기능 코드를 import 할 수 없다(언어로 보장) · LLM 키 서버 프록시
 - [ ] 서버 코드 공개 범위 결정(Public 저장소)
 
 ---
@@ -248,3 +249,10 @@ server/                    얇은 서버 (나중에)
   - (같은 날) 마지막 점검: 묶인 사이드카 ↔ 소스 백엔드 API 135개 일치, 기능별 available 9개 참, 화면 20개·공부 캘린더 200, F1 학사일정 동기화(자식 프로세스) 성공, 데이터가 있는 상태에서 기능마다 실제 응답·F4 원문 열기/내려받기 확인. 앱 창 차이로 F4 '파일 끌어다 추가'가 Windows 에서 막히던 것 → `disable_drag_drop_handler()`.
   - (같은 날) 앱 창에서 '원문 보기'(target="_blank" 링크 — e클래스·학사일정·강의자료 원문)가 열리지 않던 것: tauri-plugin-opener 가 넣는 스크립트가 그 클릭을 막고 IPC 로 열려 했는데 대시보드에는 Tauri API 가 없어 조용히 실패. `open_js_links_on_click(false)` 로 끄고 on_new_window 가 받게 — 바깥 주소는 기본 브라우저, 로컬 주소는 새 앱 창. WebView2 원격 디버깅(CDP)으로 개발 모드·설치본 둘 다 확인.
 - 2026-10-09 — 배포: `.github/workflows/release.yml`(태그 → tauri-action → Releases 초안, 태그=tauri.conf 버전 검사), 맥 `signingIdentity: "-"`(ad-hoc). README 를 사용 안내로, 개발 내용은 `DEVELOPMENT.md` 로 나눔.
+- 2026-11-16 — **5단계 착수: 얇은 서버 뼈대**. 브랜치 `feat/team-server`. 호스팅을 Cloudflare Pages + Workers + D1(무료)로 확정 — 검토 문서 13절.
+  - `server/` — TypeScript + Hono. `users`(익명 토큰의 SHA-256 만 저장) · `teams` · `team_members`, 주소 8개(`/health` · `/download` · `/v1/users` · `/v1/teams` …), 오류 응답 모양 통일.
+  - 개발 안내의 Node 20 에 맞춰 wrangler 4.86.0 고정(4.87 부터 Node 22 필요) · npm 10.8 설치 오류는 `.npmrc` `legacy-peer-deps` 로 우회 — `server/README.md` "버전을 고정한 이유".
+  - 검증(Windows, Node 20.16): workerd + 로컬 D1 테스트 **16 통과**, `tsc --noEmit` 통과, `wrangler deploy --dry-run` 묶기 성공(72 KiB), `wrangler dev` 로 등록 → 팀 만들기 → 합류 → 팀 보기 왕복 확인. **실제 배포는 아직 안 했다.**
+  - (같은 날) 브라우저로 주소를 치면 열리게: `server/public/`(첫 화면·404·보안 헤더)을 Workers 정적 파일로 같은 서버가 내준다 — Pages 를 따로 두지 않아 주소가 하나다. 없는 주소는 브라우저면 404 페이지, API 면 JSON. 테스트 **20 통과**, `wrangler dev` 로 첫 화면(데스크톱·모바일 폭)·`/download` 302·404 페이지 확인.
+  - (같은 날) **첫 배포** — <https://univ-us-server.aim-output.workers.dev>. D1 `univ-us`(apac) 생성·스키마 적용·`wrangler deploy` 는 저장소 주인이 직접. 배포 뒤 첫 화면·`/health`(DB 연결)·`/download` 302·`users` 표 존재(등록 안 한 토큰 → 401 `unknown_user`) 확인. 막힌 곳 둘: `d1 create` 가 설정에 둘째 항목(`binding: univ_us`·`remote: true`)을 덧붙임 → `DB` 하나로 합침 / 계정 이메일 미인증(`code: 10034`). `workers_dev: true`·`preview_urls: false` 를 설정에 명시(다음 배포부터 적용).
+  - (같은 날) **첫 화면을 스케치북으로 다시 디자인** — 기능 9장(캘린더·과제와 마감·학사일정·졸업요건·출결·시험 공부·강의자료·장학과 대외활동·아침 브리핑) + 준비 중 4장(팀플·사업단·밥집·모바일 알림)의 손그림 SVG, 넓은 화면은 넘기는 책(CSS 3D)·좁은 화면과 스크립트 없음은 낱장, 차례에서 그 장으로 이동, `/#쪽id` 로 바로 열기. 앱 디자인(Paper & Pine)·글꼴(Pretendard·Plus Jakarta Sans 복사)을 그대로 씀. 빌드 단계·인라인 코드 없음(CSP 유지). 테스트 **25 통과**, 1280·375 폭과 스크립트 없음·움직임 줄이기 설정에서 확인. 장 더하는 법은 `server/README.md`. 같은 날 배포됨(배포된 파일이 저장소와 같은지 해시로 확인).

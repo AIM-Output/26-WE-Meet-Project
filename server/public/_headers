@@ -1,0 +1,7 @@
+# public/ 의 파일을 내줄 때 붙는 응답 헤더 (API 응답에는 붙지 않는다).
+# 페이지는 이 서버의 파일만 쓴다 — 바깥 스크립트·글꼴·이미지를 넣으려면 여기 CSP 도 같이 고친다.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'

@@ -1,0 +1,29 @@
+{
+  "name": "univ-us-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "유니버스(Univ-Us) 얇은 서버 — Cloudflare Workers + D1 (F16 팀플부터)",
+  "engines": {
+    "node": ">=20.3.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply univ-us --local",
+    "db:migrate:remote": "wrangler d1 migrations apply univ-us --remote",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.13.18"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.15.1",
+    "@cloudflare/workers-types": "4.20260426.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6",
+    "vitest": "4.1.5",
+    "wrangler": "4.86.0"
+  }
+}
