@@ -1,0 +1,1205 @@
+/* 유니버스 웹 페이지 — 스케치북
+   색·모서리·그림자는 앱의 디자인 v3 "Paper & Pine"(univ_us_local/frontend/DESIGN.md · globals.css)에서 가져왔다.
+   다크 모드는 두지 않는다. 인라인 스타일은 쓰지 않는다(_headers 의 CSP 가 막는다).
+
+   층(z-index): 종이 결 -1 · 책 안(쪽 1~16, 책등 그림자 24, 모서리 버튼 26) · 떠 있는 헤더 30 · 건너뛰기 링크 40 */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+    U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light;
+
+  --bg: #f8f4f0;
+  --surface: #fffdfa;
+  --surface-2: #faf6f1;
+  --surface-3: #f2ebe3;
+  --border: #e7dfd5;
+  --border-strong: #d4c8b9;
+
+  --text: #1f2b25;
+  --muted: #4b524d;
+  --faint: #646b66;
+
+  --primary: #33644d;
+  --primary-hover: #2b5441;
+  --primary-soft: #e9f0ec;
+  --primary-soft-2: #d2ddd8;
+  --on-primary: #fbf8f3;
+
+  --sand: #cbaf94;
+  --sand-line: #b89a7b;
+  --sand-text: #7a5c40;
+  --accent: #b4532a;
+  --accent-text: #9c441f;
+
+  /* 그림자는 종이색(따뜻한 갈색)으로 물들인다 */
+  --shadow-card: 0 1px 2px rgba(74, 58, 38, 0.05);
+  --shadow-lift: 0 10px 28px -14px rgba(74, 58, 38, 0.28), 0 2px 6px -2px rgba(74, 58, 38, 0.08);
+  --shadow-book: 0 34px 70px -28px rgba(40, 34, 24, 0.5), 0 6px 14px -6px rgba(40, 34, 24, 0.22);
+  --inner-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glow: rgba(203, 175, 148, 0.34);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* 책장: 앞뒤가 대칭인 곡선이어야 한다 — 딱 절반 시점에 90도를 지나고, 그때 z-index 를 바꾼다 */
+  --ease-turn: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+  --font-num: 'Plus Jakarta Sans', var(--font-sans);
+
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.16 0 0 0 0 0.1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.16 0 0 0 0 0.1 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 92px;
+  -webkit-tap-highlight-color: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background:
+    radial-gradient(1100px 520px at 12% -12%, var(--glow), transparent 70%),
+    radial-gradient(900px 480px at 100% 0%, color-mix(in oklab, var(--glow) 55%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 종이 결 — 고정·포인터 없음 층 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: var(--grain);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+/* 두 번 두드려 확대하는 동작을 기다리느라 생기는 터치 지연을 없앤다 */
+a,
+button {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--sand) 45%, transparent);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.defs {
+  position: absolute;
+}
+
+.wrap {
+  width: min(100% - 32px, 1120px);
+  margin-inline: auto;
+}
+
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 40;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip:focus {
+  transform: none;
+}
+
+/* ---------- 버튼 (모서리 10 · 누르면 살짝 눌림) ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease-out),
+    border-color 0.15s var(--ease-out),
+    transform 0.12s var(--ease-out);
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn--primary {
+  background: var(--primary);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    var(--shadow-card);
+  color: var(--on-primary);
+}
+
+.btn--primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn--ghost {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn--ghost:hover {
+  background: var(--surface-3);
+}
+
+.btn--sm {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14.5px;
+}
+
+/* ---------- 떠 있는 헤더 (앱과 같은 "섬") ---------- */
+.header {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(100% - 24px, 1120px);
+  height: 56px;
+  margin: 12px auto 0;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: var(--shadow-lift), var(--inner-hi);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  padding: 4px 8px 4px 0;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand img {
+  display: block;
+}
+
+.brand span {
+  transition: color 0.15s var(--ease-out);
+}
+
+.brand:hover span {
+  color: var(--primary);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+}
+
+.nav a {
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 0.15s var(--ease-out),
+    color 0.15s var(--ease-out);
+}
+
+.nav a:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* ============================================================================
+   스케치북
+   기본(좁은 화면 · JS 없음) = 옆으로 미는 낱장.  .is-book(넓은 화면 + JS) = 넘기는 책.
+   ========================================================================== */
+.stage {
+  padding: 28px 0 0;
+  overflow-x: clip;
+}
+
+.book {
+  --strip-w: min(86vw, 420px);
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 8px max(16px, calc((100% - var(--strip-w)) / 2)) 30px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.book::-webkit-scrollbar {
+  display: none;
+}
+
+.leaf {
+  display: contents;
+}
+
+.page {
+  position: relative;
+  display: flex;
+  flex: 0 0 var(--strip-w);
+  container-type: inline-size;
+  scroll-snap-align: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface) var(--grain-soft);
+  box-shadow: var(--shadow-lift), var(--inner-hi);
+}
+
+.page--blank,
+.edge {
+  display: none;
+}
+
+.page__in {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: max(20px, 6.4cqw) max(20px, 7cqw) max(40px, 9.5cqw);
+  font-size: clamp(15px, 3.3cqw, 17px);
+}
+
+.page__no {
+  position: absolute;
+  right: max(20px, 7cqw);
+  bottom: max(14px, 3.6cqw);
+  color: var(--sand-text);
+  font-family: var(--font-num);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.only-book {
+  display: none;
+}
+
+/* ---------- 표지 안쪽 (첫 쪽) ---------- */
+.art.art--title {
+  aspect-ratio: 420 / 150;
+  width: min(100%, 400px);
+}
+
+.cover h1 {
+  margin-top: 0.5em;
+  font-size: 2.42em;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.035em;
+}
+
+.cover__lead {
+  max-width: 23em;
+  margin-top: 0.85em;
+  color: var(--muted);
+  font-size: 1.06em;
+  line-height: 1.6;
+}
+
+.cover__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 1.5em;
+}
+
+.cover__hint {
+  margin-top: auto;
+  padding-top: 1.4em;
+  color: var(--faint);
+  font-size: 0.86em;
+}
+
+/* ---------- 그림이 있는 장 ---------- */
+.plate__art {
+  margin: 0;
+}
+
+.plate h2 {
+  margin-top: 0.7em;
+  font-size: 1.42em;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.plate__desc {
+  margin-top: 0.4em;
+  color: var(--muted);
+}
+
+.plate__notes {
+  display: grid;
+  gap: 0.28em;
+  margin: 0.75em 0 0;
+  padding: 0;
+  color: var(--faint);
+  font-size: 0.9em;
+  list-style: none;
+}
+
+.plate__notes li {
+  position: relative;
+  padding-left: 1.3em;
+}
+
+/* 연필로 친 체크 표시 */
+.plate__notes li::before {
+  content: '';
+  position: absolute;
+  top: 0.36em;
+  left: 0.22em;
+  width: 0.38em;
+  height: 0.68em;
+  border: solid var(--primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+
+/* 아직 그리는 중인 장 — 연필 선만 */
+.plate--draft {
+  background-color: var(--surface-2);
+}
+
+.plate__state {
+  margin-top: 0.9em;
+  color: var(--sand-text);
+  font-size: 0.82em;
+  font-weight: 700;
+}
+
+.plate--draft h2 {
+  margin-top: 0.15em;
+  color: var(--muted);
+}
+
+/* ---------- 그림 (SVG) ---------- */
+.art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  overflow: visible;
+}
+
+.art .w0 { fill: #f1e7db; }
+.art .wp { fill: #fffdfa; }
+.art .wk { fill: #e6d6c2; }
+.art .wg { fill: #d2ddd8; }
+.art .wG { fill: #a8c1b4; }
+.art .wb { fill: #c5d5e0; }
+.art .wo { fill: #e8d6ae; }
+.art .wr { fill: #ebccd3; }
+.art .wt { fill: #f0cdbb; }
+
+.art .ring {
+  fill: none;
+  stroke: #a8c1b4;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.art .wash {
+  mix-blend-mode: multiply;
+}
+
+.art .pencil,
+.art .ink,
+.art .draft {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.art .pencil {
+  stroke: var(--sand-line);
+  stroke-width: 1.5;
+}
+
+.art .ink {
+  stroke: var(--primary);
+  stroke-width: 2.1;
+}
+
+.art .ink .t { stroke: var(--accent); }
+.art .ink .b { stroke-width: 2.8; }
+.art .ink .f { fill: var(--primary); }
+.art .star-line { stroke-width: 6; }
+.art .dash { stroke-dasharray: 3 6; }
+
+.art .draft {
+  stroke: #7d827d;
+  stroke-width: 1.7;
+}
+
+.art .draft .thin {
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.art .lbl {
+  fill: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.art .lbl .s { font-size: 12.5px; }
+.art .lbl .h { fill: var(--text); font-size: 17px; font-weight: 800; }
+.art .lbl .t { fill: var(--accent-text); }
+.art .lbl .n { font-family: var(--font-num); font-weight: 700; }
+.art .lbl--draft { fill: var(--faint); }
+
+/* 처음 보이는 순간 한 번, 펜으로 그려지듯 나타난다 — JS 가 .is-inked 를 붙인다.
+   (선 길이는 JS 가 pathLength=1 로 맞춘다. JS 가 없으면 처음부터 다 보인다) */
+.js .page:not(.is-inked) .art > g {
+  opacity: 0;
+}
+
+.js .page.is-inked .art .ink path {
+  stroke-dasharray: 1 1.1;
+  animation: ink-draw 0.7s var(--ease-out) both;
+  animation-delay: min(calc(var(--k, 0) * 26ms + 80ms), 1100ms);
+}
+
+.js .page.is-inked .art .blob { animation: ink-fade 0.5s ease-out both; }
+.js .page.is-inked .art .pencil { animation: ink-fade 0.5s ease-out 0.15s both; }
+.js .page.is-inked .art .wash { animation: ink-fade 0.7s ease-out 0.55s both; }
+.js .page.is-inked .art .lbl { animation: ink-fade 0.5s ease-out 0.75s both; }
+.js .page.is-inked .art .draft { animation: ink-fade 0.8s ease-out 0.1s both; }
+
+@keyframes ink-draw {
+  from { stroke-dashoffset: 1.02; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ink-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- 넘기는 책 (넓은 화면) ---------- */
+.book.is-book {
+  --turn: 560ms;
+  --page-w: clamp(440px, min(calc((100vw - 120px) / 2), calc((100dvh - 236px) / 1.14)), 560px);
+  --page-h: calc(var(--page-w) * 1.14);
+  display: block;
+  width: calc(var(--page-w) * 2);
+  height: var(--page-h);
+  margin: 18px auto 34px;
+  padding: 0;
+  overflow: visible;
+  scroll-snap-type: none;
+  touch-action: pan-y;
+  perspective: 2600px;
+  perspective-origin: 50% 40%;
+}
+
+/* 표지 판 + 그 위의 종이 묶음 */
+.book.is-book::before {
+  content: '';
+  position: absolute;
+  inset: -12px -16px -14px;
+  border-radius: 20px;
+  background:
+    linear-gradient(#efe6da, #e9dfd2) center 45% / calc(100% - 22px) calc(100% - 16px) no-repeat,
+    linear-gradient(180deg, #3b6f57, #2d5a45);
+  box-shadow:
+    var(--shadow-book),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* 책등의 그늘 — 넘어가는 종이 위에도 그대로 얹힌다 */
+.book.is-book::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  z-index: 24;
+  width: 56px;
+  margin-left: -28px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(74, 58, 38, 0.07) 34%,
+    rgba(74, 58, 38, 0.2) 50%,
+    rgba(74, 58, 38, 0.07) 66%,
+    transparent
+  );
+}
+
+.is-book .leaf {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: calc(var(--n) * 2 - var(--i));
+  display: block;
+  width: 50%;
+  height: 100%;
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+}
+
+/* 넘긴 종이는 왼쪽 더미로 간다. 더미 안의 순서는 z-index 로 정하고,
+   종이가 90도를 지나는 순간(전환의 절반)에 바꿔서 여러 장을 한꺼번에 넘겨도 겹침이 맞는다 */
+.is-book .leaf.is-flipped {
+  z-index: calc(var(--i) + 1);
+  transform: rotateY(-180deg);
+}
+
+.is-book.is-ready .leaf {
+  transition:
+    transform var(--turn) var(--ease-turn) var(--d, 0ms),
+    z-index 0s linear calc(var(--d, 0ms) + var(--turn) / 2);
+}
+
+.is-book .leaf.is-turning {
+  will-change: transform;
+}
+
+.is-book .page {
+  position: absolute;
+  inset: 0;
+  flex: none;
+  overflow: hidden;
+  border-radius: 3px 12px 12px 3px;
+  box-shadow: none;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.is-book .page--blank {
+  display: block;
+}
+
+.is-book .leaf > .page:nth-child(2) {
+  border-radius: 12px 3px 3px 12px;
+  transform: rotateY(180deg);
+}
+
+/* 책등 쪽으로 말려 들어가는 그늘 */
+.is-book .page::before,
+.is-book .page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.is-book .page::before {
+  z-index: 2;
+  background: linear-gradient(90deg, rgba(74, 58, 38, 0.13), rgba(74, 58, 38, 0.04) 5%, transparent 13%);
+}
+
+.is-book .leaf > .page:nth-child(2)::before {
+  background: linear-gradient(270deg, rgba(74, 58, 38, 0.13), rgba(74, 58, 38, 0.04) 5%, transparent 13%);
+}
+
+/* 넘어가는 동안 종이가 세워지며 어두워졌다 돌아온다 */
+.is-book .page::after {
+  z-index: 3;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(40, 34, 24, 0.36), rgba(40, 34, 24, 0.08) 55%, rgba(40, 34, 24, 0.02));
+}
+
+.is-book .leaf > .page:nth-child(2)::after {
+  background: linear-gradient(270deg, rgba(40, 34, 24, 0.36), rgba(40, 34, 24, 0.08) 55%, rgba(40, 34, 24, 0.02));
+}
+
+.is-book .leaf.is-turning.is-flipped .page::after {
+  animation: turn-shade-a var(--turn) ease-in-out var(--d, 0ms) both;
+}
+
+.is-book .leaf.is-turning:not(.is-flipped) .page::after {
+  animation: turn-shade-b var(--turn) ease-in-out var(--d, 0ms) both;
+}
+
+@keyframes turn-shade-a {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@keyframes turn-shade-b {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* 쪽 번호는 접힌 모서리를 피해 안쪽으로 */
+.is-book .page__no {
+  right: 54px;
+}
+
+.is-book .leaf > .page:nth-child(2) .page__no {
+  right: auto;
+  left: 54px;
+}
+
+.is-book .only-book {
+  display: inline;
+}
+
+.is-book .only-strip {
+  display: none;
+}
+
+/* 책 가장자리 = 넘기는 버튼. 접힌 모서리가 "여기를 넘긴다"는 표시다 */
+.is-book .edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 26;
+  display: block;
+  width: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.edge--prev {
+  left: 0;
+  border-radius: 12px 0 0 12px;
+}
+
+.edge--next {
+  right: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+.edge::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 34px;
+  height: 34px;
+  transition: transform 0.28s var(--ease-out);
+}
+
+.edge--next::after {
+  right: 0;
+  border-bottom-right-radius: 12px;
+  background: linear-gradient(135deg, #fffdfa 0, #e6dbcc 49%, #ddd2c3 50%, #efe7dc 78%);
+  filter: drop-shadow(-2px -2px 3px rgba(74, 58, 38, 0.2));
+  transform: scale(0.62);
+  transform-origin: 100% 100%;
+}
+
+.edge--prev::after {
+  left: 0;
+  border-bottom-left-radius: 12px;
+  background: linear-gradient(225deg, #fffdfa 0, #e6dbcc 49%, #ddd2c3 50%, #efe7dc 78%);
+  filter: drop-shadow(2px -2px 3px rgba(74, 58, 38, 0.2));
+  transform: scale(0.62);
+  transform-origin: 0 100%;
+}
+
+.edge:hover::after,
+.edge:focus-visible::after {
+  transform: scale(1.12);
+}
+
+.edge:active::after {
+  transform: scale(0.9);
+}
+
+/* ---------- 책 아래: 이전·다음, 지금 어디인지 ---------- */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pager__btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card), var(--inner-hi);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease-out),
+    transform 0.12s var(--ease-out),
+    opacity 0.15s var(--ease-out);
+}
+
+.pager__btn:hover {
+  background: var(--surface-3);
+}
+
+.pager__btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.pager__btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.pager__btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pager__rail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pager__rail span {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  transition:
+    background-color 0.25s var(--ease-out),
+    transform 0.25s var(--ease-out);
+}
+
+.pager__rail .is-draft {
+  opacity: 0.55;
+}
+
+.pager__rail .is-on {
+  background: var(--primary);
+  opacity: 1;
+  transform: scaleY(1.75);
+}
+
+/* ============================================================================
+   책 아래 구역
+   ========================================================================== */
+.section {
+  padding-block: clamp(64px, 9vw, 112px) 0;
+}
+
+.section__title {
+  font-size: clamp(28px, 3.4vw, 38px);
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.035em;
+}
+
+.section__lead {
+  max-width: 30em;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+/* ---------- 차례: 묶음 셋, 줄마다 선을 긋지 않는다 ---------- */
+.index {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 40px 56px;
+  margin-top: 40px;
+}
+
+.index__group h3 {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--sand-text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.index__group ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.index__group a {
+  display: grid;
+  gap: 1px;
+  padding: 11px 0;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+.index__group b {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  transition: color 0.15s var(--ease-out);
+}
+
+.index__group span {
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.index__group a:hover b {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.index__group--draft b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ---------- 약속 ---------- */
+.promise {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+  align-items: center;
+  gap: 32px;
+  padding: clamp(28px, 5vw, 56px) clamp(24px, 5vw, 64px);
+  border: 1px solid var(--primary-soft-2);
+  border-radius: 22px;
+  background: var(--primary-soft);
+}
+
+.promise p {
+  max-width: 24em;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.art--promise {
+  aspect-ratio: 320 / 220;
+  max-width: 320px;
+  margin-inline: auto;
+}
+
+/* ---------- 설치 ---------- */
+.install {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.62fr);
+  align-items: start;
+  gap: 56px;
+}
+
+.install__aside .btn {
+  margin-top: 28px;
+}
+
+.install__note {
+  max-width: 24em;
+  margin-top: 20px;
+  color: var(--faint);
+  font-size: 14px;
+}
+
+.sheets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* 책에서 뜯어 놓은 종이 두 장 */
+.sheet {
+  padding: 26px 26px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface) var(--grain-soft);
+  box-shadow: var(--shadow-lift), var(--inner-hi);
+}
+
+.sheet:nth-child(1) {
+  transform: rotate(-0.6deg);
+}
+
+.sheet:nth-child(2) {
+  transform: translateY(14px) rotate(0.7deg);
+}
+
+.sheet h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.sheet small {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sheet ol {
+  display: grid;
+  gap: 9px;
+  margin: 14px 0 0;
+  padding-left: 1.25em;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.sheet strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.88em;
+}
+
+/* ---------- 바닥 ---------- */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: clamp(72px, 10vw, 128px);
+  padding-block: 22px 34px;
+  border-top: 1px solid var(--border);
+  color: var(--faint);
+  font-size: 13.5px;
+}
+
+.footer nav {
+  display: flex;
+  gap: 4px;
+}
+
+.footer a {
+  padding: 12px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* ---------- 없는 주소 (404.html) ---------- */
+.lost {
+  padding-block: clamp(56px, 12vh, 120px);
+}
+
+.lost h1 {
+  font-size: clamp(30px, 6vw, 44px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.lost p {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.lost .btn {
+  margin-top: 30px;
+}
+
+.lost__code {
+  margin-bottom: 12px;
+  color: var(--sand-text);
+  font-family: var(--font-num);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ============================================================================
+   좁은 화면
+   ========================================================================== */
+@media (max-width: 899px) {
+  .index {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .promise,
+  .install {
+    grid-template-columns: 1fr;
+  }
+
+  .install {
+    gap: 32px;
+  }
+
+  .art--promise {
+    max-width: 240px;
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 719px) {
+  .nav {
+    display: none;
+  }
+
+  .stage {
+    padding-top: 18px;
+  }
+}
+
+@media (max-width: 599px) {
+  .index,
+  .sheets {
+    grid-template-columns: 1fr;
+  }
+
+  .index {
+    gap: 32px;
+  }
+
+  .sheet:nth-child(1),
+  .sheet:nth-child(2) {
+    transform: none;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn--sm {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .book {
+    scroll-behavior: smooth;
+  }
+}
+
+/* 움직임을 줄이라고 한 사람에게는 넘김·그리기 없이 바로 결과만 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}

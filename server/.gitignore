@@ -1,0 +1,7 @@
+node_modules/
+# wrangler 로컬 상태 (로컬 D1 파일 포함)
+.wrangler/
+# 로컬 비밀값 — 커밋 금지
+.dev.vars
+.dev.vars.*
+.env

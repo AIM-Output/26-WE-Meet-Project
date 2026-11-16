@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>유니버스 Univ-Us</title>
+    <meta
+      name="description"
+      content="전남대 e클래스의 과제와 마감, 학사일정, 강의자료를 자동으로 모아 내 PC 의 한 화면에 보여 주는 데스크톱 앱입니다."
+    />
+    <meta property="og:title" content="유니버스 Univ-Us" />
+    <meta property="og:description" content="흩어진 학교 일정을 한 화면에 모읍니다." />
+    <meta property="og:type" content="website" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#F8F4F0" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/sketchbook.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">본문으로 건너뛰기</a>
+
+    <!-- 그림에 쓰는 손그림 필터: f-ink 는 선을 살짝 흔들고, f-wash 는 물감 번짐처럼 면을 어긋나게 한다 -->
+    <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="f-ink" filterUnits="userSpaceOnUse" x="-20" y="-20" width="460" height="320">
+          <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="4" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        <filter id="f-wash" filterUnits="userSpaceOnUse" x="-20" y="-20" width="460" height="320">
+          <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="3" seed="11" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="G" yChannelSelector="R" />
+        </filter>
+      </defs>
+    </svg>
+
+    <header class="header">
+      <a class="brand" href="/">
+        <img src="/icon.svg" alt="" width="32" height="32" />
+        <span translate="no">유니버스</span>
+      </a>
+      <nav class="nav" aria-label="주요 메뉴">
+        <a href="#index">차례</a>
+        <a href="#install">설치 방법</a>
+        <a href="https://github.com/AIM-Output/26-WE-Meet-Project#readme">사용 안내</a>
+      </nav>
+      <a class="btn btn--primary btn--sm" href="/download">앱 내려받기</a>
+    </header>
+
+    <main id="main">
+      <!-- 스케치북: .leaf 하나가 종이 한 장(앞쪽·뒤쪽 두 쪽)이다. 순서가 곧 쪽 순서다. 장을 더하는 법은 server/README.md -->
+      <section class="stage" aria-label="유니버스 스케치북">
+        <div class="book" data-book>
+          <div class="leaf">
+            <div class="page page--blank" aria-hidden="true"></div>
+
+            <article class="page cover" id="cover" data-title="표지" aria-labelledby="hero-title">
+              <div class="page__in">
+                <svg class="art art--title" viewBox="0 0 420 150" aria-hidden="true" focusable="false">
+                  <g class="blob" filter="url(#f-wash)"><circle class="wk" cx="59" cy="39" r="25" /></g>
+                  <g filter="url(#f-ink)">
+                    <g class="pencil">
+                      <path class="star-line" d="M59 39 63 79 77 108 111 115 129 90 135 43" />
+                      <path class="dash" d="M135 43c24-12 44-8 63 9M198 52c8 18 20 34 36 46M234 98c14-10 28-24 40-40" />
+                      <path d="M192 52a6 6 0 1 0 12 0a6 6 0 1 0-12 0M229 98a5 5 0 1 0 10 0a5 5 0 1 0-10 0" />
+                    </g>
+                    <g class="ink">
+                      <path class="f" d="M46.5 39a12.5 12.5 0 1 0 25 0a12.5 12.5 0 1 0-25 0" />
+                      <path class="f" d="M55.5 79a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0-15 0" />
+                      <path class="f" d="M68 108a9 9 0 1 0 18 0a9 9 0 1 0-18 0" />
+                      <path class="f" d="M103.5 115a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0-15 0" />
+                      <path class="f" d="M120 90a9 9 0 1 0 18 0a9 9 0 1 0-18 0" />
+                      <path class="f" d="M125 43a10 10 0 1 0 20 0a10 10 0 1 0-20 0" />
+                    </g>
+                  </g>
+                  <g transform="translate(277 61) rotate(28)">
+                    <g class="paper" filter="url(#f-ink)"><path class="wp" d="M0 0 18-8v16Z" /></g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wG" d="M18-8h88v16H18Z" />
+                      <path class="wk" d="M106-8h10v16h-10Z" />
+                      <path class="wt" d="M116-8h12a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-12Z" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="ink">
+                        <path d="M0 0 18-8v16Z" />
+                        <path d="M18-8h110a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H18" />
+                        <path d="M106-8v16M116-8v16M18 0h88" />
+                        <path class="f" d="M0 0 6-2.7v5.4Z" />
+                      </g>
+                    </g>
+                  </g>
+                </svg>
+
+                <h1 id="hero-title">흩어진 학교 일정을<br />한 화면에 모읍니다</h1>
+                <p class="cover__lead">
+                  전남대 e클래스의 과제와 마감, 학사일정, 강의자료를 자동으로 모아 보여 주는 데스크톱 앱입니다.
+                </p>
+                <div class="cover__cta">
+                  <a class="btn btn--primary" href="/download">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M12 15V3" />
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path d="m7 10 5 5 5-5" />
+                    </svg>
+                    앱 내려받기
+                  </a>
+                  <a class="btn btn--ghost" href="#install">설치 방법</a>
+                </div>
+                <p class="cover__hint">
+                  <span class="only-book">오른쪽 장을 넘기면 기능이 한 장씩 나옵니다.</span>
+                  <span class="only-strip">옆으로 넘기면 기능이 한 장씩 나옵니다.</span>
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate" id="calendar" data-title="캘린더" aria-labelledby="t-calendar">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="e클래스, 학사일정, 내 일정 쪽지가 한 달력으로 모이는 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="238" cy="146" rx="176" ry="118" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M160 48h210a10 10 0 0 1 10 10v170a10 10 0 0 1-10 10H160a10 10 0 0 1-10-10V58a10 10 0 0 1 10-10Z" />
+                      <path class="wp" transform="rotate(-6 67 79)" d="M33 62h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H33a5 5 0 0 1-5-5V67a5 5 0 0 1 5-5Z" />
+                      <path class="wp" transform="rotate(3 61 135)" d="M27 118h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H27a5 5 0 0 1-5-5v-24a5 5 0 0 1 5-5Z" />
+                      <path class="wp" transform="rotate(-3 69 191)" d="M35 174h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H35a5 5 0 0 1-5-5v-24a5 5 0 0 1 5-5Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wg" d="M152 50h226v34H152Z" />
+                      <rect class="wb" x="252" y="96" width="26" height="10" rx="3" />
+                      <rect class="wo" x="186" y="127" width="27" height="10" rx="3" />
+                      <rect class="wG" x="284" y="127" width="60" height="10" rx="3" />
+                      <rect class="wr" x="317" y="157" width="27" height="10" rx="3" />
+                      <rect class="wG" x="153" y="188" width="94" height="10" rx="3" />
+                      <rect class="wt" x="350" y="188" width="27" height="10" rx="3" />
+                      <rect class="wo" x="252" y="219" width="26" height="10" rx="3" />
+                      <rect class="wb" transform="rotate(-6 67 79)" x="28" y="62" width="10" height="34" rx="3" />
+                      <rect class="wG" transform="rotate(3 61 135)" x="22" y="118" width="10" height="34" rx="3" />
+                      <rect class="wo" transform="rotate(-3 69 191)" x="30" y="174" width="10" height="34" rx="3" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M183 84v154M216 84v154M249 84v154M281 84v154M314 84v154M347 84v154M150 115h230M150 146h230M150 176h230M150 207h230" />
+                        <path class="dash" d="M112 80c16 4 26 12 36 22M106 137c14 2 28 4 42 6M114 190c14-2 24-8 34-14" />
+                      </g>
+                      <g class="ink">
+                        <path d="M160 48h210a10 10 0 0 1 10 10v170a10 10 0 0 1-10 10H160a10 10 0 0 1-10-10V58a10 10 0 0 1 10-10Z" />
+                        <path d="M150 84h230" />
+                        <path d="M196 38v20M204 38v20M326 38v20M334 38v20" />
+                        <path transform="rotate(-6 67 79)" d="M33 62h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H33a5 5 0 0 1-5-5V67a5 5 0 0 1 5-5Z" />
+                        <path transform="rotate(3 61 135)" d="M27 118h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H27a5 5 0 0 1-5-5v-24a5 5 0 0 1 5-5Z" />
+                        <path transform="rotate(-3 69 191)" d="M35 174h68a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H35a5 5 0 0 1-5-5v-24a5 5 0 0 1 5-5Z" />
+                        <path class="t" d="M221 161a11 11 0 1 0 22 0a11 11 0 1 0-22 0" />
+                        <path d="M139 96l9 6-10 3M139 140l9 3-8 5M139 183l9-7-10-1" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="164" y="73">11월</text>
+                      <text transform="rotate(-6 67 79)" x="72" y="84" text-anchor="middle">e클래스</text>
+                      <text transform="rotate(3 61 135)" x="66" y="140" text-anchor="middle">학사일정</text>
+                      <text transform="rotate(-3 69 191)" x="74" y="196" text-anchor="middle">내 일정</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-calendar">캘린더</h2>
+                <p class="plate__desc">e클래스 마감, 학사일정, 수업, 내 일정이 한 달력에 모입니다.</p>
+                <ul class="plate__notes">
+                  <li>할 일과 공강 블록도 같은 달력에</li>
+                  <li>내 일정은 직접 추가하고 끌어서 옮기기</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">2</span>
+              </div>
+            </article>
+
+            <article class="page plate" id="assignments" data-title="과제와 마감" aria-labelledby="t-assignments">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="노트북의 e클래스 과제가 급한 순서의 목록으로 옮겨지는 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="212" cy="148" rx="192" ry="114" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M41 66h126a7 7 0 0 1 7 7v89H34V73a7 7 0 0 1 7-7Z" />
+                      <path class="wp" d="M20 166h168l-10 14H30Z" />
+                      <path class="wp" transform="rotate(2 318 139)" d="M253 34h130a9 9 0 0 1 9 9v192a9 9 0 0 1-9 9H253a9 9 0 0 1-9-9V43a9 9 0 0 1 9-9Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <rect class="wb" x="44" y="76" width="120" height="16" rx="4" />
+                      <path class="wk" d="M20 166h168l-10 14H30Z" />
+                      <g transform="rotate(2 318 139)">
+                        <rect class="wt" x="338" y="61" width="42" height="21" rx="10" />
+                        <rect class="wo" x="338" y="105" width="42" height="21" rx="10" />
+                        <rect class="wg" x="338" y="149" width="42" height="21" rx="10" />
+                      </g>
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M46 102h10v10H46ZM46 120h10v10H46ZM46 138h10v10H46Z" />
+                        <path d="M64 107h66M64 125h84M64 143h54" />
+                        <path transform="rotate(2 318 139)" d="M282 67h44M282 76h30M282 111h46M282 120h28M282 155h40M282 164h34M282 199h46M282 208h26" />
+                      </g>
+                      <g class="ink">
+                        <path d="M41 66h126a7 7 0 0 1 7 7v89H34V73a7 7 0 0 1 7-7Z" />
+                        <path d="M20 166h168l-10 14H30Z" />
+                        <path d="M186 108c16-16 32-18 48-8" />
+                        <path d="M224 93l11 7-12 4" />
+                        <g transform="rotate(2 318 139)">
+                          <path d="M253 34h130a9 9 0 0 1 9 9v192a9 9 0 0 1-9 9H253a9 9 0 0 1-9-9V43a9 9 0 0 1 9-9Z" />
+                          <path d="M304 42V26a8 8 0 0 1 16 0v28a5 5 0 0 1-10 0V30" />
+                          <path d="M258 64h14v14h-14ZM258 108h14v14h-14ZM258 152h14v14h-14ZM258 196h14v14h-14Z" />
+                          <path d="M261 203l4 5 8-11" />
+                          <path class="t" d="M282 86c7-3 14 3 21 0s14 3 21 0" />
+                        </g>
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text class="s" x="104" y="88" text-anchor="middle">e클래스</text>
+                      <g transform="rotate(2 318 139)">
+                        <text class="n t" x="359" y="76" text-anchor="middle">D-1</text>
+                        <text class="n" x="359" y="120" text-anchor="middle">D-3</text>
+                        <text class="n" x="359" y="164" text-anchor="middle">D-7</text>
+                      </g>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-assignments">과제와 마감</h2>
+                <p class="plate__desc">e클래스의 과제와 동영상 마감을 자동으로 가져와 급한 순서로 세웁니다.</p>
+                <ul class="plate__notes">
+                  <li>지금 해야 함, 이번 주, 나중에로 나눔</li>
+                  <li>정각 4시간마다 창 없이 자동 수집</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">3</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate" id="academic" data-title="학사일정" aria-labelledby="t-academic">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="학교 건물 아래로 수강신청, 중간고사, 종강이 표시된 일정 줄이 있는 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="210" cy="126" rx="186" ry="104" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M140 72h140v88H140Z" />
+                      <path class="wp" d="M126 72 210 31l84 41Z" />
+                      <path class="wp" d="M128 160h164v8H128ZM120 168h180v8H120Z" />
+                      <path class="wp" transform="rotate(6 367 74)" d="M342 44h50a4 4 0 0 1 4 4v52a4 4 0 0 1-4 4h-50a4 4 0 0 1-4-4V48a4 4 0 0 1 4-4Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wg" d="M126 72 210 31l84 41Z" />
+                      <path class="wk" d="M201 160v-26a9 9 0 0 1 18 0v26Z" />
+                      <path class="wt" d="M210 10l22 7-22 7Z" />
+                      <circle class="wG" cx="92" cy="138" r="22" />
+                      <circle class="wG" cx="328" cy="138" r="22" />
+                      <circle class="wb" cx="96" cy="200" r="7" />
+                      <circle class="wt" cx="210" cy="200" r="7" />
+                      <circle class="wG" cx="322" cy="200" r="7" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M70 214v8M122 214v8M148 214v8M174 214v8M236 214v8M262 214v8M288 214v8M348 214v8" />
+                        <path transform="rotate(6 367 74)" d="M348 68h38M348 78h30M348 88h36" />
+                        <path class="dash" d="M364 110c6 28-4 54-26 76" />
+                      </g>
+                      <g class="ink">
+                        <path d="M126 72 210 31l84 41Z" />
+                        <path d="M140 72v88M280 72v88M140 82h140" />
+                        <path d="M158 82v78M168 82v78M186 82v78M196 82v78M224 82v78M234 82v78M252 82v78M262 82v78" />
+                        <path d="M201 160v-26a9 9 0 0 1 18 0v26" />
+                        <path d="M128 160h164M120 168h180M112 176h196" />
+                        <path d="M210 31V8" />
+                        <path class="t" d="M210 10l22 7-22 7" />
+                        <path d="M70 138a22 22 0 1 0 44 0a22 22 0 1 0-44 0M92 160v16" />
+                        <path d="M306 138a22 22 0 1 0 44 0a22 22 0 1 0-44 0M328 160v16" />
+                        <path d="M44 218h332" />
+                        <path d="M89 200a7 7 0 1 0 14 0a7 7 0 1 0-14 0M96 207v11" />
+                        <path class="t" d="M203 200a7 7 0 1 0 14 0a7 7 0 1 0-14 0M210 207v11" />
+                        <path d="M315 200a7 7 0 1 0 14 0a7 7 0 1 0-14 0M322 207v11" />
+                        <path transform="rotate(6 367 74)" d="M342 44h50a4 4 0 0 1 4 4v52a4 4 0 0 1-4 4h-50a4 4 0 0 1-4-4V48a4 4 0 0 1 4-4Z" />
+                        <path d="M344 176l-8 12 14-2" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="96" y="244" text-anchor="middle">수강신청</text>
+                      <text x="210" y="244" text-anchor="middle">중간고사</text>
+                      <text x="322" y="244" text-anchor="middle">종강</text>
+                      <text class="s" transform="rotate(6 367 74)" x="348" y="60">공지</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-academic">학사일정</h2>
+                <p class="plate__desc">학교 학사일정과 학사공지를 읽어 달력에 자동으로 넣습니다.</p>
+                <ul class="plate__notes">
+                  <li>애매한 일정은 확인 필요로 따로 표시</li>
+                  <li>매일 아침 8시에 새 일정 확인</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">4</span>
+              </div>
+            </article>
+
+            <article class="page plate" id="graduation" data-title="졸업요건" aria-labelledby="t-graduation">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="쌓인 책 위에 놓인 학사모와 남은 학점을 보여 주는 고리 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="208" cy="152" rx="190" ry="108" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M66 190h166a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H66a4 4 0 0 1-4-4v-24a4 4 0 0 1 4-4Z" />
+                      <path class="wp" d="M82 158h142a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H82a4 4 0 0 1-4-4v-24a4 4 0 0 1 4-4Z" />
+                      <path class="wp" d="M72 128h156a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H72a4 4 0 0 1-4-4v-22a4 4 0 0 1 4-4Z" />
+                      <path class="wp" d="M150 62l84 22-84 24-84-24Z" />
+                      <path class="wp" d="M108 96l42 12 42-12v20c0 12-84 12-84 0Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wb" d="M62 190h156v32H62Z" />
+                      <path class="wo" d="M78 158h134v32H78Z" />
+                      <path class="wg" d="M68 128h148v30H68Z" />
+                      <path class="wG" d="M150 62l84 22-84 24-84-24Z" />
+                      <path class="wg" d="M108 96l42 12 42-12v20c0 12-84 12-84 0Z" />
+                      <path class="wt" d="M211 117h10l-2 13h-6Z" />
+                      <path class="ring" d="M322 100a50 50 0 1 1-50 50" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M222 197h10M222 204h10M222 211h10M216 165h8M216 172h8M216 179h8M220 135h8M220 142h8M220 149h8" />
+                        <path class="dash" d="M272 150a50 50 0 0 1 50-50" />
+                        <path d="M304 128l-14-12M290 124v-8h8" />
+                      </g>
+                      <g class="ink">
+                        <path d="M66 190h166a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H66a4 4 0 0 1-4-4v-24a4 4 0 0 1 4-4Z" />
+                        <path d="M82 158h142a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H82a4 4 0 0 1-4-4v-24a4 4 0 0 1 4-4Z" />
+                        <path d="M72 128h156a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H72a4 4 0 0 1-4-4v-22a4 4 0 0 1 4-4Z" />
+                        <path d="M218 190v32M212 158v32M216 128v30" />
+                        <path d="M150 62l84 22-84 24-84-24Z" />
+                        <path d="M108 96v20c0 12 84 12 84 0V96" />
+                        <path class="t" d="M150 85l66 6v26" />
+                        <path class="t" d="M211 117h10l-2 13h-6Z" />
+                        <path d="M322 100a50 50 0 1 1-50 50" />
+                        <path d="M252 46v14M245 53h14" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="140" y="211" text-anchor="middle">전공필수</text>
+                      <text x="145" y="179" text-anchor="middle">교양</text>
+                      <text x="142" y="148" text-anchor="middle">전공선택</text>
+                      <text x="322" y="147" text-anchor="middle">남은</text>
+                      <text x="322" y="165" text-anchor="middle">학점</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-graduation">졸업요건</h2>
+                <p class="plate__desc">영역별로 이수한 학점과 남은 학점을 계산해 보여 줍니다.</p>
+                <ul class="plate__notes">
+                  <li>학사정보시스템에서 이수 내역 가져오기</li>
+                  <li>졸업 기준은 설정에서 직접 수정</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">5</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate" id="attendance" data-title="출결" aria-labelledby="t-attendance">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="수업마다 출석과 결석을 표시한 출석부와 결석 한도 경고 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="206" cy="146" rx="184" ry="116" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M114 40h168a10 10 0 0 1 10 10v190a10 10 0 0 1-10 10H114a10 10 0 0 1-10-10V50a10 10 0 0 1 10-10Z" />
+                      <path class="wp" d="M290 113h50a3 3 0 0 1 3 3v17a3 3 0 0 1-3 3h-50Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wk" d="M168 46V36a8 8 0 0 1 8-8h44a8 8 0 0 1 8 8v10Z" />
+                      <rect class="wb" x="118" y="78" width="20" height="17" rx="4" />
+                      <rect class="wo" x="118" y="116" width="20" height="17" rx="4" />
+                      <rect class="wr" x="118" y="154" width="20" height="17" rx="4" />
+                      <rect class="wt" x="186" y="202" width="15" height="15" rx="2" />
+                      <rect class="wt" x="206" y="202" width="15" height="15" rx="2" />
+                      <path class="wo" d="M290 113h50a3 3 0 0 1 3 3v17a3 3 0 0 1-3 3h-50Z" />
+                      <path class="wt" d="M352 172l34 58h-68Z" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M116 68h166M116 105h166M116 143h166M116 181h166M146 68v113M173 68v113M200 68v113M228 68v113M255 68v113" />
+                        <path class="dash" d="M260 124a8 8 0 1 0 16 0a8 8 0 1 0-16 0" />
+                        <path class="dash" d="M316 216c-14 3-28 1-44-4" />
+                      </g>
+                      <g class="ink">
+                        <path d="M114 40h168a10 10 0 0 1 10 10v190a10 10 0 0 1-10 10H114a10 10 0 0 1-10-10V50a10 10 0 0 1 10-10Z" />
+                        <path d="M168 46V36a8 8 0 0 1 8-8h44a8 8 0 0 1 8 8v10Z" />
+                        <path d="M154 87l4 5 8-10M181 87l4 5 8-10M208 87l4 5 8-10M236 87l4 5 8-10M263 87l4 5 8-10" />
+                        <path d="M154 125l4 5 8-10M208 125l4 5 8-10M236 125l4 5 8-10" />
+                        <path class="t" d="M182 119l10 10M192 119l-10 10" />
+                        <path d="M154 163l4 5 8-10M181 163l4 5 8-10M263 163l4 5 8-10" />
+                        <path d="M214 155l7 12h-14Z" />
+                        <path class="t" d="M237 157l10 10M247 157l-10 10" />
+                        <path d="M186 202h15v15h-15ZM206 202h15v15h-15ZM226 202h15v15h-15ZM246 202h15v15h-15Z" />
+                        <path d="M290 113h50a3 3 0 0 1 3 3v17a3 3 0 0 1-3 3h-50" />
+                        <path class="t" d="M352 172l34 58h-68Z" />
+                        <path class="t b" d="M352 192v19M352 221v1" />
+                        <path d="M282 206l-10 6 11 6" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="120" y="215">결석 한도</text>
+                      <text class="s" x="316" y="129" text-anchor="middle">휴강</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-attendance">출결</h2>
+                <p class="plate__desc">시간표로 수업 회차를 만들고 결석 한도를 넘기 전에 알려 줍니다.</p>
+                <ul class="plate__notes">
+                  <li>출석, 결석, 지각, 공결을 날짜마다 기록</li>
+                  <li>휴강은 학사일정과 공지를 보고 자동 반영</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">6</span>
+              </div>
+            </article>
+
+            <article class="page plate" id="exams" data-title="시험 공부" aria-labelledby="t-exams">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="시험 날 깃발에서 오늘까지 거꾸로 내려오는 계단과 펼친 책 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="212" cy="152" rx="190" ry="110" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M26 196c20-12 42-12 60 0 18-12 40-12 60 0v40c-20-12-42-12-60 0-18-12-40-12-60 0Z" />
+                      <path class="wp" d="M146 220h44v-26h44v-26h44v-26h44v-26h56v130H146Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wg" d="M146 220h44v-26h44v-26h44v-26h44v-26h56v130H146Z" />
+                      <path class="wt" d="M356 58l32 10-32 10Z" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M40 206c10-5 22-5 34 0M40 216c10-5 22-5 34 0M40 226c10-5 22-5 34 0M98 206c10-5 22-5 34 0M98 216c10-5 22-5 34 0" />
+                        <path class="dash" d="M344 48C270 12 150 28 98 170" />
+                      </g>
+                      <g class="ink">
+                        <path d="M26 196c20-12 42-12 60 0 18-12 40-12 60 0v40c-20-12-42-12-60 0-18-12-40-12-60 0Z" />
+                        <path d="M86 196v40" />
+                        <path d="M146 220h44v-26h44v-26h44v-26h44v-26h56v130H146Z" />
+                        <path d="M356 116V54" />
+                        <path class="t" d="M356 58l32 10-32 10" />
+                        <path d="M92 156l5 16 11-12" />
+                        <path d="M160 204l4 5 8-10M204 178l4 5 8-10" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text class="n s" x="168" y="239" text-anchor="middle">D-4</text>
+                      <text class="n s" x="212" y="212" text-anchor="middle">D-3</text>
+                      <text class="n s" x="256" y="186" text-anchor="middle">D-2</text>
+                      <text class="n s" x="300" y="160" text-anchor="middle">D-1</text>
+                      <text class="t" x="350" y="140" text-anchor="middle">시험</text>
+                      <text class="s" x="230" y="18" text-anchor="middle">시험일에서 거꾸로</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-exams">시험 공부</h2>
+                <p class="plate__desc">공지에서 시험을 찾아 분량을 날짜별로 나눈 공부 계획을 세웁니다.</p>
+                <ul class="plate__notes">
+                  <li>공부한 분량을 체크하며 진도 확인</li>
+                  <li>낮 공강에는 과제와 공부를 자동 배치</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">7</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate" id="materials" data-title="강의자료" aria-labelledby="t-materials">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="과목별 폴더가 꽂힌 상자로 e클래스 자료가 들어오는 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="214" cy="158" rx="186" ry="104" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" d="M198 92V30a6 6 0 0 1 6-6h40l18 18v50Z" />
+                      <path class="wp" d="M100 150V94a6 6 0 0 1 6-6h28l8 12h34v50Z" />
+                      <path class="wp" d="M180 150V86a6 6 0 0 1 6-6h28l8 12h34v58Z" />
+                      <path class="wp" d="M260 150V98a6 6 0 0 1 6-6h28l8 12h34v46Z" />
+                      <path class="wp" d="M92 138h252a8 8 0 0 1 8 8v82a8 8 0 0 1-8 8H92a8 8 0 0 1-8-8v-82a8 8 0 0 1 8-8Z" />
+                      <path class="wp" d="M34 74a15 15 0 0 1 4-29a21 21 0 0 1 40-5a16 16 0 0 1 8 31Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wb" d="M100 138V94a6 6 0 0 1 6-6h28l8 12h34v38Z" />
+                      <path class="wo" d="M180 138V86a6 6 0 0 1 6-6h28l8 12h34v46Z" />
+                      <path class="wr" d="M260 138V98a6 6 0 0 1 6-6h28l8 12h34v34Z" />
+                      <path class="wk" d="M92 138h252a8 8 0 0 1 8 8v82a8 8 0 0 1-8 8H92a8 8 0 0 1-8-8v-82a8 8 0 0 1 8-8Z" />
+                      <path class="wg" d="M34 74a15 15 0 0 1 4-29a21 21 0 0 1 40-5a16 16 0 0 1 8 31Z" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M208 56h28M208 65h44M208 74h38" />
+                        <path class="dash" d="M74 80c10 8 18 10 28 12" />
+                        <path d="M196 218h44" />
+                      </g>
+                      <g class="ink">
+                        <path d="M198 80V30a6 6 0 0 1 6-6h40l18 18v50" />
+                        <path d="M244 24v12a6 6 0 0 0 6 6h12" />
+                        <path d="M100 138V94a6 6 0 0 1 6-6h28l8 12h34v38" />
+                        <path d="M180 138V86a6 6 0 0 1 6-6h28l8 12h34v46" />
+                        <path d="M260 138V98a6 6 0 0 1 6-6h28l8 12h34v34" />
+                        <path d="M92 138h252a8 8 0 0 1 8 8v82a8 8 0 0 1-8 8H92a8 8 0 0 1-8-8v-82a8 8 0 0 1 8-8Z" />
+                        <path d="M170 172h96v30h-96Z" />
+                        <path d="M34 74a15 15 0 0 1 4-29a21 21 0 0 1 40-5a16 16 0 0 1 8 31Z" />
+                        <path d="M94 84l10 8-12 3" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="218" y="192" text-anchor="middle">강의자료</text>
+                      <text class="s" x="60" y="66" text-anchor="middle">e클래스</text>
+                      <text class="s" x="208" y="46">3주차</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-materials">강의자료</h2>
+                <p class="plate__desc">e클래스에서 받은 자료를 과목과 주차별로 정리해 바로 엽니다.</p>
+                <ul class="plate__notes">
+                  <li>파일을 끌어다 놓아 직접 추가</li>
+                  <li>자료는 내 PC에만 보관</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">8</span>
+              </div>
+            </article>
+
+            <article class="page plate" id="opportunities" data-title="장학과 대외활동" aria-labelledby="t-opportunities">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="게시판의 여러 공지 가운데 내 조건에 맞는 두 장에 동그라미를 친 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="214" cy="140" rx="192" ry="114" /></g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wk" d="M134 26h254a8 8 0 0 1 8 8v180a8 8 0 0 1-8 8H134a8 8 0 0 1-8-8V34a8 8 0 0 1 8-8Z" />
+                    </g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" transform="rotate(-4 176 71)" d="M150 46h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V50a4 4 0 0 1 4-4Z" />
+                      <path class="wp" transform="rotate(2 258 67)" d="M232 42h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V46a4 4 0 0 1 4-4Z" />
+                      <path class="wp" transform="rotate(5 342 73)" d="M316 48h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V52a4 4 0 0 1 4-4Z" />
+                      <path class="wp" transform="rotate(3 172 155)" d="M146 130h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                      <path class="wp" transform="rotate(-2 256 159)" d="M230 134h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                      <path class="wp" transform="rotate(4 344 153)" d="M318 128h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                      <path class="wp" d="M28 138h68a8 8 0 0 1 8 8v92a8 8 0 0 1-8 8H28a8 8 0 0 1-8-8v-92a8 8 0 0 1 8-8Z" />
+                      <path class="wp" transform="rotate(-4 358 252)" d="M322 234h72a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4h-72a4 4 0 0 1-4-4v-28a4 4 0 0 1 4-4Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wg" transform="rotate(2 258 67)" d="M228 42h60v50h-60Z" />
+                      <path class="wg" transform="rotate(4 344 153)" d="M314 128h60v50h-60Z" />
+                      <path class="wo" transform="rotate(-4 358 252)" d="M318 234h80v36h-80Z" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path transform="rotate(-4 176 71)" d="M154 66h36M154 75h44M154 84h30" />
+                        <path transform="rotate(2 258 67)" d="M236 62h36M236 71h44M236 80h30" />
+                        <path transform="rotate(5 342 73)" d="M320 68h36M320 77h44M320 86h30" />
+                        <path transform="rotate(3 172 155)" d="M150 150h36M150 159h44M150 168h30" />
+                        <path transform="rotate(-2 256 159)" d="M234 154h36M234 163h44M234 172h30" />
+                        <path transform="rotate(4 344 153)" d="M322 148h36M322 157h44M322 166h30" />
+                        <path d="M34 210h56M34 221h44M34 232h50" />
+                        <path d="M104 168c36-40 70-66 110-88M104 206c70 34 150 14 198-36" />
+                      </g>
+                      <g class="ink">
+                        <path d="M134 26h254a8 8 0 0 1 8 8v180a8 8 0 0 1-8 8H134a8 8 0 0 1-8-8V34a8 8 0 0 1 8-8Z" />
+                        <path transform="rotate(-4 176 71)" d="M150 46h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V50a4 4 0 0 1 4-4Z" />
+                        <path transform="rotate(2 258 67)" d="M232 42h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V46a4 4 0 0 1 4-4Z" />
+                        <path transform="rotate(5 342 73)" d="M316 48h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4V52a4 4 0 0 1 4-4Z" />
+                        <path transform="rotate(3 172 155)" d="M146 130h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                        <path transform="rotate(-2 256 159)" d="M230 134h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                        <path transform="rotate(4 344 153)" d="M318 128h52a4 4 0 0 1 4 4v42a4 4 0 0 1-4 4h-52a4 4 0 0 1-4-4v-42a4 4 0 0 1 4-4Z" />
+                        <path class="f" d="M173 53a3 3 0 1 0 6 0a3 3 0 1 0-6 0M255 49a3 3 0 1 0 6 0a3 3 0 1 0-6 0M339 55a3 3 0 1 0 6 0a3 3 0 1 0-6 0M169 137a3 3 0 1 0 6 0a3 3 0 1 0-6 0M253 141a3 3 0 1 0 6 0a3 3 0 1 0-6 0M341 135a3 3 0 1 0 6 0a3 3 0 1 0-6 0" />
+                        <path class="b" transform="rotate(-6 258 67)" d="M214 67a44 36 0 1 0 88 0a44 36 0 1 0-88 0" />
+                        <path class="b" transform="rotate(5 344 153)" d="M300 153a44 36 0 1 0 88 0a44 36 0 1 0-88 0" />
+                        <path d="M28 138h68a8 8 0 0 1 8 8v92a8 8 0 0 1-8 8H28a8 8 0 0 1-8-8v-92a8 8 0 0 1 8-8Z" />
+                        <path class="f" d="M51 164a11 11 0 1 0 22 0a11 11 0 1 0-22 0" />
+                        <path transform="rotate(-4 358 252)" d="M322 234h72a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4h-72a4 4 0 0 1-4-4v-28a4 4 0 0 1 4-4Z" />
+                        <path d="M350 194v32M343 218l7 10 7-10" />
+                      </g>
+                    </g>
+                    <g class="lbl">
+                      <text x="62" y="198" text-anchor="middle">내 조건</text>
+                      <text class="s" transform="rotate(-4 358 252)" x="358" y="257" text-anchor="middle">신청서 초안</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-opportunities">장학과 대외활동</h2>
+                <p class="plate__desc">학교와 학과 게시판의 공지를 모아 내 조건과 관심사에 맞는 것을 골라 줍니다.</p>
+                <ul class="plate__notes">
+                  <li>장학은 해당, 확인 필요, 비해당으로 판정</li>
+                  <li>신청서 초안을 만들고 제출은 직접</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">9</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate" id="briefing" data-title="아침 브리핑" aria-labelledby="t-briefing">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="해가 뜨는 아침의 머그잔과 오늘 할 일을 적은 한 장짜리 브리핑 그림">
+                    <g class="blob" filter="url(#f-wash)"><ellipse class="w0" cx="204" cy="150" rx="190" ry="112" /></g>
+                    <g class="paper" filter="url(#f-ink)">
+                      <path class="wp" transform="rotate(2 300 138)" d="M222 30h156a10 10 0 0 1 10 10v196a10 10 0 0 1-10 10H222a10 10 0 0 1-10-10V40a10 10 0 0 1 10-10Z" />
+                      <path class="wp" d="M52 190h46v32a12 12 0 0 1-12 12H64a12 12 0 0 1-12-12Z" />
+                    </g>
+                    <g class="wash" filter="url(#f-wash)">
+                      <path class="wo" d="M58 156a50 50 0 0 1 100 0Z" />
+                      <path class="wg" d="M52 200h46v14H52Z" />
+                      <rect class="wt" transform="rotate(2 300 138)" x="250" y="134" width="88" height="19" rx="4" />
+                    </g>
+                    <g filter="url(#f-ink)">
+                      <g class="pencil">
+                        <path d="M66 182c-6-8 6-12 0-20M84 182c-6-8 6-12 0-20" />
+                        <path d="M150 62c4-10 18-10 22 0M166 56c4-9 17-9 21 1" />
+                        <path transform="rotate(2 300 138)" d="M254 114h96M254 160h70M254 204h90M254 224h60" />
+                      </g>
+                      <g class="ink">
+                        <path d="M58 156a50 50 0 0 1 100 0" />
+                        <path d="M108 98V84M72 120l-10-10M144 120l10-10M52 140l-13-6M164 140l13-6" />
+                        <path d="M22 156h176" />
+                        <path d="M52 190h46v32a12 12 0 0 1-12 12H64a12 12 0 0 1-12-12Z" />
+                        <path d="M98 198a11 11 0 0 1 0 22" />
+                        <g transform="rotate(2 300 138)">
+                          <path d="M222 30h156a10 10 0 0 1 10 10v196a10 10 0 0 1-10 10H222a10 10 0 0 1-10-10V40a10 10 0 0 1 10-10Z" />
+                          <path d="M226 72h148" />
+                          <path d="M229 98a7 7 0 1 0 14 0a7 7 0 1 0-14 0M236 94v4l3 2" />
+                          <path class="t" d="M231 134v20M231 135l12 4-12 5" />
+                          <path d="M229 180h14v14h-14ZM232 187l3 4 6-8" />
+                        </g>
+                      </g>
+                    </g>
+                    <g class="lbl" transform="rotate(2 300 138)">
+                      <text class="h" x="228" y="60">오늘</text>
+                      <text class="n s" x="372" y="60" text-anchor="end">08:00</text>
+                      <text x="254" y="103">오늘 수업</text>
+                      <text class="t" x="256" y="148">3일 안 마감</text>
+                      <text x="254" y="192">먼저 할 것</text>
+                    </g>
+                  </svg>
+                </figure>
+                <h2 id="t-briefing">아침 브리핑</h2>
+                <p class="plate__desc">매일 아침 모든 기능에서 오늘 것만 모아 한 장으로 보여 줍니다.</p>
+                <ul class="plate__notes">
+                  <li>오늘 수업, 3일 안 마감, 먼저 할 것</li>
+                  <li>PC가 꺼져 있었으면 켤 때 놓친 브리핑으로</li>
+                </ul>
+                <span class="page__no" aria-hidden="true">10</span>
+              </div>
+            </article>
+
+            <article class="page plate plate--draft" id="team" data-title="팀플 일정 조율" aria-labelledby="t-team">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="세 사람의 바쁜 시간 사이에서 모두 비는 시간을 찾는 연필 스케치">
+                    <g class="draft" filter="url(#f-ink)">
+                      <path d="M42 84a14 14 0 1 0 28 0a14 14 0 1 0-28 0M42 140a14 14 0 1 0 28 0a14 14 0 1 0-28 0M42 196a14 14 0 1 0 28 0a14 14 0 1 0-28 0" />
+                      <path class="thin" d="M86 84h300M86 140h300M86 196h300" />
+                      <path d="M96 72h90v24H96ZM250 72h70v24h-70ZM120 128h80v24h-80ZM284 128h88v24h-88ZM96 184h54v24H96ZM244 184h56v24h-56ZM340 184h44v24h-44Z" />
+                      <path class="thin" d="M106 94l14-20M126 94l14-20M146 94l14-20M166 94l14-20M260 94l14-20M280 94l14-20M300 94l14-20M130 150l14-20M150 150l14-20M170 150l14-20M294 150l14-20M314 150l14-20M334 150l14-20M354 150l14-20M106 206l14-20M126 206l14-20M254 206l14-20M274 206l14-20M350 206l14-20" />
+                      <path class="dash" d="M204 58h38v164h-38Z" />
+                    </g>
+                    <g class="lbl lbl--draft"><text x="223" y="46" text-anchor="middle">모두 빈 시간</text></g>
+                  </svg>
+                </figure>
+                <p class="plate__state">준비 중</p>
+                <h2 id="t-team">팀플 일정 조율</h2>
+                <p class="plate__desc">팀원들의 빈 시간을 겹쳐 모두 되는 회의 시간을 찾습니다.</p>
+                <span class="page__no" aria-hidden="true">11</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate plate--draft" id="programs" data-title="사업단 프로젝트" aria-labelledby="t-programs">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="신청, 진행, 승인 세 칸으로 나뉜 프로젝트 보드 연필 스케치">
+                    <g class="draft" filter="url(#f-ink)">
+                      <path d="M60 44h300a8 8 0 0 1 8 8v176a8 8 0 0 1-8 8H60a8 8 0 0 1-8-8V52a8 8 0 0 1 8-8Z" />
+                      <path class="dash" d="M158 56v168M262 56v168" />
+                      <path d="M68 90h74v30H68ZM68 130h74v30H68ZM68 170h74v30H68ZM172 90h74v30h-74ZM172 130h74v30h-74ZM276 90h74v30h-74Z" />
+                      <path class="thin" d="M76 101h40M76 110h28M76 141h44M76 150h30M76 181h36M76 190h46M180 101h42M180 110h30M180 141h38M180 150h44M284 101h30" />
+                      <path d="M326 100l5 6 10-12" />
+                      <path d="M146 145h20M160 139l7 6-7 6" />
+                    </g>
+                    <g class="lbl lbl--draft">
+                      <text x="105" y="76" text-anchor="middle">신청</text>
+                      <text x="209" y="76" text-anchor="middle">진행</text>
+                      <text x="313" y="76" text-anchor="middle">승인</text>
+                    </g>
+                  </svg>
+                </figure>
+                <p class="plate__state">준비 중</p>
+                <h2 id="t-programs">사업단 프로젝트</h2>
+                <p class="plate__desc">멘토 연결, 과제 신청, 보고서와 승인을 한곳에서 관리합니다.</p>
+                <span class="page__no" aria-hidden="true">12</span>
+              </div>
+            </article>
+
+            <article class="page plate plate--draft" id="meals" data-title="밥집 추천" aria-labelledby="t-meals">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="김이 오르는 그릇과 젓가락, 지도 핀 연필 스케치">
+                    <g class="draft" filter="url(#f-ink)">
+                      <path d="M126 150h148a74 74 0 0 1-148 0Z" />
+                      <path class="dash" d="M126 150a74 13 0 0 1 148 0" />
+                      <path d="M172 224h56" />
+                      <path d="M232 148l64-86M246 150l68-82" />
+                      <path class="thin" d="M166 128c-8-10 8-16 0-28M198 122c-8-10 8-16 0-28M228 128c-8-10 8-16 0-28" />
+                      <path d="M346 214c-24-30-22-58 0-58s24 28 0 58Z" />
+                      <path d="M338 178a8 8 0 1 0 16 0a8 8 0 1 0-16 0" />
+                      <path class="dash" d="M324 222c-20 14-50 16-76 8" />
+                    </g>
+                    <g class="lbl lbl--draft"><text x="346" y="250" text-anchor="middle">학교 근처</text></g>
+                  </svg>
+                </figure>
+                <p class="plate__state">준비 중</p>
+                <h2 id="t-meals">밥집 추천</h2>
+                <p class="plate__desc">학교 근처에서 오늘 갈 밥집을 골라 줍니다.</p>
+                <span class="page__no" aria-hidden="true">13</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="leaf">
+            <article class="page plate plate--draft" id="mobile" data-title="모바일 알림" aria-labelledby="t-mobile">
+              <div class="page__in">
+                <figure class="plate__art">
+                  <svg class="art" viewBox="0 0 420 280" role="img" aria-label="PC 에서 휴대폰으로 알림이 건너가는 연필 스케치">
+                    <g class="draft" filter="url(#f-ink)">
+                      <path d="M190 36h68a14 14 0 0 1 14 14v180a14 14 0 0 1-14 14h-68a14 14 0 0 1-14-14V50a14 14 0 0 1 14-14Z" />
+                      <path d="M212 50h24" />
+                      <path d="M192 84h64a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6h-64a6 6 0 0 1-6-6V90a6 6 0 0 1 6-6Z" />
+                      <path class="thin" d="M196 98h36M196 108h50" />
+                      <path class="dash" d="M192 132h64a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6h-64a6 6 0 0 1-6-6v-20a6 6 0 0 1 6-6Z" />
+                      <path d="M318 122c0-16 10-26 22-26s22 10 22 26v14l8 12h-60l8-12Z" />
+                      <path d="M334 152a6 6 0 0 0 12 0" />
+                      <path class="thin" d="M304 98c-6 8-8 16-8 26M376 98c6 8 8 16 8 26" />
+                      <path d="M52 112h72v48H52ZM42 166h92" />
+                      <path class="dash" d="M132 138h30" />
+                      <path d="M156 131l8 7-8 7" />
+                    </g>
+                    <g class="lbl lbl--draft">
+                      <text x="88" y="190" text-anchor="middle">PC</text>
+                      <text x="224" y="264" text-anchor="middle">휴대폰</text>
+                    </g>
+                  </svg>
+                </figure>
+                <p class="plate__state">준비 중</p>
+                <h2 id="t-mobile">모바일 알림</h2>
+                <p class="plate__desc">마감과 브리핑을 휴대폰 알림으로 받습니다.</p>
+                <span class="page__no" aria-hidden="true">14</span>
+              </div>
+            </article>
+
+            <div class="page page--blank" aria-hidden="true"></div>
+          </div>
+
+          <button class="edge edge--prev" type="button" data-edge="prev" aria-label="이전 장" hidden></button>
+          <button class="edge edge--next" type="button" data-edge="next" aria-label="다음 장" hidden></button>
+        </div>
+
+        <div class="pager" data-pager hidden>
+          <button class="pager__btn" type="button" data-prev aria-label="이전 장">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+          </button>
+          <div class="pager__rail" data-rail aria-hidden="true"></div>
+          <button class="pager__btn" type="button" data-next aria-label="다음 장">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+          </button>
+          <p class="sr-only" data-live aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="section wrap" id="index" aria-labelledby="index-title">
+        <h2 class="section__title" id="index-title">차례</h2>
+        <p class="section__lead">이름을 누르면 스케치북의 그 장이 펼쳐집니다.</p>
+        <div class="index">
+          <div class="index__group">
+            <h3>모아 줍니다</h3>
+            <ul>
+              <li><a href="#calendar"><b>캘린더</b><span>모든 일정을 한 달력에</span></a></li>
+              <li><a href="#assignments"><b>과제와 마감</b><span>e클래스에서 자동 수집</span></a></li>
+              <li><a href="#academic"><b>학사일정</b><span>학교 공지를 달력으로</span></a></li>
+              <li><a href="#materials"><b>강의자료</b><span>과목과 주차별 보관</span></a></li>
+              <li><a href="#briefing"><b>아침 브리핑</b><span>오늘 것만 한 장</span></a></li>
+            </ul>
+          </div>
+          <div class="index__group">
+            <h3>챙겨 줍니다</h3>
+            <ul>
+              <li><a href="#graduation"><b>졸업요건</b><span>남은 학점 계산</span></a></li>
+              <li><a href="#attendance"><b>출결</b><span>결석 한도 알림</span></a></li>
+              <li><a href="#exams"><b>시험 공부</b><span>날짜별 공부 계획</span></a></li>
+              <li><a href="#opportunities"><b>장학과 대외활동</b><span>내 조건에 맞는 공지</span></a></li>
+            </ul>
+          </div>
+          <div class="index__group index__group--draft">
+            <h3>그리는 중</h3>
+            <ul>
+              <li><a href="#team"><b>팀플 일정 조율</b><span>모두 되는 회의 시간</span></a></li>
+              <li><a href="#programs"><b>사업단 프로젝트</b><span>멘토와 과제 관리</span></a></li>
+              <li><a href="#meals"><b>밥집 추천</b><span>학교 근처 밥집</span></a></li>
+              <li><a href="#mobile"><b>모바일 알림</b><span>휴대폰으로 마감 알림</span></a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section wrap" aria-labelledby="promise-title">
+        <div class="promise">
+          <div class="promise__text">
+            <h2 class="section__title" id="promise-title">모든 것이 내 컴퓨터 안에서만 돕니다</h2>
+            <p>비밀번호, 강의자료, 로그인 세션은 어디에도 올라가지 않습니다.</p>
+          </div>
+          <svg class="art art--promise" viewBox="0 0 320 220" aria-hidden="true" focusable="false">
+            <g class="blob" filter="url(#f-wash)"><circle class="wp" cx="160" cy="110" r="92" /></g>
+            <g class="paper" filter="url(#f-ink)">
+              <path class="wp" d="M104 66h112a6 6 0 0 1 6 6v68H98V72a6 6 0 0 1 6-6Z" />
+              <path class="wp" d="M82 144h156l-8 13H90Z" />
+            </g>
+            <g class="wash" filter="url(#f-wash)">
+              <path class="wg" d="M106 74h108v58H106Z" />
+              <path class="wk" d="M82 144h156l-8 13H90Z" />
+              <path class="wo" d="M146 100h28v24h-28Z" />
+            </g>
+            <g filter="url(#f-ink)">
+              <g class="pencil"><path class="dash" d="M68 110a92 92 0 1 0 184 0a92 92 0 1 0-184 0" /></g>
+              <g class="ink">
+                <path d="M104 66h112a6 6 0 0 1 6 6v68H98V72a6 6 0 0 1 6-6Z" />
+                <path d="M82 144h156l-8 13H90Z" />
+                <path d="M146 100h28v24h-28Z" />
+                <path d="M151 100v-7a9 9 0 0 1 18 0v7" />
+                <path d="M160 109v6" />
+                <path class="f" d="M40 60a5 5 0 1 0 10 0a5 5 0 1 0-10 0M276 46a4 4 0 1 0 8 0a4 4 0 1 0-8 0M284 172a5 5 0 1 0 10 0a5 5 0 1 0-10 0" />
+              </g>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section class="section wrap install" id="install" aria-labelledby="install-title">
+        <div class="install__aside">
+          <h2 class="section__title" id="install-title">설치</h2>
+          <p class="section__lead">파일 하나면 됩니다. 다른 프로그램을 따로 설치하지 않습니다.</p>
+          <a class="btn btn--primary" href="/download">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 15V3" />
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+            앱 내려받기
+          </a>
+          <p class="install__note">
+            새 버전이 나오면 같은 파일을 받아 그대로 설치합니다. 내 데이터와 로그인은 그대로 남습니다.
+          </p>
+        </div>
+        <div class="sheets">
+          <article class="sheet">
+            <h3>Windows 10/11</h3>
+            <ol>
+              <li><code translate="no">UnivUs_…_x64-setup.exe</code> 를 받아 실행합니다. 관리자 권한은 필요 없습니다.</li>
+              <li>
+                <strong>“Windows의 PC 보호”</strong> 창이 뜨면 <strong>추가 정보 → 실행</strong>. 아직 코드 서명을
+                하지 않아서 뜨는 경고입니다.
+              </li>
+              <li>시작 메뉴의 <strong translate="no">UnivUs</strong> 로 엽니다.</li>
+            </ol>
+          </article>
+          <article class="sheet">
+            <h3>macOS <small>Apple Silicon (M1 이후)</small></h3>
+            <ol>
+              <li>
+                <code translate="no">UnivUs_…_aarch64.dmg</code> 를 열고 <strong translate="no">UnivUs</strong> 를 응용 프로그램 폴더로 끌어
+                넣습니다.
+              </li>
+              <li>
+                “확인되지 않은 개발자”로 막히면
+                <strong>시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기</strong>.
+              </li>
+              <li>인텔 맥용은 아직 없습니다.</li>
+            </ol>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer wrap">
+      <span>유니버스 Univ-Us</span>
+      <nav aria-label="도움말">
+        <a href="https://github.com/AIM-Output/26-WE-Meet-Project#readme">사용 안내</a>
+        <a href="https://github.com/AIM-Output/26-WE-Meet-Project#문제-해결">문제 해결</a>
+      </nav>
+    </footer>
+  </body>
+</html>
