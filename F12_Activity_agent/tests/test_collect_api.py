@@ -99,6 +99,7 @@ def test_wait_for_f11_lock():
 
 
 def test_api_flow(profile):
+    from datetime import date, timedelta
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from activity import api
@@ -108,7 +109,10 @@ def test_api_flow(profile):
     app.include_router(api.build_router(lambda: profile, cal.add, cal.remove, lambda: {"careerGoal": "장학 재료"}))
     c = TestClient(app)
     with store.connect() as con:
-        add_notice(con, "www:1", "[공모전] 2026 AI 경진대회", "신청기간 : 2026. 10. 1. ~ 2026. 10. 30.")
+        # API 는 실제 오늘 날짜로 판단한다 — 신청기간을 오늘 기준으로 잡아야 날짜가 지나도 '모집 중'이다
+        start, end = date.today() - timedelta(days=9), date.today() + timedelta(days=20)
+        add_notice(con, "www:1", "[공모전] 2026 AI 경진대회",
+                   f"신청기간 : {start.year}. {start.month}. {start.day}. ~ {end.year}. {end.month}. {end.day}.")
     ov = c.get("/api/opportunities").json()
     assert ov["counts"]["match"] == 1 and ov["tags"][0]["key"] == "AI·SW" and ov["interests"]["set"]
     assert c.patch("/api/opportunities/items/www:1", json={"saved": True}).json()["onCalendar"]
