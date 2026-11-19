@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from datetime import datetime
 from typing import Any, Callable, Optional
@@ -41,7 +42,9 @@ def _finish(**kw: Any) -> None:
         _state.update(running=False, finishedAt=datetime.now().isoformat(timespec="seconds"), progress=None, **kw)
         snap = dict(_state)
     C.ensure_dirs()
-    _last_file().write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    tmp = _last_file().with_suffix(".tmp")               # 쓰다 죽어도 원래 파일은 온전하게
+    tmp.write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, _last_file())
 
 
 def _log(line: str) -> None:

@@ -104,4 +104,5 @@ def status() -> dict:
     try:
         return f8.status_summary()
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("placement.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

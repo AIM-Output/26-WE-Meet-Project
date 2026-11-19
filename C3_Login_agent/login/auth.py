@@ -12,6 +12,7 @@ DPAPI 호출 코드를 C0 osenv.creds 로 옮길 때도(2026-10-04) 그대로 �
 - 비밀번호 평문은 디스크에 절대 쓰지 않는다 (메모리에서만 잠깐 다룬다).
 """
 import json
+import sys
 
 from . import config as C
 from osenv import IS_WINDOWS                 # C0 — config 가 sys.path 에 붙여 두었다
@@ -43,7 +44,8 @@ def load() -> dict | None:
             return json.loads(store.dpapi_unprotect(C.CRED_FILE.read_bytes(), ENTROPY).decode("utf-8"))
         raw = store.keychain_get(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
         return json.loads(raw) if raw else None
-    except Exception:
+    except Exception as e:                    # noqa: BLE001 — 원인은 남긴다(키체인 거부·keyring 없음·손상)
+        print(f"auth: 저장된 자격증명을 읽지 못함 — {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 

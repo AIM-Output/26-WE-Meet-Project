@@ -26,7 +26,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import FROZEN, IS_WINDOWS, browsers_dir, chromium_state, module_cmd  # noqa: E402,F401
+from osenv import FROZEN, IS_WINDOWS, browsers_dir, chromium_state, module_cmd, run_group  # noqa: E402,F401
 
 DATA_DIR = Path(os.environ.get("C2_DATA_DIR") or ROOT / "data")
 STATE_DIR = Path(os.environ.get("C2_STATE_DIR") or ROOT / "state")

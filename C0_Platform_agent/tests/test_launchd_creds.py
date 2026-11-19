@@ -84,3 +84,20 @@ def test_keychain_without_keyring(monkeypatch):
     monkeypatch.setitem(sys.modules, "keyring", None)      # import keyring → ImportError
     with pytest.raises(creds.CredsError):
         creds.keychain_get("svc", "acc")
+
+
+def test_register_standard_and_translocation(lctl, tmp_path):
+    launchd.register("kr.univus.s", ["/py"], workdir=tmp_path, times=[(8, 0)])
+    assert plistlib.loads(launchd.plist_path("kr.univus.s").read_bytes())["ProcessType"] == "Standard"
+    res = launchd.register("kr.univus.x", ["/private/var/folders/a/AppTranslocation/X/d/유니버스.app/py"],
+                           workdir=tmp_path, times=[(8, 0)])
+    assert not res["ok"] and "응용 프로그램" in res["error"] and not launchd.plist_path("kr.univus.x").exists()
+
+
+def test_bootstrap_retries_eio(monkeypatch, tmp_path):
+    rcs = iter([0, 5, 5, 0])                                # bootout, bootstrap EIO ×2, 성공
+    monkeypatch.setattr(launchd, "AGENTS_DIR", tmp_path)
+    monkeypatch.setattr(launchd, "_uid", lambda: 501)
+    monkeypatch.setattr(launchd.time, "sleep", lambda s: None)
+    monkeypatch.setattr(launchd, "_run", lambda a: subprocess.CompletedProcess(a, next(rcs), "", ""))
+    assert launchd.register("kr.univus.r", ["/py"], workdir=tmp_path, times=[(8, 0)])["ok"]

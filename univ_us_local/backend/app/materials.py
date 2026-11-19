@@ -59,4 +59,5 @@ def status() -> dict:
     try:
         return f4.status_summary()
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("materials.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

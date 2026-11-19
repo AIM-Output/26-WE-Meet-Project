@@ -127,3 +127,18 @@ def test_api_flow(profile):
     assert c.patch("/api/opportunities/sources/grow", json={"enabled": False}).json()["enabled"] is False
     assert c.get("/api/opportunities/items/nope").status_code == 404
     assert c.get("/api/opportunities/history").json()["semesters"][0]["saved"] == 1
+
+
+def test_lock_does_not_steal_lock_being_created(monkeypatch):
+    """다른 실행이 막 잠금 파일을 만든(아직 비어 있는) 순간에 덮어써 둘 다 수집하지 않는다 (O_EXCL)."""
+    from activity import collect, config as C
+    C.STATE_DIR.mkdir(parents=True, exist_ok=True)
+    C.LOCK_FILE.write_text("", encoding="utf-8")               # 상대가 O_EXCL 로 만들고 아직 pid 를 쓰기 전
+    peer = '{"pid": 424242, "started_at": "x"}'
+    monkeypatch.setattr(collect.time, "sleep", lambda s: C.LOCK_FILE.write_text(peer, encoding="utf-8"))
+    monkeypatch.setattr(C, "pid_alive", lambda pid: pid == 424242)
+    try:
+        assert collect._lock() is False
+        assert C.LOCK_FILE.read_text(encoding="utf-8") == peer
+    finally:
+        C.LOCK_FILE.unlink(missing_ok=True)

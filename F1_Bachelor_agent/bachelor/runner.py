@@ -63,8 +63,7 @@ def _command(keys: Optional[list[str]]) -> list[str]:
 
 def _run(keys: Optional[list[str]]) -> None:
     try:
-        proc = subprocess.run(_command(keys), cwd=str(C.ROOT), capture_output=True, timeout=20 * 60)
-        code = proc.returncode
+        code = C.run_group(_command(keys), 20 * 60, cwd=str(C.ROOT))   # 시간 초과·앱 종료 때 Chromium 까지 그룹째 끈다
     except subprocess.TimeoutExpired:
         code = -1
     except Exception:                                # 띄우지 못함 — 이유는 sync.log 에

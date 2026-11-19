@@ -108,4 +108,5 @@ def status() -> dict:
     try:
         return f5.status_summary(eclass_data.load_courses, notify=_notify)
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("exams.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

@@ -169,3 +169,8 @@ def test_media_types():
     assert service.media_type(".pdf") == "application/pdf"
     assert service.media_type(".hwp") == "application/x-hwp"
     assert service.media_type(".unknown") == "application/octet-stream"
+
+
+def test_safe_name_nfc():
+    import unicodedata
+    assert service.safe_name(unicodedata.normalize("NFD", "강의자료.pdf")) == "강의자료.pdf"

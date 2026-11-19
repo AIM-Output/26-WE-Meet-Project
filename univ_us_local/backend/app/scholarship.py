@@ -105,4 +105,5 @@ def status() -> dict:
     try:
         return f11.status_summary(get_profile, _push)
     except Exception as e:                          # noqa: BLE001
+        C.log_exc("scholarship.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

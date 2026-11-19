@@ -7,6 +7,7 @@ notice_agent 는 아직 자기 profile.json 을 읽는다. F11 을 대시보드�
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -54,5 +55,7 @@ def export(profile: dict, path: Optional[Path] = None) -> Path:
             base = {}
     base.update(to_notice(profile))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(base, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")             # 쓰다 죽어도 원래 파일은 온전하게 — 다 쓴 뒤 바꿔 끼운다
+    tmp.write_text(json.dumps(base, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
     return path

@@ -46,3 +46,14 @@ def test_windows_key_material_unchanged():
     from login import auth
     assert auth.ENTROPY == b"eclass-agent/jnu/v1" and auth.DESCRIPTION == "eclass-agent"
     assert (auth.KEYCHAIN_SERVICE, auth.KEYCHAIN_ACCOUNT) == ("univus-jnu-sso", "default")
+
+
+def test_keychain_error_logged(mac, monkeypatch, capsys):
+    auth, C, store = mac
+    C.CRED_FILE.write_text("{}", encoding="utf-8")
+
+    def denied(s, a):
+        raise RuntimeError("User interaction is not allowed")
+    monkeypatch.setattr(sys.modules["keyring"], "get_password", denied)
+    assert auth.load() is None
+    assert "User interaction is not allowed" in capsys.readouterr().err

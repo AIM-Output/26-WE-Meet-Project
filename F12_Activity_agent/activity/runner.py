@@ -65,9 +65,7 @@ def _command(keys: Optional[list[str]], profile: Optional[dict], by: str) -> lis
 
 def _run(cmd: list[str]) -> None:
     try:
-        proc = subprocess.run(cmd, cwd=str(C.ROOT), capture_output=True, timeout=C.SYNC_TIMEOUT_MIN * 60,
-                              creationflags=NO_WINDOW)
-        code = proc.returncode
+        code = C.run_group(cmd, C.SYNC_TIMEOUT_MIN * 60, cwd=str(C.ROOT), creationflags=NO_WINDOW)   # 시간 초과·앱 종료 때 그룹째 끈다
     except subprocess.TimeoutExpired:
         code = -1
     except Exception:                                    # noqa: BLE001 — 띄우지 못함 — 이유는 sync.log 에

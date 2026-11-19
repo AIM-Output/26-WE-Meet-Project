@@ -128,3 +128,19 @@ def test_tick_skips_when_slot_done(fake_collect):
     runner, codes = fake_collect
     R.append_run({"started_at": datetime.now().isoformat(timespec="seconds"), "exit_code": 0, "attempt": 1})
     assert runner.tick() == 0 and codes == []                         # 가짜 수집이 불리지 않았다
+
+
+def test_sync_processes_only_same_executable_dir(monkeypatch):
+    """맥·리눅스도 윈도처럼 지금 실행 파일과 같은 폴더의 수집기만 센다 — 개발 모드와 설치본이 서로를 '이미 도는 중'으로 보지 않게."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    from eclass import jobs
+    if sys.platform == "win32":
+        return
+    mine = Path(sys.executable).parent
+    ps = (f"  111 /Applications/WE Meet.app/Contents/Resources/sidecar/univus-backend --run-module eclass sync\n"
+          f"  222 {mine}/python -X utf8 -m eclass sync --source button\n"
+          f"  333 {mine}/python -X utf8 -m eclass status\n")
+    monkeypatch.setattr(jobs.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=ps))
+    assert jobs._sync_processes() == [222]

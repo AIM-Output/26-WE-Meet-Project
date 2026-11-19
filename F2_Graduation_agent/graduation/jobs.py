@@ -49,7 +49,9 @@ def _finish(name: str, **kw) -> None:
         _state[name].update(running=False, finishedAt=datetime.now().isoformat(timespec="seconds"), **kw)
         snap = dict(_state[name])
     C.STATE_DIR.mkdir(parents=True, exist_ok=True)
-    _last_file(name).write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    tmp = _last_file(name).with_suffix(".tmp")           # 쓰다 죽어도 원래 파일은 온전하게
+    tmp.write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, _last_file(name))
 
 
 def _begin(name: str) -> Optional[dict]:
@@ -86,8 +88,8 @@ def _run_import(interactive: bool) -> None:
            "C3_AGENT_DIR": str(C.C3_AGENT_DIR), "C3_STATE_DIR": str(C.C3_STATE_DIR), "C2_AGENT_DIR": str(C.C2_AGENT_DIR)}
     try:
         with open(C.IMPORT_LOG, "a", encoding="utf-8") as log:
-            code = subprocess.run(cmd, cwd=str(C.ROOT), env=env, stdout=log, stderr=subprocess.STDOUT,
-                                  timeout=C.INTERACTIVE_TIMEOUT if interactive else C.IMPORT_TIMEOUT).returncode
+            code = C.run_group(cmd, C.INTERACTIVE_TIMEOUT if interactive else C.IMPORT_TIMEOUT,   # 앱이 꺼지면 로그인 Chromium 까지 같이 끈다
+                               cwd=str(C.ROOT), env=env, stdout=log, stderr=subprocess.STDOUT)
     except subprocess.TimeoutExpired:
         _finish("import", ok=False, error=f"시간이 초과되었습니다 (기록: {C.IMPORT_LOG})")
         return

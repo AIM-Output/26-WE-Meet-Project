@@ -1,5 +1,5 @@
 """가져오기 작업의 배관 — 종료 코드별 처리 · 저장 · 프로필 넘기기 · 성적 파일 삭제.
-실제 학사정보시스템에는 접속하지 않는다 (subprocess.run 을 가짜로 바꾼다)."""
+실제 학사정보시스템에는 접속하지 않는다 (C.run_group 을 가짜로 바꾼다)."""
 import json
 import subprocess
 
@@ -23,7 +23,7 @@ def fake_run(monkeypatch, db):
             if code == 0:
                 C.IMPORT_OUT.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
             return subprocess.CompletedProcess(cmd, code)
-        monkeypatch.setattr(jobs.subprocess, "run", run)
+        monkeypatch.setattr(C, "run_group", lambda cmd, timeout, **kw: run(cmd, **kw).returncode)
         return calls
     yield install
     jobs.on_profile = None

@@ -21,7 +21,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import module_cmd, pid_alive  # noqa: E402,F401 — runner 가 쓴다
+from osenv import module_cmd, pid_alive, run_group  # noqa: E402,F401 — runner 가 쓴다
 
 
 def _load_env(path: Path) -> None:

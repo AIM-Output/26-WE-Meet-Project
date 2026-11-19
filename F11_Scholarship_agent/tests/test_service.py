@@ -173,3 +173,18 @@ def test_status_and_brief(profile):
         st = service.status_summary(con, profile, TODAY)
         assert st["eligible"] == 1 and st["review"] == 1
         assert service.brief(con, profile, days=30, today=TODAY)
+
+
+def test_lock_does_not_steal_lock_being_created(monkeypatch):
+    """다른 실행이 막 잠금 파일을 만든(아직 비어 있는) 순간에 덮어써 둘 다 수집하지 않는다 (O_EXCL)."""
+    from scholarship import collect, config as C
+    C.STATE_DIR.mkdir(parents=True, exist_ok=True)
+    C.LOCK_FILE.write_text("", encoding="utf-8")               # 상대가 O_EXCL 로 만들고 아직 pid 를 쓰기 전
+    peer = '{"pid": 424242, "started_at": "x"}'
+    monkeypatch.setattr(collect.time, "sleep", lambda s: C.LOCK_FILE.write_text(peer, encoding="utf-8"))
+    monkeypatch.setattr(C, "pid_alive", lambda pid: pid == 424242)
+    try:
+        assert collect._lock() is False
+        assert C.LOCK_FILE.read_text(encoding="utf-8") == peer
+    finally:
+        C.LOCK_FILE.unlink(missing_ok=True)

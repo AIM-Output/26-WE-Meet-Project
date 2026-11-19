@@ -83,7 +83,8 @@ def incoming() -> dict[str, dict]:
         cmid = str(f.get("cmid", ""))
         mod = mods.get(cmid)
         path = str(f.get("path", ""))
-        if mod not in C.RESOURCE_MODULES and (mod is not None or "\\게시판\\" in path or "\\과제\\" in path):
+        slash = path.replace("\\", "/")                # 윈도는 'data\\과목\\…', 맥은 'data/과목/…' (collect.rel_path)
+        if mod not in C.RESOURCE_MODULES and (mod is not None or "/게시판/" in slash or "/과제/" in slash):
             continue                                    # 게시판 글·과제의 첨부 — 그 글·과제의 일부
         out["file:" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]] = {
             "kind": "material", "course": f.get("course", ""), "course_id": str(f.get("course_id", "")),

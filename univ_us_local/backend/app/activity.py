@@ -117,4 +117,5 @@ def status() -> dict:
     try:
         return f12.status_summary(get_profile, _push)
     except Exception as e:                          # noqa: BLE001
+        C.log_exc("activity.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

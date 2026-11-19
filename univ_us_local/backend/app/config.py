@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import hmac
 import os
+import sys
+import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # univ_us_local/
@@ -72,3 +74,14 @@ COURSE_PALETTE = [  # 흙빛 팔레트 (디자인 v3 "Paper & Pine" — DESIGN.m
     "#55753a",  # moss
     "#b05a7a",  # rose
 ]
+
+
+_last_exc: dict[str, str] = {}
+
+
+def log_exc(where: str) -> None:
+    """삼킨 예외의 traceback 을 stderr(=backend.log)에 — 1분마다 부르는 상태 폴링이 같은 오류로 로그를 채우지 않게 달라졌을 때만."""
+    tb = traceback.format_exc()
+    if _last_exc.get(where) != tb:
+        _last_exc[where] = tb
+        print(f"[{where}] {tb}", file=sys.stderr, flush=True)

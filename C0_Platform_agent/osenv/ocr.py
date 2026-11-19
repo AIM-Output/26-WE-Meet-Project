@@ -4,7 +4,7 @@
              한국어 OCR 은 Windows 의 한국어 언어 기능에 들어 있다(한국어 Windows 는 기본). 없으면 사용자 언어로 읽고 available() 이 알린다.
              스캔 PDF 도 읽는다(Windows.Data.Pdf 로 쪽을 그려서).
     macOS    Vision (VNRecognizeTextRequest, 한국어는 macOS 13 이상) — pyobjc-framework-Vision·Quartz (desktop/sidecar/requirements.txt,
-             맥에서만 설치). 스캔 PDF 는 아직 안 읽는다(None).
+             맥에서만 설치). 스캔 PDF 는 Quartz 로 쪽을 그려 Vision 으로 읽는다.
     그 외    없음 — available()["ok"] 가 False, 함수는 None.
 
     available()                 {"ok", "engine", "lang", "korean", "reason"} — 한 번 확인하고 기억한다
@@ -70,13 +70,44 @@ def _run_windows(items: list[tuple[str, int, bytes]], runner=subprocess.run) -> 
 
 def _vision_image(data: bytes) -> Optional[str]:
     import Quartz                                        # pyobjc-framework-Quartz
-    import Vision                                        # pyobjc-framework-Vision
     from Foundation import NSData
     ns = NSData.dataWithBytes_length_(data, len(data))
     src = Quartz.CGImageSourceCreateWithData(ns, None)
     img = Quartz.CGImageSourceCreateImageAtIndex(src, 0, None) if src else None
-    if img is None:
+    return _vision_cg(img) if img is not None else None
+
+
+def _vision_pdf(data: bytes, pages: int) -> Optional[str]:
+    """PDF 앞 몇 쪽을 Quartz 로 그려(2배) Vision 에 넘긴다 — 추가 의존성 없음."""
+    import Quartz
+    from Foundation import NSData
+    doc = Quartz.CGPDFDocumentCreateWithProvider(
+        Quartz.CGDataProviderCreateWithCFData(NSData.dataWithBytes_length_(data, len(data))))
+    if doc is None:
         return None
+    texts = []
+    for n in range(1, min(pages, Quartz.CGPDFDocumentGetNumberOfPages(doc)) + 1):
+        page = Quartz.CGPDFDocumentGetPage(doc, n)
+        box = Quartz.CGPDFPageGetBoxRect(page, Quartz.kCGPDFCropBox)
+        w, h = int(box.size.width * 2), int(box.size.height * 2)
+        if not (0 < w * h <= 40_000_000):                  # 비정상적으로 큰 쪽은 건너뛴다(메모리)
+            continue
+        ctx = Quartz.CGBitmapContextCreate(None, w, h, 8, 0, Quartz.CGColorSpaceCreateDeviceRGB(),
+                                           Quartz.kCGImageAlphaNoneSkipLast)
+        Quartz.CGContextSetRGBFillColor(ctx, 1, 1, 1, 1)
+        Quartz.CGContextFillRect(ctx, Quartz.CGRectMake(0, 0, w, h))
+        Quartz.CGContextConcatCTM(ctx, Quartz.CGPDFPageGetDrawingTransform(
+            page, Quartz.kCGPDFCropBox, Quartz.CGRectMake(0, 0, w, h), 0, True))
+        Quartz.CGContextDrawPDFPage(ctx, page)
+        t = _vision_cg(Quartz.CGBitmapContextCreateImage(ctx))
+        if t:
+            texts.append(t)
+    return "\n\n".join(texts)
+
+
+def _vision_cg(img) -> Optional[str]:
+    import Quartz
+    import Vision
     w, h = Quartz.CGImageGetWidth(img), Quartz.CGImageGetHeight(img)
     if w < 200 or h < 60:
         return ""
@@ -166,8 +197,13 @@ def image_texts(images: list[bytes], runner=subprocess.run) -> list[Optional[str
 
 
 def pdf_text(data: bytes, pages: int = 3, runner=subprocess.run) -> Optional[str]:
-    if not data or len(data) > MAX_BYTES or not IS_WINDOWS or not available(runner=runner)["ok"]:
+    if not data or len(data) > MAX_BYTES or not (IS_WINDOWS or IS_MAC) or not available(runner=runner)["ok"]:
         return None
+    if IS_MAC:
+        try:
+            return _vision_pdf(data, pages)
+        except Exception:                                # noqa: BLE001
+            return None
     ok, text = _run_windows([("pdf", pages, data)], runner)[0]
     return text if ok else None
 

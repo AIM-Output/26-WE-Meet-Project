@@ -237,12 +237,24 @@ def wait_for_peer(sleep=time.sleep, now=time.monotonic) -> bool:
 
 
 def _lock() -> bool:
+    """state/sync.lock 을 원자적으로(O_EXCL) 만든다 — 두 실행이 동시에 '비었음'을 보고 둘 다 잡지 않게 (F6 runs.acquire_lock 과 같은 방식)."""
     C.STATE_DIR.mkdir(parents=True, exist_ok=True)
-    data = _read_lock(C.LOCK_FILE)
-    if data and isinstance(data.get("pid"), int) and data["pid"] != os.getpid() and C.pid_alive(data["pid"]):
-        return False
-    C.LOCK_FILE.write_text(json.dumps({"pid": os.getpid(), "started_at": store.now_iso()}), encoding="utf-8")
-    return True
+    for _ in range(3):
+        try:
+            fd = os.open(C.LOCK_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+        except FileExistsError:
+            pid = (_read_lock(C.LOCK_FILE) or {}).get("pid")
+            if isinstance(pid, int) and pid != os.getpid() and C.pid_alive(pid):
+                return False
+            if pid is None and C.LOCK_FILE.exists() and time.time() - C.LOCK_FILE.stat().st_mtime < 30:
+                time.sleep(1)                            # 다른 실행이 막 만드는 중 → 잠깐 뒤 다시
+                continue
+            C.LOCK_FILE.unlink(missing_ok=True)          # 끝난 실행이 남긴 잠금
+            continue
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"pid": os.getpid(), "started_at": store.now_iso()}, f)
+        return True
+    return False
 
 
 def run(keys: Optional[list[str]] = None, profile: Optional[dict] = None, *, by: str = "manual", dry_run: bool = False) -> int:
