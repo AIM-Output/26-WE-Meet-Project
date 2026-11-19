@@ -25,7 +25,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import FROZEN, browsers_dir, module_cmd, pid_alive, task_command  # noqa: E402,F401 — pid_alive 는 runs
+from osenv import FROZEN, browsers_dir, module_cmd, pid_alive, run_group, task_command  # noqa: E402,F401 — pid_alive 는 runs
 
 # data/ 아래 경로는 manifest·assignments 에 'data\\<과목>\\…' 처럼 ROOT 기준 상대경로로 적힌다 (F3 공지 휴강이 같은 규칙으로 읽는다).
 DATA_DIR = Path(os.environ.get("F6_DATA_DIR") or ROOT / "data")

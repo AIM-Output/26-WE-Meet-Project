@@ -67,6 +67,7 @@ def summary() -> dict:
     try:
         return c1.status_summary()
     except Exception as e:                         # noqa: BLE001
+        C.log_exc("calendar_events.summary")
         return {"available": False, "error": f"{type(e).__name__}: {e}",
                 "counts": dict(_NO_COUNTS), "categories": {}}
 

@@ -17,6 +17,7 @@ import os
 import plistlib
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -47,7 +48,7 @@ def build(label: str, args: list[str], *, workdir: str | os.PathLike, times: lis
         "WorkingDirectory": str(workdir),
         "StartCalendarInterval": [{"Hour": h, "Minute": m} for h, m in times],
         "RunAtLoad": True,
-        "ProcessType": "Background",                      # 배터리·성능에 덜 끼어들게 (사람이 기다리는 작업이 아니다)
+        "ProcessType": "Standard",                        # Background 면 headless Chromium 수집이 CPU·IO 제한에 걸려 시간 초과
         "EnvironmentVariables": {"PYTHONUTF8": "1", **{k: str(v) for k, v in (env or {}).items()}},
     }
     if log:                                                # tick 은 --log 로 자기 로그를 쓴다. 여기는 그 밖의 출력(시작 실패 등)
@@ -59,12 +60,19 @@ def register(label: str, args: list[str], *, workdir: str | os.PathLike, times: 
              env: Optional[dict] = None, log: Optional[str | os.PathLike] = None) -> dict:
     """{ok, output, error}. 같은 label 이 올라가 있으면 내렸다가 새 plist 로 다시 올린다."""
     path = plist_path(label)
+    if any("/AppTranslocation/" in str(a) for a in [*args, workdir]):   # 격리 실행 경로는 다음 부팅에 사라진다
+        return {"ok": False, "output": f"격리(App Translocation) 경로에서 실행 중: {args[0] if args else workdir}",
+                "error": "유니버스를 응용 프로그램 폴더로 옮긴 뒤 다시 켜 주세요"}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             plistlib.dump(build(label, args, workdir=workdir, times=times, env=env, log=log), f)
         _run(["launchctl", "bootout", f"{_domain()}/{label}"])            # 없으면 실패 — 무시
-        p = _run(["launchctl", "bootstrap", _domain(), str(path)])
+        for i in range(4):                                 # bootout 직후엔 아직 내려가는 중이라 EIO(5)가 나곤 한다
+            p = _run(["launchctl", "bootstrap", _domain(), str(path)])
+            if p.returncode == 0 or i == 3:
+                break
+            time.sleep(0.5 * (i + 1))
     except Exception as e:                                 # noqa: BLE001
         return {"ok": False, "output": str(e)[-800:], "error": "예약 실행(launchd)에 등록하지 못했습니다"}
     text = (p.stdout + p.stderr).strip()

@@ -5,6 +5,7 @@
     venv_python(dir)   가상환경 안의 python   Windows .venv\\Scripts\\python.exe / 그 외 .venv/bin/python
     pid_alive(pid)     그 pid 가 살아 있는 python 프로세스인가   Windows tasklist / 그 외 os.kill(pid, 0)
     NO_WINDOW          subprocess creationflags — Windows 는 콘솔 창을 띄우지 않고, 그 외는 0
+    run_group(cmd, timeout, **kw)   자식을 새 프로세스 그룹으로 띄워 기다림 — 시간 초과·kill_children()(사이드카 종료) 때 그룹째 끈다
     venv.ensure(...)   가상환경 만들기·패키지·Chromium (osenv/venv.py — 사이드카 빌드·개발용 desktop/sidecar/.venv)
 
 기능마다 .venv 를 두지 않는다 — 데스크톱 앱(PyInstaller 로 묶은 실행 파일 하나 — FROZEN)이든 개발 모드(desktop/sidecar/.venv
@@ -26,10 +27,13 @@
 """
 from __future__ import annotations
 
+import atexit
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 IS_WINDOWS = sys.platform == "win32"
@@ -95,12 +99,58 @@ def pid_alive(pid: int) -> bool:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    except PermissionError:                                 # 살아 있지만 남의 프로세스
-        pass
+    except PermissionError:                                 # 다른 사용자의 프로세스 — 잠금을 쓰는 건 늘 내 프로세스이니
+        return False                                        # pid 가 재사용된 것 (그대로 두면 sync.lock 이 영영 안 풀린다)
     except OSError:
         return False
     return True
 
 
+_children: set = set()
+_children_lock = threading.Lock()
+
+
+def _kill_group(p: subprocess.Popen) -> None:
+    """맥·리눅스는 프로세스 그룹째(Chromium 손자까지) SIGKILL. Windows 는 taskkill /T 로 자식 트리째."""
+    try:
+        if IS_WINDOWS:
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True, timeout=5,
+                           creationflags=NO_WINDOW)
+            p.kill()                                        # taskkill 이 없거나 실패해도 자식은 끈다
+        else:
+            os.killpg(p.pid, signal.SIGKILL)
+    except Exception:                                       # noqa: BLE001 — 이미 끝났다
+        pass
+
+
+def run_group(cmd: list[str], timeout: float, **kw) -> int:
+    """subprocess.run(cmd, timeout=…) 대신 — 자식(수집기·로그인 창)을 새 프로세스 그룹으로 띄워 끝날 때까지 기다리고 종료 코드를 돌려준다.
+    시간 초과면 그룹째 끄고 TimeoutExpired 를 그대로 올린다. 사이드카가 끝날 때(kill_children) 살아 있는 자식도 그룹째 끈다.
+    stdout·stderr 를 주지 않으면 버린다 (수집기는 --log 파일에 쓴다)."""
+    kw.setdefault("stdout", subprocess.DEVNULL)
+    kw.setdefault("stderr", subprocess.DEVNULL)
+    with subprocess.Popen(cmd, start_new_session=not IS_WINDOWS, **kw) as p:
+        with _children_lock:
+            _children.add(p)
+        try:
+            return p.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _kill_group(p)
+            raise
+        finally:
+            with _children_lock:
+                _children.discard(p)
+
+
+def kill_children() -> None:
+    """run_group 으로 띄운 아직 살아 있는 자식을 그룹째 끈다. 여러 번 불러도 되고 예외를 내지 않는다 (atexit · 사이드카 종료 처리)."""
+    with _children_lock:
+        alive = list(_children)
+    for p in alive:
+        _kill_group(p)
+
+
+atexit.register(kill_children)
+
 __all__ = ["IS_WINDOWS", "IS_MAC", "NO_WINDOW", "FROZEN", "venv_python", "module_cmd", "task_command", "browsers_dir",
-           "INSTALLING_MARK", "chromium_state", "pid_alive"]
+           "INSTALLING_MARK", "chromium_state", "pid_alive", "run_group", "kill_children"]

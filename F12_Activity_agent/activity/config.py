@@ -27,7 +27,7 @@ PROJECT_ROOT = ROOT.parent
 C0_AGENT_DIR = Path(os.environ.get("C0_AGENT_DIR") or PROJECT_ROOT / "C0_Platform_agent")
 if str(C0_AGENT_DIR) not in sys.path:
     sys.path.append(str(C0_AGENT_DIR))
-from osenv import module_cmd, pid_alive  # noqa: E402,F401 — runner 가 쓴다
+from osenv import module_cmd, pid_alive, run_group  # noqa: E402,F401 — runner 가 쓴다
 
 # F11 장학 — 원천 목록·게시판 수집기·첨부 읽기·날짜 규칙을 빌려 쓴다 (scholarship 패키지, 표준 라이브러리 부분만 여기서 import)
 F11_AGENT_DIR = Path(os.environ.get("F11_AGENT_DIR") or PROJECT_ROOT / "F11_Scholarship_agent")

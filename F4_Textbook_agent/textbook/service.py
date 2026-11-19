@@ -13,6 +13,7 @@ from __future__ import annotations
 import mimetypes
 import re
 import sqlite3
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
@@ -266,7 +267,7 @@ _BAD = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 def safe_name(name: str) -> str:
-    base = _BAD.sub("_", Path(str(name or "")).name).strip(" .")
+    base = _BAD.sub("_", Path(unicodedata.normalize("NFC", str(name or ""))).name).strip(" .")   # 맥 업로드 이름은 NFD
     return base[:120] or "파일"
 
 

@@ -90,3 +90,14 @@ def test_material_time_is_eclass_upload_time(db):
     feed.sync(db, NOW)
     (it,) = feed.list_items(db)["items"]
     assert (it["postedAt"], it["fetchedAt"]) == ("2026-10-01T13:15:48", "2026-10-02T12:00:00")
+
+
+def test_unknown_activity_attachment_skipped_with_mac_paths(db):
+    """courses.json 에 없는 활동의 게시판·과제 첨부 — 맥은 경로가 '/' 라도 강의자료로 따로 나오지 않는다."""
+    write_manifest([], [("900", "week1.pdf", "ubfile")])
+    m = json.loads(C.MANIFEST_FILE.read_text(encoding="utf-8"))
+    for cmid, sub in (("777", "게시판"), ("778", "과제")):
+        m["files"][f"/x/{cmid}"] = {"url": "u", "path": f"data/{COURSES[0]['name']}/{sub}/글/a.pdf", "cmid": cmid,
+                                    "course": COURSES[0]["name"], "course_id": COURSES[0]["id"], "activity": sub}
+    C.MANIFEST_FILE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    assert [r["title"] for r in feed.incoming().values() if r["kind"] == "material"] == ["week1.pdf"]

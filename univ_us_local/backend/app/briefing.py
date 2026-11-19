@@ -120,4 +120,5 @@ def status() -> dict:
     try:
         return c4.status_summary(sources())
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("briefing.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

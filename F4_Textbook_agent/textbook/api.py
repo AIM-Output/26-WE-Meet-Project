@@ -20,6 +20,7 @@ from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import config as C
 from . import catalog, service, store
@@ -96,8 +97,16 @@ def build_router(get_courses: Optional[CoursesGetter] = None) -> APIRouter:
         declared = request.headers.get("content-length")
         if declared and declared.isdigit() and int(declared) > limit:
             raise HTTPException(413, f"{C.MAX_FILE_MB}MB 가 넘는 파일은 받지 않습니다")
-        with store.connect() as con:
-            dest = _errors(lambda: service.upload_target(con, course, name, get_courses))
+        # 본문 읽기만 await 하고 파일·sqlite·스캔은 스레드풀로 — 큰 PDF 를 받는 동안 서버 전체가 멈추지 않게
+        def target():
+            with store.connect() as con:
+                return _errors(lambda: service.upload_target(con, course, name, get_courses))
+
+        def finish():
+            with store.connect() as con:
+                return _errors(lambda: service.finish_upload(con, dest, get_courses))
+
+        dest = await run_in_threadpool(target)
         tmp = dest.with_name(dest.name + ".part")
         written = 0
         try:
@@ -106,7 +115,7 @@ def build_router(get_courses: Optional[CoursesGetter] = None) -> APIRouter:
                     written += len(chunk)
                     if written > limit:
                         raise HTTPException(413, f"{C.MAX_FILE_MB}MB 가 넘는 파일은 받지 않습니다")
-                    f.write(chunk)
+                    await run_in_threadpool(f.write, chunk)
             if written == 0:
                 raise HTTPException(422, "빈 파일입니다")
             tmp.replace(dest)
@@ -116,8 +125,7 @@ def build_router(get_courses: Optional[CoursesGetter] = None) -> APIRouter:
         except OSError as e:
             tmp.unlink(missing_ok=True)
             raise HTTPException(500, f"파일을 저장하지 못했습니다: {e}")
-        with store.connect() as con:
-            material = _errors(lambda: service.finish_upload(con, dest, get_courses))
+        material = await run_in_threadpool(finish)
         return {"material": material, "updatedAt": material["addedAt"]}
 
     @r.get("/api/materials/{material_id}")

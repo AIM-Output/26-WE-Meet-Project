@@ -98,6 +98,8 @@ npm run dev
 ```
 
 - 처음엔 Rust 빌드로 **몇 분** 걸립니다. 앱 창(시작 화면 → 대시보드)이 뜨면 성공.
+- `resource path ../sidecar/dist/univus-backend doesn't exist` 로 Rust 빌드가 멈추면: 사이드카를 한 번도 빌드하지 않은 PC 라서다. 빈 폴더를 만들면 된다 — 맥 `mkdir -p desktop/sidecar/dist/univus-backend` · 윈도 `mkdir desktop\sidecar\dist\univus-backend` (개발 모드는 이 폴더를 쓰지 않는다).
+- 창이 500 · `next/font/google queries have exactly one entry` 이면: 예전 버전이 남긴 화면 캐시다. `univ_us_local/frontend/.next` 를 지우고 다시.
 - 화면 코드(`univ_us_local/frontend/src`)를 고치면 창에 바로 반영됩니다. 파이썬 코드를 고쳤으면 `Ctrl+C` 후 `npm run dev` 다시.
 - 개발 모드는 설치본과 **따로** 돕니다 — 데이터 `desktop/.dev-data`, 식별자 `kr.univus.desktop.dev`, 예약 자동 수집 꺼짐(설치본 예약을 덮어쓰지 않게).
 - 첫 실행 때 브라우저 엔진(Chromium, 약 150MB)을 `desktop/sidecar/.venv/pw-browsers` 에 받습니다.

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -86,12 +87,15 @@ def _sync_processes() -> list[int]:
                   "ForEach-Object { $_.ProcessId }")
         cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", script]
     else:
-        cmd = ["pgrep", "-f", r"(-m|--run-module) eclass (sync|tick)"]
+        cmd = ["ps", "-Ao", "pid=,args="]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=15,
                              env={**_env(), "UNIVUS_PROC_PREFIX": prefix}, creationflags=NO_WINDOW).stdout
     except Exception:                                # noqa: BLE001
         return []
+    if sys.platform != "win32":                      # 윈도와 같은 기준 — 명령줄 맨 앞(실행 파일)이 같은 폴더인 것만 (개발 모드 ↔ 설치본 섞임 방지)
+        pat = re.compile(r"\s*(\d+) " + re.escape(prefix + os.sep) + r"\S*\s.*(-m|--run-module) eclass (sync|tick)")
+        out = " ".join(m[1] for line in out.splitlines() if (m := pat.match(line)))
     return [int(x) for x in out.split() if x.isdigit() and int(x) != os.getpid()]
 
 
@@ -121,9 +125,7 @@ def sync_state() -> dict:
 def _run_sync() -> None:
     cmd = C.module_cmd("eclass", "sync", "--source", "button", "--log", str(C.LOG_FILE))
     try:
-        proc = subprocess.run(cmd, cwd=str(C.ROOT), env=_env(), capture_output=True, timeout=SYNC_TIMEOUT,
-                              creationflags=NO_WINDOW)
-        code = proc.returncode
+        code = C.run_group(cmd, SYNC_TIMEOUT, cwd=str(C.ROOT), env=_env(), creationflags=NO_WINDOW)   # 시간 초과·앱 종료 때 그룹째 끈다
     except subprocess.TimeoutExpired:
         code = C.EXIT_TIMEOUT
     except Exception:                                # noqa: BLE001
@@ -174,8 +176,8 @@ def _run_login(then_sync: bool) -> None:
         with open(log, "a", encoding="utf-8") as f:
             f.write(f"======== {now_iso()} 로그인 창 ========\n")
             f.flush()
-            code = subprocess.run(cmd, cwd=str(C.C3_AGENT_DIR), env=_env(), stdin=subprocess.DEVNULL, stdout=f,
-                                  stderr=subprocess.STDOUT, timeout=LOGIN_TIMEOUT).returncode
+            code = C.run_group(cmd, LOGIN_TIMEOUT, cwd=str(C.C3_AGENT_DIR), env=_env(), stdin=subprocess.DEVNULL, stdout=f,
+                               stderr=subprocess.STDOUT)
     except subprocess.TimeoutExpired:
         code = C.EXIT_TIMEOUT
     except Exception:                                # noqa: BLE001

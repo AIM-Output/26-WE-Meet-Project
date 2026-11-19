@@ -87,4 +87,5 @@ def status() -> dict:
     try:
         return f3.status_summary(eclass_data.load_courses, get_profile(), notify=_notify)
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("attendance.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

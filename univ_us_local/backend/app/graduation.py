@@ -75,4 +75,5 @@ def status() -> dict:
     try:
         return f2.status_summary(get_profile())
     except Exception as e:                     # noqa: BLE001
+        C.log_exc("graduation.status")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}

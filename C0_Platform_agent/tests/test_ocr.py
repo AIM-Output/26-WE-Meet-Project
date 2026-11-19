@@ -114,3 +114,24 @@ def test_mac_vision_real_ocr():
     flat = (text[0] or "").replace(" ", "")
     assert "재학생" in flat and "2026" in flat and text[0].index("2026") < text[0].index("재학생")   # 위에서 아래 순서
     assert text[1] is None
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Vision")
+def test_mac_pdf_ocr():
+    if not ocr.available()["ok"]:
+        pytest.skip(ocr.available()["reason"])
+    import Quartz
+    from Foundation import NSData, NSMutableData
+    png = _mac_png(["신청기간 : 2026. 10. 1. ~ 10. 20.", "모집대상 : 전남대학교 재학생"])
+    src = Quartz.CGImageSourceCreateWithData(NSData.dataWithBytes_length_(png, len(png)), None)
+    img = Quartz.CGImageSourceCreateImageAtIndex(src, 0, None)
+    w, h = Quartz.CGImageGetWidth(img), Quartz.CGImageGetHeight(img)
+    buf = NSMutableData.data()
+    ctx = Quartz.CGPDFContextCreate(Quartz.CGDataConsumerCreateWithCFData(buf), Quartz.CGRectMake(0, 0, w, h), None)
+    Quartz.CGContextBeginPage(ctx, None)
+    Quartz.CGContextDrawImage(ctx, Quartz.CGRectMake(0, 0, w, h), img)
+    Quartz.CGContextEndPage(ctx)
+    Quartz.CGPDFContextClose(ctx)
+    flat = (ocr.pdf_text(bytes(buf)) or "").replace(" ", "")
+    assert "재학생" in flat and "2026" in flat
+    assert ocr.pdf_text(b"%PDF-broken") in (None, "")

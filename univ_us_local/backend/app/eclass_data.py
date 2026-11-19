@@ -90,6 +90,7 @@ def status_block() -> dict:
     try:
         return f6.status_block()
     except Exception as e:                      # noqa: BLE001
+        C.log_exc("eclass_data.status_block")
         return {"available": False, "error": f"{type(e).__name__}: {e}"}
 
 
@@ -100,13 +101,18 @@ def deliver() -> int:
     try:
         return f6.deliver(_push)
     except Exception:                           # noqa: BLE001 — 알림 문제로 상태 응답이 죽지 않게
+        C.log_exc("eclass_data.deliver")
         return 0
 
 
 def sync_state() -> dict:
     if not f6:
         return {**_IDLE, "error": _error}
-    return f6.sync_state()
+    try:
+        return f6.sync_state()
+    except Exception as e:                      # noqa: BLE001 — 수집 상태 문제로 /api/status 전체가 500 이 되지 않게
+        C.log_exc("eclass_data.sync_state")
+        return {**_IDLE, "error": f"{type(e).__name__}: {e}"}
 
 
 def start_sync() -> dict[str, Any]:

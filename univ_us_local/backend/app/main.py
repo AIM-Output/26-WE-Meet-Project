@@ -11,6 +11,7 @@ from __future__ import annotations
 import hmac
 import sys
 import time
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query, Request
@@ -25,8 +26,13 @@ from . import eclass_data, login_creds, student_profile
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    calendar_events.init()               # C1: 표 만들기 · 옛 자리(univ_us_local/data)의 일정 DB 옮기기
-    student_profile.migrate_legacy()     # 예전 kv 프로필이 남아 있으면 C2 로 옮긴다 (한 번)
+    # 다른 기능처럼 '못 해도 서버는 뜬다' — 여기서 죽으면 앱이 재시작만 반복하다 전체가 멈춘다
+    for step in (calendar_events.init,           # C1: 표 만들기 · 옛 자리(univ_us_local/data)의 일정 DB 옮기기
+                 student_profile.migrate_legacy):  # 예전 kv 프로필이 남아 있으면 C2 로 옮긴다 (한 번)
+        try:
+            step()
+        except Exception:                        # noqa: BLE001
+            traceback.print_exc()                # backend.log 로 간다
     yield
 
 

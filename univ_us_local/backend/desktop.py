@@ -45,6 +45,7 @@ READY_PREFIX = "UNIVUS_READY "
 
 if str(C0_DIR) not in sys.path:
     sys.path.append(str(C0_DIR))
+import osenv  # noqa: E402
 from osenv import INSTALLING_MARK, appdata, chromium_state, module_cmd  # noqa: E402
 
 
@@ -61,10 +62,23 @@ def run_module(module: str, args: list[str]) -> int:
     return 0
 
 
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+def _bound_socket(port: int = 0) -> socket.socket:
+    """미리 bind 한 소켓을 uvicorn 에 그대로 넘긴다 — 빈 포트를 고른 뒤 닫았다 다시 여는 사이 남이 가로채지 못하게."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", port))
+    return s
+
+
+LOG_MAX_BYTES = 5 * 1024 * 1024
+
+
+def _rotate(log: Path, limit: int = LOG_MAX_BYTES) -> None:
+    """시작할 때 limit 를 넘었으면 log → log.1 (하나만 남긴다) — 로그가 끝없이 커지지 않게."""
+    try:
+        if log.stat().st_size > limit:
+            os.replace(log, log.with_name(log.name + ".1"))
+    except OSError:
+        pass
 
 
 def _wait_for(url: str, timeout: float = 120.0) -> None:
@@ -124,6 +138,12 @@ def _exit_with_stdin(server, pipe) -> None:
         _stop_reason.append("앱과 이어진 표준입력이 닫힘 (앱 종료)")
     except Exception as e:                               # noqa: BLE001
         _stop_reason.append(f"앱과 이어진 표준입력을 읽지 못함 ({e!r})")
+    kill = getattr(osenv, "kill_children", None)         # 수집기·로그인 자식이 앱 종료 뒤에 남지 않게 (없는 osenv 면 건너뜀)
+    if kill:
+        try:
+            kill()
+        except Exception as e:                           # noqa: BLE001 — 정리 실패로 서버 종료가 막히면 안 된다
+            _stop_reason.append(f"자식 정리 실패 ({e!r})")
     server.should_exit = True
 
 
@@ -217,6 +237,7 @@ def serve(a: argparse.Namespace) -> int:
     log = Path(a.log) if a.log else (root / "logs" / "backend.log" if FROZEN else None)
     if log:
         log.parent.mkdir(parents=True, exist_ok=True)
+        _rotate(log)
         sys.stderr = open(log, "a", encoding="utf-8", buffering=1)        # noqa: SIM115 — 프로세스 끝까지 쓴다
         faulthandler.enable(sys.stderr)                  # 파이썬 밖(네이티브)에서 죽어도 그때의 스택을 남긴다
     # 개발 모드는 Chromium 을 데이터 폴더가 아니라 venv(desktop/sidecar/.venv/pw-browsers)에 둔다 — .dev-data 를 지워도 다시 받지 않게
@@ -224,7 +245,8 @@ def serve(a: argparse.Namespace) -> int:
         os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(Path(sys.prefix) / "pw-browsers"))
     appdata.apply(root)
 
-    port = a.port or _free_port()
+    sock = _bound_socket(a.port)
+    port = sock.getsockname()[1]
     code = secrets.token_urlsafe(18)
     os.environ.update(UNIVUS_PORT=str(port), UNIVUS_SESSION_TOKEN=secrets.token_urlsafe(32), UNIVUS_LAUNCH_CODE=code)
     if str(BACKEND_DIR) not in sys.path:
@@ -234,7 +256,7 @@ def serve(a: argparse.Namespace) -> int:
     from app import main as app_main                     # config 가 세션 값을 읽고 환경변수에서 지운다
 
     server = uvicorn.Server(uvicorn.Config(app_main.app, host="127.0.0.1", port=port, log_level="warning",
-                                           access_log=False))
+                                           access_log=False, timeout_graceful_shutdown=3))   # Tauri 가 stdin 을 닫고 5초 뒤 SIGKILL — 그 안에 끝나게
     threading.Thread(target=_announce, args=(server, port, code, root, a.frontend_url), daemon=True).start()
     if a.exit_with_stdin:                                # 자식 프로세스를 띄우기 전에 — 아래 Chromium 내려받기도 자식이다
         threading.Thread(target=_exit_with_stdin, args=(server, _detach_stdin()), daemon=True).start()
@@ -246,7 +268,7 @@ def serve(a: argparse.Namespace) -> int:
         _say(f"다시 시작 — {note}")
     _say(f"서버 시작 127.0.0.1:{port} · 데이터 {root} · pid {os.getpid()}")
     try:
-        server.run()
+        server.run(sockets=[sock])
     finally:
         # 정상 종료(앱 종료)도 남긴다 — 다음에 서버가 사라지면 이 줄이 있는지로 '스스로 끝남'과 '밖에서 끝냄'을 가른다
         _say(f"서버 끝 — {_stop_reason[0] if _stop_reason else '이유 모름 (신호 또는 예외)'}")

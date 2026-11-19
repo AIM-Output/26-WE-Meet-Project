@@ -295,6 +295,11 @@ fn open_outside(app: &AppHandle, url: &Url) {
     }
 }
 
+/// macOS 가 다운로드 폴더 등에서 연 앱을 임시 경로(/private/var/folders/…/AppTranslocation/…)로 옮겨 실행했는지
+fn translocated() -> bool {
+    std::env::current_exe().map(|p| p.to_string_lossy().contains("/AppTranslocation/")).unwrap_or(false)
+}
+
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "유니버스 열기", true, None::<&str>)?;
     let on_login = app.autolaunch().is_enabled().unwrap_or(false);
@@ -312,6 +317,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             "autostart" => {
                 let want = check.is_checked().unwrap_or(false);
                 let al = app.autolaunch();
+                if want && translocated() {
+                    // 격리(App Translocation) 경로는 다음 부팅에 사라진다 — 그 경로로 로그인 항목을 쓰지 않는다
+                    let _ = check.set_checked(false);
+                    let _ = check.set_text("로그인할 때 실행 — 먼저 응용 프로그램 폴더로 옮겨 주세요");
+                    return;
+                }
                 let _ = if want { al.enable() } else { al.disable() };
                 let _ = check.set_checked(al.is_enabled().unwrap_or(false));
             }
