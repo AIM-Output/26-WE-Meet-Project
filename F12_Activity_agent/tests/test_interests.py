@@ -62,3 +62,15 @@ def test_normalize_shapes():
     assert n == {"tags": ["창업"], "keywords": ["공정 실습"], "exclude": ["대학원생"]}
     assert I.ihash(n) == I.ihash({"tags": ["창업"], "keywords": ["공정 실습"], "exclude": ["대학원생"]})
     assert I.ihash(n) != I.ihash({**n, "tags": []})
+
+
+def test_semester_long_rental():
+    """이번(다음) 학기를 가리키는 대여 안내만 학기 내내 유효 (2026-11-19) — 8월에 올라오는 2학기 안내는 '다음 학기'."""
+    from datetime import date
+    t = "인공지능혁신융합대학사업단 실험실습 기자재 대여 안내(2026년 2학기)"
+    assert I.semester_long(t, date(2026, 11, 19)) and I.semester_long(t, date(2026, 8, 20))
+    assert not I.semester_long(t, date(2027, 3, 10))                                          # 학기가 끝났다
+    assert I.semester_long("2026학년도 제2학기 교육 실습 기자재 대여 신청", date(2026, 11, 19))
+    assert not I.semester_long("차세대통신 2026학년도 1학기 교육·실습기자재 대여안내", date(2026, 11, 19))
+    assert not I.semester_long("2026학년도 2학기 캡스톤디자인 과제 지원 안내", date(2026, 11, 19))      # 대여가 아니다
+    assert not I.semester_long("중간고사 시험기간 강의실, 스튜던트라운지 룸 열람 공지", date(2026, 11, 19))   # 학기 이름이 없다

@@ -22,25 +22,31 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import date
 from typing import Any, Optional
 
 from . import config as C
-from scholarship.textutil import nfkc
+from scholarship.jsonfile import JsonFile
+from scholarship.textutil import nfkc, semester_of
 
-_cache: dict = {"mtime": None, "data": None, "cats": None}
+_cache: dict = {"data": None, "cats": None}
+
+
+def _compile(data: dict) -> dict:
+    """사전을 다시 읽을 때 한 번만 — 분류 정규식."""
+    ac = next((c for c in data["categories"] if c["key"] == "academic"), None)
+    return {"cats": [(c["key"], c["label"], re.compile(c["pattern"], re.I)) for c in data["categories"] if not c.get("drop")],
+            "academic": (ac, re.compile(ac["pattern"]), re.compile(ac["keep"], re.I)) if ac else None}
+
+
+_file = JsonFile(lambda: C.INTERESTS_FILE, _compile)     # 바뀌었는지는 2초에 한 번만 본다 (공지마다 stat 하면 느리다)
 
 
 def catalog() -> dict:
-    p = C.INTERESTS_FILE
-    mtime = p.stat().st_mtime
-    if _cache["mtime"] != mtime:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        ac = next((c for c in data["categories"] if c["key"] == "academic"), None)
-        _cache.update(mtime=mtime, data=data,
-                      cats=[(c["key"], c["label"], re.compile(c["pattern"], re.I)) for c in data["categories"] if not c.get("drop")],
-                      academic=(ac, re.compile(ac["pattern"]), re.compile(ac["keep"]), {w.replace(" ", "") for w in ac.get("writers", [])})
-                      if ac else None)
-    return _cache["data"]
+    data = _file.get()
+    if _cache["data"] is not data:
+        _cache.update(data=data, **_file.extra())
+    return data
 
 
 def tag_keys() -> list[str]:
@@ -52,44 +58,59 @@ def tag_words(key: str) -> list[str]:
 
 
 def category_labels() -> dict[str, str]:
-    """화면의 분류 이름 — 빼는 분류(학사·행정 안내)는 목록에 나오지 않으므로 넣지 않는다."""
+    """화면의 분류 이름 — 빼는 분류(학사 일정 안내)는 목록에 나오지 않으므로 넣지 않는다."""
     cat = catalog()
     return {**{c["key"]: c["label"] for c in cat["categories"] if not c.get("drop")}, "other": cat.get("otherLabel", "기타 안내")}
 
 
 def dropped_categories() -> set[str]:
-    """대외활동에서 빼는 분류 — 학사 행정 안내 (2026-10-25 사용자 결정)."""
+    """대외활동에서 빼는 분류 — 학사 일정 안내 (2026-11-19 사용자 결정)."""
     return {c["key"] for c in catalog()["categories"] if c.get("drop")}
 
 
-def is_academic(title: str, writer: Optional[str] = None) -> bool:
-    """학사 행정 안내인가 — 학사과·재무과·교무과가 올렸거나 제목이 정규학기 행정(수강신청·계절학기 운영·등록·휴학·졸업·성적 …).
-    학점교류·교류수학·교류학생은 학사과 글이어도 대외활동으로 남긴다(2026-10-25 사용자 결정). 말머리 '학사'만으로는 빼지 않는다.
+def is_academic(title: str) -> bool:
+    """학사 일정 안내인가 — 학사 일정(F1)에서 이미 모았을 법한 제목(수강신청·등록·고지서·휴학·졸업·성적·계절학기 운영·폐강·교과구분·전과 …).
+    2026-11-19 사용자 결정: 그것만 뺀다. 작성 부서(학사과·재무과·교무과)로는 빼지 않고, 제목에 기자재·공간 대여 · 연구 · 행사 ·
+    프로그램 · 취업 말이 있거나 학점교류·교류수학·교류학생(2026-10-25)이면 남긴다. 말머리 '학사'만으로는 빼지 않는다.
     본문은 보지 않는다 — 본문의 '학점 인정' 한 마디로 캡스톤·설문 공지가 빠지지 않게."""
     catalog()
     if not _cache.get("academic"):
         return False
-    _, pat, keep, writers = _cache["academic"]
+    _, pat, keep = _cache["academic"]
     t = nfkc(title)
-    if keep.search(t):
-        return False
-    if writer and re.sub(r"\s+", "", nfkc(writer)) in writers:
-        return True
-    return bool(pat.search(t))
+    return not keep.search(t) and bool(pat.search(t))
 
 
 def academic_label() -> str:
-    return (_cache.get("academic") or ({"label": "학사 행정 안내"},))[0]["label"]
+    catalog()
+    return (_cache.get("academic") or ({"label": "학사 일정 안내"},))[0]["label"]
 
 
 def categorize(text: str) -> tuple[str, str]:
-    """제목(말머리 포함) → (분류 키, 이름). 순서가 우선순위다 — '창업 아이템 경진대회'는 공모전. 학사 행정은 is_academic 이 따로 가른다."""
+    """제목(말머리 포함) → (분류 키, 이름). 순서가 우선순위다 — '창업 아이템 경진대회'는 공모전. 학사 일정 안내는 is_academic 이 따로 가른다."""
     catalog()
     t = nfkc(text)
     for key, label, pat in _cache["cats"]:
         if pat.search(t):
             return key, label
     return "other", catalog().get("otherLabel", "기타 안내")
+
+
+_SEMESTER = re.compile(r"(20\d{2})\s*(?:학년도|년)?\s*[-.]?\s*(?:제\s*)?([12])\s*학기")
+
+
+def semester_long(title: str, today: date, category: Optional[str] = None) -> bool:
+    """학기 내내 유효한 대여 안내인가 — 기자재·공간 대여이고 제목이 이번(또는 다음) 학기를 가리킨다
+    ('실험실습 기자재 대여 안내(2026년 2학기)'). 학기 초에 한 번 올라와 학기 내내 받으므로 45일이 지나도 끝난 글이 아니다 —
+    수집의 '오래된 글'·목록의 '지난 공지'에서 빼 준다 (2026-11-19 — 8월 중순에 올라온 사업단 대여 안내 3건이 한 번도 모이지 않았다)."""
+    if (category or categorize(title)[0]) != "rental":
+        return False
+    m = _SEMESTER.search(nfkc(title))
+    if not m:
+        return False
+    cur = semester_of(today)                       # 3~8월 1학기 · 9~2월 2학기 — 8월에 올라오는 2학기 안내는 '다음 학기'
+    y, n = int(cur[:4]), int(cur[-1])
+    return f"{m.group(1)}-{m.group(2)}" in (cur, f"{y}-2" if n == 1 else f"{y + 1}-1")
 
 
 # ── 관심사 모양 ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
-"""F11 장학 공지 매칭·신청서 초안 — ../F11_Scholarship_agent 의 API(scholarship.api)를 이 서버에 붙인다.
+"""F11 장학 공지 매칭 — ../F11_Scholarship_agent 의 API(scholarship.api)를 이 서버에 붙인다.
 
-수집·추출·판정·초안 코드는 전부 F11_Scholarship_agent 에 있다. 여기서는
+수집·추출·판정 코드는 전부 F11_Scholarship_agent 에 있다(신청서 초안은 2026-11-19 폐기). 여기서는
   - 라우터(/api/scholarships*)를 include 하고,
   - 판정 재료로 C2 프로필을 **민감정보까지** 넘긴다(소득구간·거주 지역·출신 고교·해당 사항 — F11 판정에만 쓴다, C2 schema 의 이유 문구),
   - '캘린더에 넣기 · 할 일로 보내기'를 C1 내 일정·할 일로 만들고(출처 sch:<id> — 같은 것을 두 번 넣지 않는다),
@@ -65,18 +65,8 @@ def _push(nid: str, ref_id: str, title: str, body: str, href: Optional[str]) -> 
         f1notify.push(con, "scholarship", ref_id, title, body, href, nid=nid)
 
 
-def _activity_basic() -> Optional[dict]:
-    """F12 대외활동 초안 재료의 기본 정보(이름·학번·소속 …) — 장학 재료의 기본 정보가 비어 있을 때 미리 채운다(같은 사람이 두 번 적지 않게)."""
-    try:
-        from activity import service as f12service, store as f12store   # type: ignore[import-not-found]
-    except Exception:                               # noqa: BLE001 — F12 가 없으면 프로필 소속·학년만
-        return None
-    with f12store.connect() as con:
-        return f12service.saved_basic(con)
-
-
 def router():
-    return f11.build_router(get_profile, _add_event, _activity_basic) if f11 else None
+    return f11.build_router(get_profile, _add_event) if f11 else None
 
 
 def touch() -> None:

@@ -1,6 +1,7 @@
-"""서비스 — 목록 정렬·접기, 판정 뒤집기·진행 상태(두 축 분리), 초안, 캘린더·할 일, 이력, 알림."""
+"""서비스 — 목록 정렬·접기, 판정 뒤집기·진행 상태(두 축 분리), 예전 초안 데이터 지우기, 캘린더·할 일, 이력, 알림."""
 from datetime import datetime
 
+import pytest
 from conftest import TODAY, add_notice
 
 from scholarship import notify, service, store
@@ -34,7 +35,7 @@ def test_flip_and_progress_are_separate(profile):
         assert d["verdict"] == "eligible" and d["flipped"] and d["systemVerdict"] == "ineligible"
         assert any(r["status"] == "fail" for r in d["reasons"])          # 근거 목록은 그대로
         service.patch(con, "www:2", {"progress": "approved"})
-        assert service.detail(con, "www:2", profile, TODAY)["progressLabel"] == "승인·제출 예정"
+        assert service.detail(con, "www:2", profile, TODAY)["progressLabel"] == "신청 예정"
         service.patch(con, "www:2", {"verdict": None})                   # 되돌리기 — 진행 상태는 유지
         d = service.detail(con, "www:2", profile, TODAY)
         assert d["verdict"] == "ineligible" and d["progress"] == "approved"
@@ -44,76 +45,34 @@ def test_flip_and_progress_are_separate(profile):
         assert service.history(con)["semesters"][0]["items"]
 
 
-def test_draft_needs_no_invention(profile):
+def test_old_draft_data_removed_on_upgrade(profile):
+    """2026-11-19 신청서 초안 폐기 — 예전 DB 의 초안 표·초안 재료(이름·학번·연락처)를 앱을 새 판으로 처음 열 때 지우고,
+    '초안 대기'는 '신청 예정'으로 옮긴다(마감 D-3·D-1 알림을 이어서 받는다). 지운 자리는 0 으로 덮여 파일에 남지 않는다."""
+    from scholarship import config as C
     with store.connect() as con:
         seed(con)
-        service.put_materials(con, {"careerGoal": "임베디드 AI 분야 대학원 진학", "activities": "", "hardship": "", "highlights": ""})
-        d = service.make_draft(con, "www:1", profile)
-    body = d["draft"]["body"]
-    assert "{{이름}}" in body and "{{학번}}" in body
-    assert "임베디드 AI 분야 대학원 진학" in body
-    assert "{{이 목표를 위해 해 온 구체적인 활동 경험을 적어 주세요}}" in body     # 활동 재료가 없으면 빈칸
-    assert "- [ ] 장학금 신청서 1부" in body
-    assert "제출은 시스템이 하지 않습니다" in body
-    assert d["progress"] == "draft" and d["draft"]["generatedBy"] == "template"
-
-
-BASIC = {"name": "테스트학생", "studentId": "2099000001", "department": "", "grade": "", "phone": "010-0000-0000", "email": ""}
-
-
-def test_basic_info_fills_draft_but_never_reaches_llm(profile):
-    """2026-10-25 사용자 결정 — 초안 재료는 기본 정보(이름·학번·학과·날짜 …)부터. 이름·학번은 LLM 프롬프트에 넣지 않고 이 PC 에서 채운다."""
-    from datetime import date
-    from scholarship import draft as drafting
-    prompts = []
-
-    def fake_llm(system, user):
-        prompts.append(system + user)
-        return "### 지원 동기\n저는 {{이름}}입니다. 진로는 보안 연구입니다.\n\n### 학업 계획·포부\n열심히 하겠습니다."
+        con.execute("CREATE TABLE drafts (notice_id TEXT PRIMARY KEY, body TEXT NOT NULL)")
+        con.execute("INSERT INTO drafts VALUES ('www:1', '# [신청서 초안] 학번 2099000001')")
+        store.set_meta(con, "materials", '{"basic": {"name": "테스트학생", "studentId": "2099000002"}}')
+        store.put_state(con, "www:1", progress="draft")
+    store._initialized.clear()                                   # 앱을 새 판으로 다시 띄운 것처럼
     with store.connect() as con:
-        seed(con)
-        m = service.materials(con, profile, lambda: {**BASIC, "email": "me@example.com"})
-        assert m["basic"]["name"] == "테스트학생" and m["basicFrom"] == "activity"               # 대외활동에 적어 둔 것
-        assert m["basic"]["department"].endswith("인공지능학부") and m["basic"]["grade"] == "3"   # 비면 프로필 소속·학년
-        service.put_materials(con, {"careerGoal": "보안 연구", "basic": BASIC})
-        assert service.saved_basic(con)["studentId"] == "2099000001"
-        service.put_materials(con, {"careerGoal": "보안 연구 (고침)"})                          # basic 없이 저장해도 기본 정보는 남는다
-        mats = service.materials(con, profile)
-        assert mats["basic"]["name"] == "테스트학생" and mats["basicFrom"] == "profile"
+        assert con.execute("SELECT 1 FROM sqlite_master WHERE name = 'drafts'").fetchone() is None
+        assert store.get_meta(con, "materials") is None
+        assert not store.drop_drafts(con)                        # 두 번째부터는 지울 것이 없다
         d = service.detail(con, "www:1", profile, TODAY)
-    body, by = drafting.build(d, profile, mats, llm=fake_llm, today=date(2026, 10, 25))
-    assert by == "llm"
-    assert "- 이름: 테스트학생" in body and "- 학번: 2099000001" in body and "- 작성일: 2026. 10. 25." in body
-    assert "- 소속: AI융합대학 인공지능학부" in body and "3학년 · 재학" in body
-    assert "저는 테스트학생입니다." in body and "{{이름}}" not in body                           # LLM 이 남긴 빈칸을 채웠다
-    assert prompts and all("테스트학생" not in p and "2099000001" not in p and "010-0000" not in p for p in prompts)
+    assert d["progress"] == "approved" and d["progressLabel"] == "신청 예정"
+    assert not {"draft", "hasDraft", "draftStale", "otherDrafts"} & set(d)
+    raw = C.DB_PATH.read_bytes()
+    assert b"2099000001" not in raw and b"2099000002" not in raw
 
 
-def test_basic_info_blanks_when_unknown(profile):
-    from scholarship import basicinfo
-    lines = basicinfo.lines({}, {}, contact=False)
-    assert "- 이름: {{이름}}" in lines and "- 학번: {{학번}}" in lines and "- 소속: {{소속}}" in lines
-    assert not any(x.startswith("- 연락처") for x in lines)                                      # 장학은 적었을 때만
-    assert basicinfo.fill("{{이름}} / {{학번}} / {{소속·학년}}", {"name": "가"}) == "가 / {{학번}} / {{소속·학년}}"
-
-
-def test_borrow_marks_source(profile):
+def test_progress_draft_is_gone(profile):
     with store.connect() as con:
         seed(con)
-        service.put_materials(con, {"careerGoal": "보안 연구", "activities": "학과 튜터링", "hardship": "", "highlights": ""})
-        service.make_draft(con, "www:1", profile)
-        d = service.make_draft(con, "www:3", profile, borrow_from="www:1")
-    assert d["draft"]["borrowed"][0]["from"] == "www:1"
-    assert "초안에서 가져옴" in d["draft"]["body"] and "학과 튜터링" in d["draft"]["body"]
-
-
-def test_draft_stale_when_notice_changes(profile):
-    with store.connect() as con:
-        seed(con)
-        service.put_materials(con, {})
-        service.make_draft(con, "www:1", profile)
-        add_notice(con, "www:1", "[장학안내] [(재)좋은장학재단] 장학생 선발", FULL + "\n(수정) 마감 연장")
-        assert service.detail(con, "www:1", profile, TODAY)["draftStale"]
+        with pytest.raises(service.Invalid):
+            service.patch(con, "www:1", {"progress": "draft"})
+        assert "llm" not in service.overview(con, profile, TODAY)
 
 
 def test_calendar_and_todo_callbacks(profile):

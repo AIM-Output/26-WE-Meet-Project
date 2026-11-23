@@ -2,7 +2,7 @@
 
   - 새 공지(첫 수집 = 기준선 이후)가 해당·확인 필요면 즉시 (F11-R70) · 비해당·마감·대상 아님은 알리지 않는다
     한 번에 BUNDLE_OVER 건보다 많으면 한 줄로 묶는다 ('새 장학 공지 7건 — 해당 2 · 확인 필요 5')
-  - 신청 마감 D-3 · D-1 (09:00 이후 첫 배달) — 초안 대기·승인 건만 (F11-R71)
+  - 신청 마감 D-3 · D-1 (09:00 이후 첫 배달) — 사용자가 '신청 예정'(approved)으로 표시한 건만 (F11-R71, 2026-11-19 초안 폐기로 개정)
   - 같은 공지로 두 번 알리지 않는다 — user_state.alerted_at · deadline_alerts (F11-R72)
   - 상시 장학 목록(catalog)은 알리지 않는다 — 공지가 아니라 늘 있는 안내다
 알림을 누르면 그 공지 상세(/scholarships?item=…)로 간다 (F11-R73).
@@ -53,7 +53,7 @@ def deliver(con: sqlite3.Connection, profile: Optional[dict], push: Push, now: O
     h, m = (int(x) for x in C.ALERT_TIME.split(":"))
     if (now.hour, now.minute) >= (h, m):
         for i in items:
-            if i["progress"] not in ("draft", "approved") or i["daysLeft"] not in C.DEADLINE_DAYS:
+            if i["progress"] != "approved" or i["daysLeft"] not in C.DEADLINE_DAYS:
                 continue
             st = states.get(i["id"])
             done = json.loads(st["deadline_alerts"]) if st and st["deadline_alerts"] else []

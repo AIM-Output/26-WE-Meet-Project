@@ -102,7 +102,7 @@ def ingredients():
              "taskType": "assignment"},
             {"id": "pb:8", "title": "끝낸 블록", "start": "16:00", "end": "17:00", "done": True, "href": "", "taskType": "todo"},
         ]},
-        "scholarships": [{"id": "sch1", "title": "지역인재 장학금", "daysLeft": 1, "progress": "초안 대기"}],
+        "scholarships": [{"id": "sch1", "title": "지역인재 장학금", "daysLeft": 1, "progress": "신청 예정"}],
         "activities": [{"id": "act1", "title": "SW 공모전", "daysLeft": 3, "progress": "담음"}],
         "alerts": [
             {"id": "att:c-net:x", "kind": "attendance", "refId": "c-net", "title": "컴퓨터네트워크 결석 위험",

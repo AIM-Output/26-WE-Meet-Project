@@ -1,10 +1,12 @@
 // F11 장학 — /api/scholarships* 응답 모양 (F11_Scholarship_agent/scholarship/service.py · api.py 와 짝).
 // 판정(시스템이 계산)과 진행 상태(사용자가 움직임)는 서로 다른 축이다 (요구사항정의서 F11 5절).
+// 신청서 초안·초안 재료는 2026-11-19 폐기 — 진행 상태는 신청 예정(approved) → 신청함 → 선정/탈락 · 관심 없음.
 
 import type { Tone } from "@/components/ui/Chip";
 
 export type SchVerdict = "eligible" | "needs_review" | "ineligible" | "expired" | "not_applicable";
-export type SchProgress = "draft" | "approved" | "applied" | "selected" | "not_selected" | "skipped";
+/** approved = '신청 예정' (값만 예전 그대로) — 마감 D-3·D-1 알림 · 마감 뒤 '신청하셨나요?' */
+export type SchProgress = "approved" | "applied" | "selected" | "not_selected" | "skipped";
 export type SensitiveKey = "incomeBracket" | "residenceRegion" | "highSchoolRegion" | "flags";
 
 export const VERDICT_TONE: Record<SchVerdict, Tone> = {
@@ -16,7 +18,6 @@ export const VERDICT_TONE: Record<SchVerdict, Tone> = {
 };
 
 export const PROGRESS_TONE: Record<SchProgress, Tone> = {
-  draft: "info",
   approved: "primary",
   applied: "accent",
   selected: "ok",
@@ -57,10 +58,8 @@ export interface SchItem {
   period: Period | null;
   progress: SchProgress | null;
   progressLabel: string | null;
-  hasDraft: boolean;
-  draftStale: boolean; // 초안을 만든 뒤 원문이 바뀌었다
   onCalendar: boolean;
-  askApplied: boolean; // 승인했는데 마감이 지났다 → '신청하셨나요?'
+  askApplied: boolean; // 신청 예정인데 마감이 지났다 → '신청하셨나요?'
   isNew: boolean;
   needsOcr: boolean;
   ocr: boolean; // 이미지 속 글자를 OCR 로 읽었다 — 자동 판정 대신 확인 필요
@@ -109,15 +108,6 @@ export interface SchDetail extends SchItem {
     calendarId: string | null;
     todos: Record<string, string>;
   };
-  draft: {
-    body: string;
-    generatedBy: "template" | "llm" | "borrowed";
-    borrowed: { from: string; title: string }[];
-    updatedAt: string;
-    createdAt: string;
-    stale: boolean;
-  } | null;
-  otherDrafts: { id: string; title: string; updatedAt: string }[];
 }
 
 export interface SchSync {
@@ -142,14 +132,13 @@ export interface SchOverview {
     catalogEligible: number;
     catalogReview: number;
     catalog: number;
-    inProgress: number;
+    inProgress: number; // 신청 예정
   };
   profile: { exists: boolean; missing: string[]; campus: string | null; fields: string[] };
   updatedAt: string | null;
   lastOkAt: string | null;
   catalogAt: string | null;
   baselineAt: string | null;
-  llm: boolean;
   sync: SchSync;
   log: string[];
 }
@@ -191,28 +180,6 @@ export interface SchHistory {
     amountTotal: number;
     items: { id: string; title: string; progress: SchProgress; progressLabel: string; at: string; amount: string | null; note: string | null; url: string | null }[];
   }[];
-}
-
-/** 초안 기본 정보 — 장학·대외활동 초안 재료에 같이 들어간다. 이 PC 의 초안 재료에만 두고 LLM 에는 보내지 않는다(F11 basicinfo) */
-export interface DraftBasic {
-  name: string;
-  studentId: string;
-  department: string;
-  grade: string;
-  phone: string;
-  email: string;
-}
-
-export interface SchMaterials {
-  exists: boolean;
-  careerGoal: string;
-  activities: string;
-  hardship: string;
-  highlights: string;
-  basic: DraftBasic;
-  basicFrom: "activity" | "profile" | null; // 기본 정보 빈 칸을 미리 채운 곳
-  updatedAt: string | null;
-  fromProfile: boolean;
 }
 
 /** /api/status 의 scholarship 칸 — 기능 타일 */

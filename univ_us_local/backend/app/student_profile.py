@@ -45,7 +45,7 @@ def get_profile() -> Optional[dict]:
 
 
 def get_full_profile() -> Optional[dict]:
-    """화면이 받는 모양 그대로(민감정보·초안 재료 포함) — F11 장학 판정만 쓴다(C2 schema 의 usedBy F11). 없으면 None."""
+    """화면이 받는 모양 그대로(민감정보 포함) — F11 장학 판정(usedBy F11)과 F12 대외활동 관심사(interests)가 쓴다. 없으면 None."""
     if not c2:
         return None
     try:

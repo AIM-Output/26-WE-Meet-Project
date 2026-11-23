@@ -9,13 +9,16 @@
 """
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from . import config as C
 from scholarship import registry as base      # F11 원천 목록·관련 여부 (config 가 F11 폴더를 import 경로에 붙였다)
+from scholarship.jsonfile import JsonFile
 
-_cache: dict = {"mtime": None, "data": None}
+# 덮어쓰기 파일은 바뀌었는지 2초에 한 번만 보고, 합친 목록은 두 파일 내용이 그대로인 동안 다시 만들지 않는다 —
+# 예전에는 get() 한 번에 원천 수(37)만큼 파일 시각을 봐서 대외활동 목록 한 번에 6초가 걸렸다(2026-11-23 실측)
+_overlay = JsonFile(lambda: C.OVERLAY_FILE)
+_merged: dict = {"over": None, "base": None, "list": [], "index": {}}
 
 # 프로필 소속 → 홈페이지 · 캠퍼스 · 계열은 F11 과 같은 규칙
 homepage = base.homepage
@@ -26,11 +29,7 @@ relevance = base.relevance
 
 
 def overlay() -> dict:
-    p = C.OVERLAY_FILE
-    mtime = p.stat().st_mtime
-    if _cache["mtime"] != mtime:
-        _cache.update(mtime=mtime, data=json.loads(p.read_text(encoding="utf-8")))
-    return _cache["data"]
+    return _overlay.get()
 
 
 def groups() -> dict:
@@ -48,13 +47,23 @@ def _merge(src: dict) -> dict:
     return out
 
 
+def _all() -> tuple[list[dict], dict[str, dict]]:
+    """F11 원천 + 덮어쓰기를 합친 목록과 key 색인 — 두 파일 내용(객체)이 그대로면 지난번 것을 쓴다."""
+    over, base_list = overlay(), base.sources()
+    if _merged["over"] is not over or _merged["base"] is not base_list:
+        skip = set(over.get("skip", []))
+        merged = [_merge(s) for s in base_list if s["key"] not in skip]
+        _merged.update(over=over, base=base_list, list=merged, index={s["key"]: s for s in merged})
+    return _merged["list"], _merged["index"]
+
+
 def sources() -> list[dict]:
-    skip = set(overlay().get("skip", []))
-    return [_merge(s) for s in base.sources() if s["key"] not in skip]
+    return [dict(s) for s in _all()[0]]          # 부른 쪽이 고쳐 써도 색인이 망가지지 않게 사본
 
 
 def get(key: str) -> Optional[dict]:
-    return next((s for s in sources() if s["key"] == key), None)
+    s = _all()[1].get(key)
+    return dict(s) if s is not None else None
 
 
 def resolve(profile: Optional[dict], overrides: Optional[dict[str, bool]] = None) -> list[dict]:

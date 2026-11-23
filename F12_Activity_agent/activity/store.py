@@ -2,12 +2,13 @@
 
 관심사 등급(시스템)과 진행 상태(사용자)는 **다른 표**다 (F11 5절 '두 축 분리'를 그대로).
   notices     수집한 공지 + 추출한 정보(info JSON: 분류·주관·대상·장소·기간·혜택·서류·방법). 수집기(자식 프로세스)가 쓴다
-  user_state  사용자가 뒤집은 등급 · 진행 상태(담음 → 초안 대기 → 제출 예정 → 지원함 → 선정/탈락 · 관심 없음) · 캘린더·할 일 연결 · 알림 기록
-  drafts      신청서 초안 (사용자가 고친 본문 그대로)
+  user_state  사용자가 뒤집은 등급 · 진행 상태(담음 → 지원함 → 선정/탈락 · 관심 없음) · 캘린더·할 일 연결 · 알림 기록
   sources     원천마다 켜고 끈 것(사용자, F11 과 따로) · 마지막 수집 결과 · 찾아 둔 학과 공지 게시판
   llm_grades  LLM 관련도 판단 캐시 — (공지, 관심사 해시) 마다 한 번 (F12-R21, 관심사를 바꾸면 다시)
-  meta        updated_at · baseline_at(첫 수집 = 알림 기준선) · materials(초안 재료) · alert_day(하루 알림 수) · llm_day
+  meta        updated_at · baseline_at(첫 수집 = 알림 기준선) · alert_day(하루 알림 수) · llm_day
+              · title_key_ver(같은 글 묶음을 지은 제목 키의 판)
 등급은 저장하지 않는다 — 부를 때마다 지금 관심사로 계산한다(F12-R15: 관심사를 바꾸면 기존 공지를 다시 판정).
+신청서 초안(drafts 표)·초안 재료(meta materials)는 2026-11-19 폐기 — 예전 DB 에 남은 것은 _migrate 가 지운다.
 """
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from datetime import datetime
 from typing import Any, Iterator, Optional
 
 from . import config as C
+# 예전 초안 지우기 · 규칙 판이 바뀐 공지 다시 뽑기 · 같은 글 묶음 다시 짓기는 F11 것을 그대로 (표 모양이 같다)
+from scholarship.store import drop_drafts, refresh_stale, regroup  # noqa: F401 — refresh_stale 은 service 가 store. 로 부른다
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS notices (
@@ -60,15 +63,6 @@ CREATE TABLE IF NOT EXISTS user_state (
     alerted_at      TEXT,
     deadline_alerts TEXT NOT NULL DEFAULT '[]',
     asked_applied   INTEGER NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS drafts (
-    notice_id    TEXT PRIMARY KEY,
-    body         TEXT NOT NULL,
-    generated_by TEXT NOT NULL DEFAULT 'template',
-    borrowed     TEXT NOT NULL DEFAULT '[]',
-    source_hash  TEXT NOT NULL DEFAULT '',
-    created_at   TEXT NOT NULL,
-    updated_at   TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS sources (
     key           TEXT PRIMARY KEY,
@@ -114,10 +108,20 @@ def loads(s: Optional[str], default: Any = None) -> Any:
 
 
 def _migrate(con: sqlite3.Connection) -> None:
-    """예전 DB 에 나중에 생긴 칸을 붙인다 — reader_ver(첨부·이미지를 읽은 방법의 판, 2026-10-25 HWP·OCR)."""
+    """예전 DB 를 지금 모양으로 — 프로세스마다 첫 연결에서 돈다. 여러 번 돌아도 같다.
+      - reader_ver 칸(첨부·이미지를 읽은 방법의 판, 2026-10-25 HWP·OCR)을 붙인다.
+      - 신청서 초안 폐기(2026-11-19): 초안(drafts 표)·초안 재료(meta materials)를 지운다(F11 drop_drafts — 지운 자리는 0 으로).
+        진행 상태 '초안 대기'(draft)·'제출 예정'(approved)은 '담음'(saved)으로 — 지원하려던 글이라 담아 둔 것으로 남긴다.
+      - 제목 키의 판(config.TITLE_KEY_VERSION)이 바뀌었으면 같은 글 묶음을 한 번 다시 짓는다 (2026-11-19)."""
     cols = {r[1] for r in con.execute("PRAGMA table_info(notices)")}
     if "reader_ver" not in cols:
         con.execute("ALTER TABLE notices ADD COLUMN reader_ver INTEGER NOT NULL DEFAULT 0")
+    drop_drafts(con)
+    con.execute("UPDATE user_state SET progress = 'saved', saved_at = COALESCE(saved_at, progress_at) "
+                "WHERE progress IN ('draft', 'approved')")
+    if get_meta(con, "title_key_ver") != str(C.TITLE_KEY_VERSION):
+        regroup(con)                            # F11 과 같은 규칙·같은 제목 키 (scholarship.store.regroup)
+        set_meta(con, "title_key_ver", str(C.TITLE_KEY_VERSION))
 
 
 @contextmanager
@@ -171,7 +175,7 @@ def notice(con: sqlite3.Connection, nid: str) -> Optional[sqlite3.Row]:
 
 
 def upsert_notice(con: sqlite3.Connection, n: dict) -> str:
-    """수집기가 부른다. 반환: new / changed / same. 바뀐 공지는 changed_at 을 남겨 초안에 '원문이 바뀌었습니다'를 띄운다."""
+    """수집기가 부른다. 반환: new / changed / same. 바뀐 공지는 changed_at 을 남긴다(상세의 changedAt)."""
     old = notice(con, n["id"])
     now = now_iso()
     cols = ("source", "source_name", "unit_key", "title", "url", "posted_at", "writer", "category", "body", "attach_text",
@@ -222,34 +226,6 @@ def put_state(con: sqlite3.Connection, nid: str, **fields) -> None:
     con.execute("INSERT INTO user_state(notice_id) VALUES (?) ON CONFLICT(notice_id) DO NOTHING", (nid,))
     con.execute(f"UPDATE user_state SET {', '.join(f'{k} = ?' for k in fields)} WHERE notice_id = ?",
                 (*fields.values(), nid))
-
-
-# ── 초안 ────────────────────────────────────────────────────
-
-def draft(con: sqlite3.Connection, nid: str) -> Optional[sqlite3.Row]:
-    return con.execute("SELECT * FROM drafts WHERE notice_id = ?", (nid,)).fetchone()
-
-
-def drafts(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    return con.execute("SELECT * FROM drafts ORDER BY updated_at DESC").fetchall()
-
-
-def save_draft(con: sqlite3.Connection, nid: str, body: str, *, generated_by: Optional[str] = None,
-               borrowed: Optional[list] = None, source_hash: Optional[str] = None) -> None:
-    now = now_iso()
-    old = draft(con, nid)
-    if old is None:
-        con.execute("INSERT INTO drafts(notice_id, body, generated_by, borrowed, source_hash, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (nid, body, generated_by or "template", dumps(borrowed or []), source_hash or "", now, now))
-        return
-    con.execute("UPDATE drafts SET body = ?, generated_by = COALESCE(?, generated_by), borrowed = COALESCE(?, borrowed), "
-                "source_hash = COALESCE(?, source_hash), updated_at = ? WHERE notice_id = ?",
-                (body, generated_by, dumps(borrowed) if borrowed is not None else None, source_hash, now, nid))
-
-
-def delete_draft(con: sqlite3.Connection, nid: str) -> None:
-    con.execute("DELETE FROM drafts WHERE notice_id = ?", (nid,))
 
 
 # ── 원천 ────────────────────────────────────────────────────

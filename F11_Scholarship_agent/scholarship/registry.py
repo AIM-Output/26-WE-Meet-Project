@@ -17,17 +17,14 @@ from pathlib import Path
 from typing import Optional
 
 from . import config as C
+from .jsonfile import JsonFile
 
-_cache: dict = {"mtime": None, "data": None}
+_sources = JsonFile(lambda: C.SOURCES_FILE)      # 바뀌었는지는 2초에 한 번만 본다 (jsonfile — 공지마다 stat 하면 느리다)
 _home_cache: dict = {"path": None, "mtime": None, "data": None}
 
 
 def load() -> dict:
-    p = C.SOURCES_FILE
-    mtime = p.stat().st_mtime
-    if _cache["mtime"] != mtime:
-        _cache.update(mtime=mtime, data=json.loads(p.read_text(encoding="utf-8")))
-    return _cache["data"]
+    return _sources.get()
 
 
 def sources() -> list[dict]:

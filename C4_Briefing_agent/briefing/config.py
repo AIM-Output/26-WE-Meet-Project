@@ -91,7 +91,7 @@ SOURCE_NAMES = {
 ALERT_SKIP_KINDS = ("briefing",)
 ALERT_SKIP_ID_PREFIX = ("rem:",)
 
-# ── 한 줄 요약 (LLM, F10 5절 '한 줄 요약 규칙') — 슬롯 이름은 F1·F11·F12 와 같다(LLM_MAIN_*) ──
+# ── 한 줄 요약 (LLM, F10 5절 '한 줄 요약 규칙') — 슬롯 이름은 F1·F12 와 같다(LLM_MAIN_*) ──
 LLM_BASE_URL = os.environ.get("LLM_MAIN_BASE_URL", "").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_MAIN_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MAIN_MODEL", "")
