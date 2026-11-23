@@ -3,7 +3,7 @@
 대시보드 백엔드가 `univ_us_local/backend/app/calendar_events.py` 에서 아래 함수로 붙인다.
 
     build_router(sources)   GET/POST/PATCH/DELETE /api/events   — 캘린더 본체 (C1-R10·R30~R32)
-    calendar_events(...)    다른 곳에서 합쳐진 목록이 필요할 때 (F9·F10)
+    calendar_events(...)    다른 곳에서 합쳐진 목록이 필요할 때 (F9·C4)
     status_summary()        /api/status 의 calendar 칸 · 건수 · 분류표
 
 `sources` 는 다른 기능이 캘린더에 얹는 일정을 주는 함수들이다 — F6 마감 · F1 학사 · F3 수업 (C1 3절).
@@ -103,7 +103,7 @@ def build_router(sources: Sequence[Source] = ()) -> APIRouter:
 
 def calendar_events(sources: Sequence[Source] = (), start: Optional[str] = None,
                     end: Optional[str] = None) -> list[dict]:
-    """합쳐진 캘린더 목록 — 라우터를 거치지 않고 필요할 때 (F9 자연어 질의 · F10 브리핑)."""
+    """합쳐진 캘린더 목록 — 라우터를 거치지 않고 필요할 때 (F9 자연어 질의 · C4 브리핑)."""
     return service.collect(sources, start, end)
 
 

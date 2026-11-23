@@ -1,4 +1,4 @@
-"""만들기 규칙 — 예정 시각 · 정시/놓침 · 하루 한 번 · 수집 기다리기 · 다시 만들기 · 꺼짐 · 소급 없음 · 보관 · 알림 1건 (F10 4절 · 9절)."""
+"""만들기 규칙 — 예정 시각 · 정시/놓침 · 하루 한 번 · 수집 기다리기 · 다시 만들기 · 꺼짐 · 소급 없음 · 보관 · 알림 1건 (C4 4절 · 9절)."""
 from datetime import datetime, timedelta
 
 import pytest
@@ -29,12 +29,12 @@ def test_scheduled_once_a_day_with_one_notification():
 
     calls = f.calls
     t2 = service.ensure_today(f.src, NOW + timedelta(hours=3))
-    assert not t2["created"] and t2["briefing"]["generatedAt"] == b["generatedAt"]   # 스냅샷 그대로 (F10-R04)
+    assert not t2["created"] and t2["briefing"]["generatedAt"] == b["generatedAt"]   # 스냅샷 그대로 (C4-R04)
     assert f.calls == calls and len(f.notified) == 1
 
 
 def test_catchup_when_pc_was_off():
-    """F10-R02 · D2 — 예정 시각에서 60분 넘게 지나 켜면 그 시점 기준으로 만들고 '놓친 브리핑'."""
+    """C4-R02 · D2 — 예정 시각에서 60분 넘게 지나 켜면 그 시점 기준으로 만들고 '놓친 브리핑'."""
     f = FakeSources()
     b = service.ensure_today(f.src, datetime(2026, 10, 26, 10, 24))["briefing"]
     assert b["source"] == "catchup" and b["missed"] and b["generatedAt"].endswith("10:24:00")
@@ -66,7 +66,7 @@ def test_generates_as_soon_as_collection_ends():
 
 
 def test_regenerate_overwrites_but_remembers_missed():
-    """F10-R24 다시 만들기 — 지금 기준으로 덮어쓴다. 처음에 놓친 브리핑이었다는 것은 남고, 알림은 새로 남기지 않는다."""
+    """C4-R24 다시 만들기 — 지금 기준으로 덮어쓴다. 처음에 놓친 브리핑이었다는 것은 남고, 알림은 새로 남기지 않는다."""
     f = FakeSources()
     service.ensure_today(f.src, datetime(2026, 10, 26, 10, 24))
     f.ing["priority"]["items"] = f.ing["priority"]["items"][:1]
@@ -79,7 +79,7 @@ def test_regenerate_overwrites_but_remembers_missed():
 
 
 def test_off_means_no_card_but_manual_still_works():
-    """F10-R06 — 끄면 카드 없음(state=off). /briefing 에서 손으로 만든 것은 보인다."""
+    """C4-R06 — 끄면 카드 없음(state=off). /briefing 에서 손으로 만든 것은 보인다."""
     f = FakeSources()
     service.save_settings({"enabled": False})
     t = service.ensure_today(f.src, NOW + timedelta(hours=1))
@@ -98,7 +98,7 @@ def test_custom_time():
 
 
 def test_no_retroactive_briefings():
-    """F10-R03 · 9절 '여러 날 만에 접속' — 오늘 것만 만든다."""
+    """C4-R03 · 9절 '여러 날 만에 접속' — 오늘 것만 만든다."""
     f = FakeSources()
     service.ensure_today(f.src, NOW)
     service.ensure_today(f.src, datetime(2026, 10, 29, 9, 30))

@@ -17,7 +17,7 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── C1_Calendar_agent/        C1 서비스 캘린더 — 내 일정·할 일 저장 + /api/events (모든 기능이 일정을 여기로 모은다)
 ├── C2_Profile_agent/         C2 내 프로필·학과 목록 (F1·F2·F11·F12 가 같이 씀)
 ├── C3_Login_agent/           C3 학교(SSO) 자동 로그인 — F6·C2·F2 가 같이 씀 · 자동 로그인 정보(DPAPI/키체인)
-├── C4_Briefing_agent/        C4 브리핑 (요구사항 F10) — 모든 기능의 오늘 할 것·임박 마감·새 알림을 모아 하루 한 번 스냅샷
+├── C4_Briefing_agent/        C4 브리핑 (요구사항정의서 C4 절) — 모든 기능의 오늘 할 것·임박 마감·새 알림을 모아 하루 한 번 스냅샷
 ├── F1_Bachelor_agent/        F1 학사일정 자동 등록·알림 (학교 공개 페이지 수집 — 로그인 불필요)
 ├── F2_Graduation_agent/      F2 졸업요건·학점 트래커
 ├── F3_Attendance_agent/      F3 출결·학사경고 예방

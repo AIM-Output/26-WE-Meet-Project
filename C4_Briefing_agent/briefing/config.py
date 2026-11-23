@@ -1,14 +1,14 @@
 """C4 브리핑 — 설정 (경로 · 기본값 · 섹션 · 한 줄 요약 규칙).
 
-요구사항: 요구사항정의서.md F10 절(아침 브리핑) — 2026-10-25 부터 **공통 기능 C4** 로 구현한다 (모든 기능의 알림·임박 항목을 모은다).
+요구사항: 요구사항정의서.md C4 절(아침 브리핑 — 계획서의 F10). 모든 기능의 알림·임박 항목을 모으는 일이라 **공통 기능 C4** 다 (2026-10-25).
 화면: Frontend-Route.md 15절.
 
 설치할 것이 없다
-  - 전부 **표준 라이브러리**다(라우터만 fastapi). 숫자·목록은 각 기능이 계산한 값을 그대로 옮겨 적고(F10-R17),
-    LLM 은 맨 위 한 줄만 맡는다(F10 D1). LLM 이 없거나 실패해도 브리핑은 그대로 나온다.
+  - 전부 **표준 라이브러리**다(라우터만 fastapi). 숫자·목록은 각 기능이 계산한 값을 그대로 옮겨 적고(C4-R17),
+    LLM 은 맨 위 한 줄만 맡는다(C4 D1). LLM 이 없거나 실패해도 브리핑은 그대로 나온다.
 
 저장하는 것
-  - data/briefing.db 하나 — 날짜별 브리핑 **스냅샷**(만든 뒤 데이터가 바뀌어도 그대로, F10 7절) · 설정 · 기다림 기록.
+  - data/briefing.db 하나 — 날짜별 브리핑 **스냅샷**(만든 뒤 데이터가 바뀌어도 그대로, C4 7절) · 설정 · 기다림 기록.
   - 다른 기능의 데이터는 쓰지 않는다. 재료는 백엔드가 함수로 넘겨주고(api.Sources), 알림 센터(F1 표)에 한 줄 넣는 것도
     백엔드가 넘겨준 함수로 한다.
 """
@@ -48,18 +48,18 @@ def ensure_dirs() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ── 생성·배달 (F10 4절 가) ──
-DEFAULT_TIME = "08:00"                 # F10-R01 기본 08:00 (Q1 — 시범 사용 후)
-DEFAULT_KEEP_DAYS = 30                 # F10-R22 보관 기간 기본 30일
+# ── 생성·배달 (C4 4절 가) ──
+DEFAULT_TIME = "08:00"                 # C4-R01 기본 08:00 (Q1 — 시범 사용 후)
+DEFAULT_KEEP_DAYS = 30                 # C4-R22 보관 기간 기본 30일
 KEEP_DAYS_CHOICES = (7, 14, 30, 60)
 MISSED_AFTER_MIN = 60                  # 예정 시각보다 이만큼 늦게 만들면 '놓친 브리핑'(catchup) — F1 놓친 알림과 같은 값
-WAIT_COLLECT_MIN = 5                   # 수집이 돌고 있으면 최대 이만큼 기다렸다가 만든다 (F10 9절)
+WAIT_COLLECT_MIN = 5                   # 수집이 돌고 있으면 최대 이만큼 기다렸다가 만든다 (C4 9절)
 ALERT_LOOKBACK_HOURS = 24              # '새 알림' — 지난 브리핑 이후, 그래도 최대 하루치만
 
-# source — 정시 / 놓쳐서 켤 때 / 다시 만들기 (F10 7절)
+# source — 정시 / 놓쳐서 켤 때 / 다시 만들기 (C4 7절)
 SOURCES = ("scheduled", "catchup", "manual")
 
-# ── 섹션 (F10 5절 + 각 기능이 브리핑에 싣기로 한 것) ──
+# ── 섹션 (C4 5절 + 각 기능이 브리핑에 싣기로 한 것) ──
 #   순서가 곧 화면 순서다. empty = 비었을 때 보일 한 줄(None 이면 섹션을 숨긴다 — 5절 '섹션 규칙').
 #   attention: F3-R35 '위험·초과 과목은 브리핑 상단' · F7 놓친 마감
 #   deadlines: F6 마감(D-3) + F1-R35 학사 D-3 + F11-R74 장학 마감 임박 + F12-R34 담아 둔 것의 마감 + F5 시험 D-3
@@ -73,11 +73,11 @@ SECTIONS = {
     "alerts":    {"label": "새 알림",     "icon": "bell",     "empty": None, "link": None},
 }
 SECTION_ORDER = ("attention", "classes", "events", "deadlines", "priority", "alerts")
-ALL_EMPTY_TEXT = "오늘은 일정이 없습니다"   # F10-R16
+ALL_EMPTY_TEXT = "오늘은 일정이 없습니다"   # C4-R16
 SHOW_LINES = 5                         # 섹션당 최대 5줄 — 넘으면 화면이 '+N건 더' (10절 분량)
 KEEP_LINES = 30                        # 스냅샷에 남기는 최대 줄 수 (그 이상은 건수만)
-SOON_DAYS = 3                          # 마감 임박 = D-3 이내 (F10-R12)
-TOP_N = 3                              # 먼저 할 것 = F7 상위 3건 (F10-R13)
+SOON_DAYS = 3                          # 마감 임박 = D-3 이내 (C4-R12)
+TOP_N = 3                              # 먼저 할 것 = F7 상위 3건 (C4-R13)
 
 # 재료 이름 → 화면에 보일 기능 이름 (못 읽은 재료는 gaps 로 남긴다 — '있는 섹션만 보여 준다', 9절)
 SOURCE_NAMES = {
@@ -91,7 +91,7 @@ SOURCE_NAMES = {
 ALERT_SKIP_KINDS = ("briefing",)
 ALERT_SKIP_ID_PREFIX = ("rem:",)
 
-# ── 한 줄 요약 (LLM, F10 5절 '한 줄 요약 규칙') — 슬롯 이름은 F1·F12 와 같다(LLM_MAIN_*) ──
+# ── 한 줄 요약 (LLM, C4 5절 '한 줄 요약 규칙') — 슬롯 이름은 F1·F12 와 같다(LLM_MAIN_*) ──
 LLM_BASE_URL = os.environ.get("LLM_MAIN_BASE_URL", "").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_MAIN_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MAIN_MODEL", "")

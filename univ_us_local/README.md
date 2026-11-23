@@ -24,7 +24,7 @@ univ_us_local/
 │   ├── app/placement.py ../F8_Plan_agent 의 API(placement.api)를 붙인다 — 낮 공강 배치·학습 블록(kind=study)·공부 캘린더의 공강 공부 (F8)
 │   ├── app/scholarship.py ../F11_Scholarship_agent 의 API(scholarship.api)를 붙인다 — 장학 판정·원천·알림, 마감·서류 → C1 (F11) · 초안은 2026-11-19 폐기(걷어냄)
 │   ├── app/activity.py ../F12_Activity_agent 의 API(activity.api)를 붙인다 — 관심사 등급·담기·원천·알림, 마감·서류 → C1 (F12) · 초안은 2026-11-19 폐기(걷어냄)
-│   ├── app/briefing.py ../C4_Briefing_agent 의 API(briefing.api)를 붙인다 — 각 기능의 브리핑 재료·수집 중 여부·알림 센터 한 줄을 넘겨준다 (C4 = F10)
+│   ├── app/briefing.py ../C4_Briefing_agent 의 API(briefing.api)를 붙인다 — 각 기능의 브리핑 재료·수집 중 여부·알림 센터 한 줄을 넘겨준다 (C4)
 │   ├── app/config.py   기능 폴더 경로·포트·허용 Origin·과목 색·세션 쿠키
 │   └── tests/          사이드카 세션(실행 코드·쿠키·앱 데이터 폴더) — 개발 venv 로 pytest
 ├── frontend/           Next.js 16 + Tailwind 4 + FullCalendar 7 + motion + lucide-react
@@ -105,7 +105,7 @@ univ_us_local/
 | GET | `/api/exams?semester=` | F5 시험 — 다가오는 시험·확인 필요·지난 시험·오늘 분량. 시험 추가·수정, 계획 미리보기·등록·진도·재조정은 [F5_Test_agent/README.md](../F5_Test_agent/README.md) |
 | POST | `/api/study-plans/preview` · `/api/study-plans` | 계획 계산(저장 안 함) · 등록(학습 블록 생성). 조정안은 본문에 `apply` 를 넣어 다시 부른다 |
 | GET | `/api/scholarships` · `/api/scholarships/items/{id}` | F11 장학 — 목록(판정·진행 상태·건수·수집 상태)·상세(조건별 근거). 판정 뒤집기·진행 상태·캘린더·할 일·원천·수집은 [F11_Scholarship_agent/README.md](../F11_Scholarship_agent/README.md). 초안·재료 API 는 2026-11-19 폐기(걷어냄) |
-| GET | `/api/briefing/today` · `/api/briefings` · `/api/briefings/{date}` | C4 브리핑(F10) — 오늘 스냅샷(만들 때가 됐는데 없으면 지금 만든다 — 놓친 브리핑) · 지난 목록 · 그날 것. `POST /api/briefing/regenerate`(다시 만들기) · `GET/PATCH /api/settings/briefing`(켜기·시각·보관) — [C4_Briefing_agent/README.md](../C4_Briefing_agent/README.md) |
+| GET | `/api/briefing/today` · `/api/briefings` · `/api/briefings/{date}` | C4 브리핑 — 오늘 스냅샷(만들 때가 됐는데 없으면 지금 만든다 — 놓친 브리핑) · 지난 목록 · 그날 것. `POST /api/briefing/regenerate`(다시 만들기) · `GET/PATCH /api/settings/briefing`(켜기·시각·보관) — [C4_Briefing_agent/README.md](../C4_Briefing_agent/README.md) |
 | GET | `/api/opportunities` · `/api/opportunities/items/{id}` | F12 대외활동 — 목록(관심사 등급·모집 상태·진행 상태·태그 사전)·상세(등급 이유·정보). 등급 뒤집기·담기·캘린더·할 일·원천·수집은 [F12_Activity_agent/README.md](../F12_Activity_agent/README.md). 초안·재료 API 는 2026-11-19 폐기(걷어냄) |
 
 `/api/events` 에는 학사 일정 중 **내 캘린더에 등록된 것**(자동+내 해당, 승인, 담기)이 `extendedProps.kind = "academic"` 으로 섞여 온다.
@@ -142,12 +142,12 @@ univ_us_local/
 - 장학(F11)은 `F11_Scholarship_agent` 의 코드·DB(`data/scholarship.db` — 공지·진행 상태·원천 · 초안 표는 2026-11-19 폐기로 앱이 처음 열 때 지운다) + 원천 목록(`directory/sources.json`). 판정 재료로 C2 프로필을 **민감정보까지** 넘기고(`student_profile.get_full_profile`), '캘린더에 넣기·할 일로 보내기'는 C1 내 일정·할 일(출처 `sch:<id>`)로 만든다. 수집은 자식 프로세스(`-m scholarship sync`) — 앱이 떠 있으면 06·18시 자동(`/api/status` 가 확인, 개발 모드 끔). 그 폴더가 없으면 `/api/status` 의 `scholarship.available=false`.
 - 대외활동(F12)은 `F12_Activity_agent` 의 코드·DB(`data/activity.db` — 공지·진행 상태·원천·LLM 판단 캐시 · 초안 표는 2026-11-19 폐기로 앱이 처음 열 때 지운다). 게시판 수집기·원천 목록은 F11 것을 import 한다(그래서 백엔드가 F11 폴더도 import 경로에 둔다). 관심사는 C2 프로필 `interests`, 담기·캘린더·할 일은 C1(출처 `act:<id>`, 담기를 풀면 그 일정을 지운다). 수집은 `-m activity sync` — 06·18시 장학 수집이 끝난 뒤, 개발 모드 끔(`F12_AUTOSYNC=off`). ~~초안 재료가 비면 F11 장학 초안 재료를 불러온다.~~ (초안 폐기) LLM 판단은 관심사를 보내므로 로컬 모델에만 붙인다(요구사항정의서 G6).
 - LLM: 공용 슬롯 `LLM_MAIN_*`(F1·F12·C4 — F11 은 초안 폐기로 2026-11-19 뺐다)은 비어 있다. **사용자 정보는 외부 AI API 로 보내지 않는다**(요구사항정의서 G6, 2026-11-19) — 외부로 보낼 수 있는 것은 F1 의 공개 공지 원문뿐. F9 대화는 로컬 모델(`F9_LLM_BASE_URL`, llama-server)로 따로 붙는다(2026-11-18, 연결 전).
-- 브리핑(C4 = F10)은 `C4_Briefing_agent` 의 코드·DB(`data/briefing.db` — 날짜별 스냅샷·설정). 재료는 각 기능이 브리핑용으로 내놓은 함수(F3 `today` · F7 `brief` · F1 `upcoming`·알림 목록 · F5 `today_block` · F8 `today` · F11·F12 `brief`)와 `/api/events` 와 같은 합치기(오늘 ~ D-3)를 `app/briefing.py` 가 넘겨준다. 스케줄러는 따로 없고 `/api/status`(1분)·`GET /api/briefing/today` 가 '예정 시각이 지났는데 오늘 것이 없으면' 만든다(수집 중이면 최대 5분 기다림). 만들면 알림 센터(F1 notifications, kind=briefing)에 1건. 그 폴더가 없으면 `/api/status` 의 `briefing.available=false` 이고 카드가 뜨지 않는다.
+- 브리핑(C4)은 `C4_Briefing_agent` 의 코드·DB(`data/briefing.db` — 날짜별 스냅샷·설정). 재료는 각 기능이 브리핑용으로 내놓은 함수(F3 `today` · F7 `brief` · F1 `upcoming`·알림 목록 · F5 `today_block` · F8 `today` · F11·F12 `brief`)와 `/api/events` 와 같은 합치기(오늘 ~ D-3)를 `app/briefing.py` 가 넘겨준다. 스케줄러는 따로 없고 `/api/status`(1분)·`GET /api/briefing/today` 가 '예정 시각이 지났는데 오늘 것이 없으면' 만든다(수집 중이면 최대 5분 기다림). 만들면 알림 센터(F1 notifications, kind=briefing)에 1건. 그 폴더가 없으면 `/api/status` 의 `briefing.available=false` 이고 카드가 뜨지 않는다.
 - `data/`·`.venv/`·`node_modules/`·`frontend/out/`(빌드 결과 — 사이드카 빌드가 매번 만든다)은 커밋하지 않는다. 데이터는 앱 데이터 폴더(`%LOCALAPPDATA%\kr.univus.desktop\data` / `~/Library/Application Support/kr.univus.desktop/data`)에 기능 폴더와 같은 모양으로 있다.
 
 ## 다음 단계 (아래 Features 칸 순서)
 
-~~F7 우선순위~~(2026-10-06 `F7_Task_agent`) → ~~F8 공강 배치~~(2026-10-06 `F8_Plan_agent`) → F9 자연어 일정(로컬 모델 — AI 팀 학습 중, 2026-11-18) → ~~F10 브리핑~~(2026-10-25 공통 기능 `C4_Briefing_agent`) → F4 강의자료 → ~~F11 장학~~(2026-10-09 `F11_Scholarship_agent`) → ~~F12 대외활동~~(2026-10-10 `F12_Activity_agent`) → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
+~~F7 우선순위~~(2026-10-06 `F7_Task_agent`) → ~~F8 공강 배치~~(2026-10-06 `F8_Plan_agent`) → F9 자연어 일정(로컬 모델 — AI 팀 학습 중, 2026-11-18) → ~~C4 브리핑~~(2026-10-25 공통 기능 `C4_Briefing_agent`) → F4 강의자료 → ~~F11 장학~~(2026-10-09 `F11_Scholarship_agent`) → ~~F12 대외활동~~(2026-10-10 `F12_Activity_agent`) → 알림 채널(앱 내 알림·텔레그램). 폰 접근은 Tailscale, 정시 배달·F16·F17 은 얇은 서버 — 검토 문서 참고.
 
 ## 알아둘 것
 

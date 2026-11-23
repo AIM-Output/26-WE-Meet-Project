@@ -80,7 +80,7 @@ def touch() -> None:
 
 
 def brief(days: int = 3) -> list[dict]:
-    """F10 브리핑 — 마감 임박 장학만 (F11-R74)."""
+    """C4 브리핑 — 마감 임박 장학만 (F11-R74)."""
     if not f11:
         return []
     try:

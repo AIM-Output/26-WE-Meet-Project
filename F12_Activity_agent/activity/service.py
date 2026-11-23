@@ -478,7 +478,7 @@ def status_summary(con: sqlite3.Connection, profile: Optional[dict], today: Opti
 
 
 def brief(con: sqlite3.Connection, profile: Optional[dict], days: int = 3, today: Optional[date] = None) -> list[dict]:
-    """F10 브리핑 — 담아 둔 것의 마감만 (F12-R34)."""
+    """C4 브리핑 — 담아 둔 것의 마감만 (F12-R34)."""
     return [{"id": i["id"], "title": i["title"], "daysLeft": i["daysLeft"], "progress": i["progressLabel"]}
             for i in evaluate(con, profile, today)
             if i["progress"] == "saved" and i["daysLeft"] is not None and 0 <= i["daysLeft"] <= days]

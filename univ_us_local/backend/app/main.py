@@ -226,7 +226,7 @@ if (_f11_router := scholarship.router()) is not None:
 if (_f12_router := activity.router()) is not None:
     app.include_router(_f12_router)
 
-# C4 브리핑 (요구사항 F10 아침 브리핑을 공통 기능으로) — /api/briefing* · /api/settings/briefing (C4_Briefing_agent/briefing/api.py)
+# C4 브리핑 (아침 브리핑 — 공통 기능, 요구사항정의서 C4 절) — /api/briefing* · /api/settings/briefing (C4_Briefing_agent/briefing/api.py)
 # 각 기능이 브리핑용으로 내놓은 값(F3 오늘 수업 · F6 마감 · F7 먼저 할 것 · F1 학사 D-3 · F5 오늘 공부 · F8 블록 · F11·F12 마감
 # · 알림 센터의 안 읽은 알림)을 모아 하루 한 번 스냅샷을 만든다. 오늘 일정·마감은 /api/events 와 같은 합치기에서 읽는다.
 if (_c4_router := briefing.router(lambda start, end: calendar_events.collect(CALENDAR_SOURCES, start, end))) is not None:

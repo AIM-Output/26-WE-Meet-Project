@@ -949,7 +949,7 @@ export function AvailabilitySettings() {
 
 /* ------------------------------------------------------------------ /settings/notifications */
 
-/** 브리핑 (C4 · 요구사항 F10-R06·R07·R22) — 켜기 · 시각 · 보관 기간. 서버(C4_Briefing_agent)에 저장하고, 서버가 그 시각에 만든다. */
+/** 브리핑 (C4-R06·R07·R22) — 켜기 · 시각 · 보관 기간. 서버(C4_Briefing_agent)에 저장하고, 서버가 그 시각에 만든다. */
 function BriefingRows() {
   const toast = useToast();
   const [cfg, setCfg] = useState<BriefingSettings | null>(null);
@@ -1147,7 +1147,7 @@ function DeadlineReminderRow() {
 export function NotificationSettings() {
   return (
     <SettingsShell title="알림·브리핑" subtitle="PC 화면 안에서 끝나는 알림 — 헤더 종 + 놓친 알림 모아보기">
-      <Section title="브리핑 (C4 · F10)">
+      <Section title="브리핑 (C4)">
         <BriefingRows />
       </Section>
       <Section title="알림 시점">

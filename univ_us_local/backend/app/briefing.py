@@ -2,10 +2,10 @@
 
 섹션 조립·정시/놓침 판정·수집 기다리기·스냅샷 저장은 전부 C4_Briefing_agent 에 있다. 여기서는
   - 라우터(/api/briefing/today · /api/briefing/regenerate · /api/briefings* · /api/settings/briefing)를 include 하고,
-  - 재료를 넘겨준다 — 각 기능이 브리핑용으로 내놓은 함수 그대로(숫자를 다시 계산하지 않는다, F10-R17):
+  - 재료를 넘겨준다 — 각 기능이 브리핑용으로 내놓은 함수 그대로(숫자를 다시 계산하지 않는다, C4-R17):
       F3 오늘 수업·위험 과목 · C1 합친 캘린더(오늘 ~ D-3) · F7 먼저 할 것 3건 · F1 D-3 학사 · F5 오늘 공부 · F8 오늘 블록
       · F11 마감 임박 장학 · F12 담아 둔 것의 마감 · 알림 센터(F1 notifications)의 안 읽은 알림,
-  - 지금 수집 중인 기능(F6 e클래스 · F1 학사 · F11 장학 · F12 대외활동)을 알려 수집이 끝난 뒤에 만들게 하고(F10 9절),
+  - 지금 수집 중인 기능(F6 e클래스 · F1 학사 · F11 장학 · F12 대외활동)을 알려 수집이 끝난 뒤에 만들게 하고(C4 9절),
   - 만들어지면 알림 센터에 한 줄(kind=briefing) 넣고, /api/status 에 오늘 브리핑 상태를 싣는다(겸사겸사 만들 때가 됐으면 만든다).
 C4 쪽 모듈은 표준 라이브러리 + fastapi 만 쓰므로 이 백엔드의 .venv 에 더 설치할 것이 없다.
 
@@ -75,7 +75,7 @@ def _collecting() -> list[str]:
 
 
 def _notify(nid: str, title: str, body: str, href: str, fire_at: datetime, missed: bool) -> None:
-    """브리핑 도착 → 알림 센터 한 줄 (F10-R05). 알림 표는 F1 이 처음 만들었다(types.ts AppNotification.kind='briefing')."""
+    """브리핑 도착 → 알림 센터 한 줄 (C4-R05). 알림 표는 F1 이 처음 만들었다(types.ts AppNotification.kind='briefing')."""
     try:
         from bachelor import notify as f1notify, store as f1store   # type: ignore[import-not-found]
     except Exception:                           # noqa: BLE001 — F1 이 없으면 알림 센터가 없다

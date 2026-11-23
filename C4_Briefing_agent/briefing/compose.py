@@ -1,6 +1,6 @@
 """재료 → 브리핑 섹션 (순수 함수 — 파일·DB 를 열지 않는다, fastapi 도 부르지 않는다).
 
-재료(ing)는 각 기능이 브리핑용으로 내놓은 값 그대로다. 없는 재료는 None — 그 섹션만 빠진다(F10 9절 '있는 섹션만').
+재료(ing)는 각 기능이 브리핑용으로 내놓은 값 그대로다. 없는 재료는 None — 그 섹션만 빠진다(C4 9절 '있는 섹션만').
     classes       F3 오늘 수업 + 위험 과목     {classes: [{courseId, name, start, end, room, state, level, levelLabel}], totals: {risky}}
     events        C1 합친 캘린더(오늘 ~ D-3)   [CalEvent] — 내 일정·할 일·학사·시험·과제 마감(kind=deadline)
     priority      F7 먼저 할 것                {items: [{id, title, courseShort, kindLabel, reason}], totalText, overdue}
@@ -11,7 +11,7 @@
     activities    F12 담아 둔 것의 마감         [{id, title, daysLeft}]
     alerts        알림 센터 안 읽은 알림        [{id, kind, refId, title, body, href, deliveredAt}]
 
-**숫자는 다시 계산하지 않는다**(F10-R17). 여기서 하는 일은 고르고(오늘·D-3), 정렬하고, 한 줄 글로 옮기는 것뿐이다.
+**숫자는 다시 계산하지 않는다**(C4-R17). 여기서 하는 일은 고르고(오늘·D-3), 정렬하고, 한 줄 글로 옮기는 것뿐이다.
 D-n 은 화면의 D-day 칩과 같은 '달력 날짜 차이'로 센다. 00:00 마감은 전날 밤 마감이다(F6 자정 규칙).
 """
 from __future__ import annotations
@@ -100,7 +100,7 @@ def _attention(ing: dict) -> list[Item]:
 
 
 def _classes(ing: dict) -> list[Item]:
-    """F10-R10 오늘 수업 — 시간 순, 강의실 포함. 휴강도 보여 준다(그 시간이 비었다는 뜻이니까)."""
+    """C4-R10 오늘 수업 — 시간 순, 강의실 포함. 휴강도 보여 준다(그 시간이 비었다는 뜻이니까)."""
     out: list[Item] = []
     for s in (ing.get("classes") or {}).get("classes") or []:
         canceled = s.get("state") == "canceled"
@@ -116,7 +116,7 @@ def _classes(ing: dict) -> list[Item]:
 
 
 def _events(ing: dict, today: date) -> list[Item]:
-    """F10-R11 오늘 일정 — 내 일정 · 할 일 · 학습 블록(F8) · 오늘 공부(F5) · 시험 · 그날의 학사 일정. 종일이 먼저, 그다음 시각 순."""
+    """C4-R11 오늘 일정 — 내 일정 · 할 일 · 학습 블록(F8) · 오늘 공부(F5) · 시험 · 그날의 학사 일정. 종일이 먼저, 그다음 시각 순."""
     out: list[Item] = []
     for ev in ing.get("events") or []:
         p = _props(ev)
@@ -150,7 +150,7 @@ def _events(ing: dict, today: date) -> list[Item]:
 
 
 def _deadlines(ing: dict, now: datetime) -> list[Item]:
-    """F10-R12 마감 임박(D-3) — 과제·퀴즈·동영상(F6, 제출·체크한 것 빼고) + 학사(F1-R35) + 장학(F11-R74)
+    """C4-R12 마감 임박(D-3) — 과제·퀴즈·동영상(F6, 제출·체크한 것 빼고) + 학사(F1-R35) + 장학(F11-R74)
     + 담아 둔 대외활동(F12-R34) + 시험(F5). 가까운 순."""
     today = now.date()
     rows: list[tuple[tuple, Item]] = []
@@ -205,7 +205,7 @@ def _deadlines(ing: dict, now: datetime) -> list[Item]:
 
 
 def _priority(ing: dict) -> tuple[list[Item], Optional[str]]:
-    """F10-R13 먼저 할 것 — F7 상위 3건, 이유 한 줄과 함께. 순서는 F7 그대로."""
+    """C4-R13 먼저 할 것 — F7 상위 3건, 이유 한 줄과 함께. 순서는 F7 그대로."""
     p = ing.get("priority") or {}
     items = [{"text": f"{i}) {r.get('title')}", "sub": " · ".join(x for x in (r.get("courseShort") or "", r.get("reason") or "") if x),
               "href": f"/?event={r.get('id')}" if r.get("id") else "/assignments?sort=priority"}
@@ -278,7 +278,7 @@ def build(ing: dict, now: datetime, alerts_since: Optional[datetime] = None) -> 
 
 
 def facts(built: dict) -> dict:
-    """한 줄 요약(LLM)에 넘길 것 — 숫자와 제목 수준만 (F10 10절 프라이버시). 강의실·과목 메모·알림 본문은 넣지 않는다."""
+    """한 줄 요약(LLM)에 넘길 것 — 숫자와 제목 수준만 (C4 10절 프라이버시). 강의실·과목 메모·알림 본문은 넣지 않는다."""
     secs = {s["key"]: s for s in built["sections"]}
 
     def titles(key: str, n: int = 3) -> list[str]:

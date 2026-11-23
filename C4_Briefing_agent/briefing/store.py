@@ -1,6 +1,6 @@
 """저장소 — SQLite 한 파일 (data/briefing.db). 표준 라이브러리만.
 
-  briefings  날짜마다 한 줄 = 그날 브리핑 **스냅샷**(F10 7절). 다시 만들기(manual)는 같은 줄을 덮어쓴다(F10-R04).
+  briefings  날짜마다 한 줄 = 그날 브리핑 **스냅샷**(C4 7절). 다시 만들기(manual)는 같은 줄을 덮어쓴다(C4-R04).
              first_source · first_generated_at 은 처음 만들 때 값 그대로 — 다시 만들어도 '놓친 브리핑'이었다는 사실은 남는다.
   meta       settings(JSON — 기본값과 다른 값만) · updated_at(화면이 다시 받을 신호) · waiting_since(수집 기다림 시작)
 """
@@ -112,5 +112,5 @@ def rows(con: sqlite3.Connection, limit: int = 60) -> list[sqlite3.Row]:
 
 
 def delete_before(con: sqlite3.Connection, day: str) -> int:
-    """보관 기간이 지난 것부터 지운다 (F10 9절)."""
+    """보관 기간이 지난 것부터 지운다 (C4 9절)."""
     return con.execute("DELETE FROM briefings WHERE date < ?", (day,)).rowcount

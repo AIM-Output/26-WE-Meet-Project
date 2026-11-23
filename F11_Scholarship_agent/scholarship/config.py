@@ -73,7 +73,7 @@ MAX_ATTACH_MB = 10              # 읽는 첨부(PDF) 최대 크기 — 파일은
 MAX_ATTACH_PER_NOTICE = 3
 DISCOVERY_MAX_AGE_DAYS = 7      # 찾아 둔 학과 게시판을 이 기간이 지나면 다시 확인한다 (홈페이지 개편 대비)
 CATALOG_MAX_AGE_DAYS = 7        # 상시 장학 안내(교내·교외 장학금 페이지)는 주 1회 (F11-D12)
-SYNC_SLOTS = ("06:00", "18:00")  # 앱이 떠 있으면 이 시각마다 수집 (F10 6절 · F13-R06). 놓쳤으면 켜질 때 한 번
+SYNC_SLOTS = ("06:00", "18:00")  # 앱이 떠 있으면 이 시각마다 수집 (C4 6절 · F13-R06). 놓쳤으면 켜질 때 한 번
 SYNC_TIMEOUT_MIN = 30
 
 

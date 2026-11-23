@@ -79,7 +79,7 @@ def study_source(load_events: EventsLoader) -> Callable[[str, str], list[dict]]:
 
 
 def today() -> dict:
-    """오늘 학습 블록 — F10 아침 브리핑 · F9 대화가 읽는다."""
+    """오늘 학습 블록 — C4 아침 브리핑 · F9 대화가 읽는다."""
     if not f8:
         return {"blocks": [], "text": "", "totalMinutes": 0, "remainingMinutes": 0}
     try:

@@ -29,14 +29,14 @@
 
 | 경로 | 파일 | 화면 | 상태 | 기능 |
 |---|---|---|---|---|
-| `/` | `app/page.tsx` | **대시보드** — 커버 + 3단(액션 패널 / 캘린더 / 할 일) + 기능 섹션 | 구현됨, C1·F1·F2·F3 로 수정 | **C1**·F1·F2·F3·F6·F7·F10 |
+| `/` | `app/page.tsx` | **대시보드** — 커버 + 3단(액션 패널 / 캘린더 / 할 일) + 기능 섹션 | 구현됨, C1·F1·F2·F3 로 수정 | **C1**·F1·F2·F3·F6·F7·C4 |
 | `/academic` | `app/academic/page.tsx` | **학사일정** — 학기 전체 일정표, 탭 4개 | **신규 (F1)** | F1 |
 | `/graduation` | `app/graduation/page.tsx` | **졸업요건** — 요약 / 이수 과목 / 가정 계산 탭 | **신규 (F2)** | F2 |
 | `/attendance` | `app/attendance/page.tsx` | **출결** — 과목별 현황 / 이번 주 / 시간표 설정 탭 | **신규 (F3)** | F3 |
 | `/courses` · `/courses?course=<id>` | `app/courses/page.tsx` | **강의자료** — 자료 / 요약 / 문제 / 질문 탭 | **신규 (F4)** | F4·F5 |
 | `/exams` | `app/exams/page.tsx` | **시험** — 시험 목록 + 계획 옵션/미리보기/진도 | **신규 (F5)** | F5 |
 | `/chat` | `app/chat/page.tsx` | **대화 전체 화면** — 날짜별 내역 (대화 입력은 대시보드에도) | **신규 (F9)** | F9 |
-| `/briefing` | `app/briefing/page.tsx` | **브리핑** — 지난 30일 목록 + 본문 (오늘 것은 대시보드 카드) | **신규 (F10)** | F10 |
+| `/briefing` | `app/briefing/page.tsx` | **브리핑** — 지난 30일 목록 + 본문 (오늘 것은 대시보드 카드) | **신규 (C4)** | C4 |
 | `/scholarships` | `app/scholarships/page.tsx` | **장학** — 장학(공지 / 상시 장학) / 이력 / 원천 탭 + 상세(판정·~~초안·~~제출 준비) (2026-10-09 `/opportunities` 에서 분리 · 초안은 2026-11-19 폐기) | **구현됨 (F11)** | F11 |
 | `/opportunities` | `app/opportunities/page.tsx` | **대외활동** — 대외활동 / 사업단 / 이력 탭 + 관심사 설정 (2026-10-09 장학 탭을 `/scholarships` 로 내보냄) | 예시 데이터 (F12·F13) | F12·F13 |
 | `/team` | `app/team/page.tsx` | **팀플** — 일정 조율 / 할 일 / 팀원 탭 (**서버 필요**). 2026-10-09 대시보드 타일 자리를 대외활동에 내줌 — 화면은 남아 있다 | 예시 데이터 (F16) | F16 |
@@ -47,7 +47,7 @@
 | `/settings/sources` | `app/settings/sources/page.tsx` | **수집 원천** — 원천별 상태·주기·지금 수집 (F11 은 요약 + `/scholarships?tab=sources` 링크) | **신규 (F1)** | F1·F2·F6·F11~F13 |
 | `/settings/requirements` | `app/settings/requirements/page.tsx` | **졸업요건 기준** — 룰셋 보기·수정, 교과구분 매핑 | **신규 (F2)** | F2 |
 | `/settings/availability` | `app/settings/availability/page.tsx` | **가용 시간** — 낮(공강 배치 F8): 범위·공부 채우기·점심·주말·여유·블록 길이·기간 / 저녁(시험 공부 계획 F5): 저녁 시간대. 하루 상한 없음 (2026-10-07) | **신규 (F8)** | F8·F5 |
-| `/settings/notifications` | `app/settings/notifications/page.tsx` | **알림·브리핑** — 브리핑 시각·보관, 알림 기본 시각·시점 | **신규 (F10)** | F10·F1·F6 |
+| `/settings/notifications` | `app/settings/notifications/page.tsx` | **알림·브리핑** — 브리핑 시각·보관, 알림 기본 시각·시점 | **신규 (C4)** | C4·F1·F6 |
 
 ### 2-2. 앞으로 늘어날 자리 (예약만 해 둠 — 지금 만들지 않는다)
 
@@ -1476,7 +1476,7 @@ lib/assignments.ts · lib/useAssignments.ts   F6 모양 · 내가 체크함·소
 
 | 시점 | 호출 |
 |---|---|
-| 목록 | `/api/events` 의 `deadline` 재사용 — `userDone`·`changed{at, before}`·`attachments`·`isNew`·`promoted` 가 실려 온다. `GET /api/assignments?tab=&course=` 는 명령줄·F9·F10 용 |
+| 목록 | `/api/events` 의 `deadline` 재사용 — `userDone`·`changed{at, before}`·`attachments`·`isNew`·`promoted` 가 실려 온다. `GET /api/assignments?tab=&course=` 는 명령줄·F9·C4 용 |
 | 상세 | 목록에 포함 · 변경 이력은 `GET /api/assignments/{id}` 의 `history` |
 | 수동 완료 | `PATCH /api/assignments/{id}` `{userDone}` → `{assignment, event}` (낙관적으로 먼저 바꾸고 실패하면 되돌린다) · 소요시간 `{estimatedHours}` |
 | 수집 상태 | `GET /api/status` — `sync` 에 `runSource`·`attempt`·`retry`·`error`·`ledger`, 새 칸 `eclass`(연속 실패·로그인 필요·재시도·다음 주기·`updatedAt`). `updated_at` = 마지막 수집 성공 |
@@ -1890,11 +1890,11 @@ app/chat/page.tsx     (신규)
 
 ---
 
-## 15. F10 — 아침 브리핑
+## 15. C4 — 아침 브리핑
 
-요구사항은 [요구사항정의서.md](요구사항정의서.md) F10 절. **새 계산이 없다** — 앞 기능들이 만든 값을 모아 대시보드 맨 위에 카드 하나로 놓는 것이 전부다.
+요구사항은 [요구사항정의서.md](요구사항정의서.md) C4 절. **새 계산이 없다** — 앞 기능들이 만든 값을 모아 대시보드 맨 위에 카드 하나로 놓는 것이 전부다.
 
-> **2026-10-25 구현 — 공통 기능 C4** (`C4_Briefing_agent/`, 요구사항정의서 F10 12절). 섹션은 **6종** — ⚠ 주의(출결 위험·놓친 마감) · 📚 오늘 수업 · 📅 오늘 일정 ·
+> **2026-10-25 구현 — 공통 기능 C4** (`C4_Briefing_agent/`, 요구사항정의서 C4 12절). 섹션은 **6종** — ⚠ 주의(출결 위험·놓친 마감) · 📚 오늘 수업 · 📅 오늘 일정 ·
 > ⏰ 마감 임박(과제·학사·시험·장학·대외활동 D-3) · 🔥 먼저 할 것 · 🔔 새 알림(지난 브리핑 이후 안 읽은 알림). 수집이 도는 동안은 `pending`(스켈레톤),
 > 설정 API 는 `/api/settings/briefing` 이다(아래 15-6).
 
@@ -1963,7 +1963,7 @@ flowchart TD
 
 ### 15-5. 설정 — `/settings/notifications`
 
-F1·F6 의 알림 시점과 F10 브리핑을 **한 화면에서** 관리한다.
+F1·F6 의 알림 시점과 C4 브리핑을 **한 화면에서** 관리한다.
 
 | 항목 | 기본값 |
 |---|---|
@@ -2716,7 +2716,7 @@ components/team/
 - [ ] `navigate` 도구로 화면 이동(메뉴 대체), `open_placement` 는 F8 미리보기를 연다
 - [ ] ~~LLM 미설정·동의 전 잠금 처리~~ → 모델 준비 전(내려받기 전·실행 불가·띄우는 중) 잠금 처리 — 2026-11-18 로컬 모델, 전송 동의 없음
 
-### F10 아침 브리핑
+### C4 아침 브리핑
 
 - [x] 대시보드 **브리핑 카드**(커버 아래·3단 위) + 접기 상태 기억
 - [x] `놓친 브리핑` 칩(예정 시각 → 실제 생성 시각)

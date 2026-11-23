@@ -810,7 +810,7 @@ def calendar_events(con: sqlite3.Connection, start: Optional[str] = None, end: O
 
 
 def today(con: sqlite3.Connection, now: Optional[datetime] = None) -> dict:
-    """오늘 수업과 위험 과목 — F10 아침 브리핑(F3-R35)·F9 대화가 읽는다."""
+    """오늘 수업과 위험 과목 — C4 아침 브리핑(F3-R35)·F9 대화가 읽는다."""
     now = now or datetime.now()
     cal = AC.load()
     sid = current_semester(con, cal, now.date())

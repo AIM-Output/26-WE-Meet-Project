@@ -14,7 +14,7 @@
     POST   /api/attendance/timetable/import           시간표 자동으로 가져오기 (학사정보시스템 공개 조회) · GET 진행 상태
     PUT    /api/attendance/semester                   개강·종강·휴업일 직접 입력 {semester, start, end, holidays}
     GET    /api/attendance/periods · PUT · DELETE     교시 ↔ 시각 (C1 주 뷰 설정 — 학교 시간표 모듈이 기본)
-    GET    /api/attendance/today                      오늘 수업 + 위험 과목 (F10 브리핑·F9 대화용)
+    GET    /api/attendance/today                      오늘 수업 + 위험 과목 (C4 브리핑·F9 대화용)
     GET    /api/attendance/alerts                     만든 경고 알림 이력
 
 바꾸는 요청은 다시 계산한 과목(course)과 새로 생긴 경고(alerts — 토스트용)를 같이 돌려준다.

@@ -3,10 +3,10 @@
 따로 도는 스케줄러가 없다 — F1 알림 · F11 자동 수집과 같은 방식이다. 대시보드가 1분마다 부르는 /api/status 와
 화면이 여는 GET /api/briefing/today 가 ensure_today 를 부르고, 그때 '오늘 브리핑을 만들 때가 됐는데 아직 없으면' 만든다.
     - 예정 시각(기본 08:00)이 지났고 오늘 것이 없다 → 만든다
-        · 예정 시각에서 60분 안이면 scheduled, 그보다 늦으면(PC 가 꺼져 있었다) catchup = '놓친 브리핑' (F10-R02 · D2)
+        · 예정 시각에서 60분 안이면 scheduled, 그보다 늦으면(PC 가 꺼져 있었다) catchup = '놓친 브리핑' (C4-R02 · D2)
     - 그 순간 수집(e클래스·학사·장학·대외활동)이 돌고 있으면 끝날 때까지 기다린다 — 최대 5분, 넘으면 그대로 만든다 (9절)
-    - 지난 날짜는 만들지 않는다(F10-R03). 하루 한 번 — 다시 만들기만 덮어쓴다(F10-R04)
-    - 처음 만들 때 알림 센터에 1건(F10-R05). 다시 만들기는 알림을 새로 남기지 않는다
+    - 지난 날짜는 만들지 않는다(C4-R03). 하루 한 번 — 다시 만들기만 덮어쓴다(C4-R04)
+    - 처음 만들 때 알림 센터에 1건(C4-R05). 다시 만들기는 알림을 새로 남기지 않는다
 """
 from __future__ import annotations
 
@@ -198,7 +198,7 @@ def ensure_today(src: Sources, now: Optional[datetime] = None) -> dict:
 
 
 def regenerate(src: Sources, now: Optional[datetime] = None) -> dict:
-    """다시 만들기 — 지금 시점 기준으로 오늘 것을 덮어쓴다(F10-R24). 예정 시각 전·꺼짐이어도 사용자가 누르면 만든다."""
+    """다시 만들기 — 지금 시점 기준으로 오늘 것을 덮어쓴다(C4-R24). 예정 시각 전·꺼짐이어도 사용자가 누르면 만든다."""
     now = (now or datetime.now()).replace(microsecond=0)
     with _lock, store.connect() as con:
         return _make(con, src, now, "manual", S.load(con))

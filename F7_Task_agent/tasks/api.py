@@ -1,7 +1,7 @@
 """대시보드(univ_us_local)에 붙이는 F7 API — FastAPI APIRouter. (Frontend-Route 12-4)
 
     GET    /api/priority?course=&top=3        급한 순 목록 + 그룹 헤더(건수·합계) + 오늘 남은 시간 + 상위 N건 (F7-S01~S07)
-    GET    /api/priority/top?n=3              상위 N건 + 총 소요시간 + 한 줄 — F10 아침 브리핑 · F9 대화 (F7-R33)
+    GET    /api/priority/top?n=3              상위 N건 + 총 소요시간 + 한 줄 — C4 아침 브리핑 · F9 대화 (F7-R33)
     GET    /api/settings/priority             안전계수 · 유형별 기본 시간 · 취침 시각 (+ 기본값 · 고친 칸) (F7-S08)
     PATCH  /api/settings/priority             {safetyFactor?, defaultHours?: {kind: h}, bedTime?} · {reset: true}
 
