@@ -220,7 +220,7 @@ python desktop/cli.py exams add 소프트웨어공학론 midterm 2026-10-22 --ti
 | 시험 목록 | `GET /api/exams?semester=&sync=1` |
 | 시험 추가 | `POST /api/exams` |
 | 공지에서 다시 찾기 | `POST /api/exams/sync` |
-| 오늘 분량 (F10·F9) | `GET /api/exams/today` |
+| 오늘 분량 (C4·F9) | `GET /api/exams/today` |
 | 과목별 시험 유무 | `GET /api/exams/courses` · `PATCH /api/exams/courses/{courseId}` `{midterm?, final?}` |
 | 공부 캘린더 | `GET /api/study-calendar?start=&end=` · 화면 `GET /study-calendar` |
 | 난이도 시간 설정 | `GET·PUT /api/exams/settings` `{difficulty: {easy, normal, hard}}` (분/쪽, null = 기본값) |

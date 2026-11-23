@@ -67,7 +67,7 @@ def calendar_events(start: Optional[str] = None, end: Optional[str] = None) -> l
 
 
 def today_block() -> dict:
-    """'오늘 공부: 운영체제 15쪽 (38분)' — F10 아침 브리핑·F9 대화가 읽는다 (F5-R36)."""
+    """'오늘 공부: 운영체제 15쪽 (38분)' — C4 아침 브리핑·F9 대화가 읽는다 (F5-R36)."""
     if not f5:
         return {"blocks": [], "text": "", "nextExam": None}
     try:

@@ -1,4 +1,4 @@
-"""재료 → 섹션 (F10 5절 템플릿 · 섹션 규칙 · 각 기능이 브리핑에 싣기로 한 것)."""
+"""재료 → 섹션 (C4 5절 템플릿 · 섹션 규칙 · 각 기능이 브리핑에 싣기로 한 것)."""
 from datetime import datetime, timedelta
 
 from conftest import NOW, deadline, ev, ingredients
@@ -33,7 +33,7 @@ def test_attention_risky_course_and_overdue_on_top():
 
 
 def test_classes_sorted_with_room_and_canceled():
-    """F10-R10 시간 순 · 강의실 · 휴강 표시."""
+    """C4-R10 시간 순 · 강의실 · 휴강 표시."""
     b = compose.build(ingredients(), NOW)
     items = _sec(b, "classes")["items"]
     assert [i["text"] for i in items] == ["09:00 컴퓨터네트워크", "13:00 운영체제", "15:00 소프트웨어공학론"]
@@ -44,7 +44,7 @@ def test_classes_sorted_with_room_and_canceled():
 
 
 def test_events_today_only_all_day_first():
-    """F10-R11 — 내 일정·할 일·학사(그날)·시험·F8 블록·F5 오늘 공부. 끝낸 할 일·어제 일정·수업·마감은 빠진다."""
+    """C4-R11 — 내 일정·할 일·학사(그날)·시험·F8 블록·F5 오늘 공부. 끝낸 할 일·어제 일정·수업·마감은 빠진다."""
     b = compose.build(ingredients(), NOW)
     assert _texts(b, "events") == [
         "종일 보고서 양식 출력", "종일 중간고사 기간", "오늘 공부 · 컴퓨터네트워크 22쪽 (40분)",
@@ -58,7 +58,7 @@ def test_events_today_only_all_day_first():
 
 
 def test_deadlines_d3_all_sources_nearest_first():
-    """F10-R12 D-3 — 과제(제출 완료·지난 것·D-7 제외, 자정 마감은 전날) + 학사(알림 켜진 것 · 긴 기간은 끝나는 날) + 시험 + 장학 + 대외활동."""
+    """C4-R12 D-3 — 과제(제출 완료·지난 것·D-7 제외, 자정 마감은 전날) + 학사(알림 켜진 것 · 긴 기간은 끝나는 날) + 시험 + 장학 + 대외활동."""
     b = compose.build(ingredients(), NOW)
     assert _texts(b, "deadlines") == [
         "오늘 23:59 퀴즈 2회",
@@ -78,7 +78,7 @@ def test_deadlines_d3_all_sources_nearest_first():
 
 
 def test_priority_keeps_f7_order_with_reason_and_total():
-    """F10-R13 — F7 상위 3건 그대로, 이유 한 줄과 함께."""
+    """C4-R13 — F7 상위 3건 그대로, 이유 한 줄과 함께."""
     b = compose.build(ingredients(), NOW)
     s = _sec(b, "priority")
     assert [i["text"] for i in s["items"]] == ["1) 퀴즈 2회", "2) 3주차 실습", "3) 품질 보고서"]
@@ -96,7 +96,7 @@ def test_alerts_skip_duplicates_and_old():
 
 
 def test_all_empty_is_one_line():
-    """F10-R16 — 전부 비었으면 '오늘은 일정이 없습니다' 만 (빈 섹션을 늘어놓지 않는다)."""
+    """C4-R16 — 전부 비었으면 '오늘은 일정이 없습니다' 만 (빈 섹션을 늘어놓지 않는다)."""
     b = compose.build({}, NOW)
     assert b["sections"] == [] and b["empty"]
     assert b["emptyText"] == "오늘은 일정이 없습니다" and b["summary"] == "오늘은 일정이 없습니다"

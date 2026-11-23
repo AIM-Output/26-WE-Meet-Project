@@ -109,7 +109,7 @@ def test_courses_for_merges_dept_and_major_without_duplicates():
     assert len(lst) == 5 and meta["missing"] == []
 
 
-# ── 기이수성적 표 (구조: notice_agent/references/site-structure.md §4) ──
+# ── 기이수성적 표 (구조: F11_Scholarship_agent/references/site-structure.md §4) ──
 
 SUNG010 = """
 <table id="ctl00_ContentPlaceHolder1_gvData">

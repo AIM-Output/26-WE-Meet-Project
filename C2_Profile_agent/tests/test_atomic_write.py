@@ -23,14 +23,3 @@ def test_last_state_survives_crash_mid_write(monkeypatch):
         jobs._finish("master", ok=False)
     monkeypatch.undo()
     assert jobs._last_file("master").read_text(encoding="utf-8") == '{"ok": true}'
-
-
-def test_notice_export_survives_crash_mid_write(monkeypatch, tmp_path):
-    from student import notice_bridge
-    path = tmp_path / "profile.json"
-    path.write_text('{"grade": 2}', encoding="utf-8")
-    _half_write(monkeypatch)
-    with pytest.raises(OSError):
-        notice_bridge.export({"grade": 3}, path)
-    monkeypatch.undo()
-    assert path.read_text(encoding="utf-8") == '{"grade": 2}'

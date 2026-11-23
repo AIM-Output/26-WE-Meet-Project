@@ -1536,7 +1536,7 @@ def study_targets(con: sqlite3.Connection, get_courses: Optional[CoursesGetter] 
 
 def today_block(con: sqlite3.Connection, today: Optional[date] = None,
                 courses: Optional[dict[str, dict]] = None) -> dict:
-    """'오늘 공부: 운영체제 15쪽 (38분)' + 가장 가까운 시험 (F5-R36 · S09 — F10 브리핑·F9 대화가 읽는다)."""
+    """'오늘 공부: 운영체제 15쪽 (38분)' + 가장 가까운 시험 (F5-R36 · S09 — C4 브리핑·F9 대화가 읽는다)."""
     today = today or date.today()
     t = today.isoformat()
     courses = courses if courses is not None else course_map()

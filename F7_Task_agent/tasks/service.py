@@ -71,7 +71,7 @@ def overview(items: Iterable[dict], now: Optional[datetime] = None, settings: Op
 
 def brief(items: Iterable[dict], now: Optional[datetime] = None, settings: Optional[dict] = None,
           n: int = C.TOP_N) -> dict:
-    """아침 브리핑(F10)·대화(F9)용 — 상위 N건 + 그 총 소요시간 + 한 줄 문장 (F7-R33)."""
+    """아침 브리핑(C4)·대화(F9)용 — 상위 N건 + 그 총 소요시간 + 한 줄 문장 (F7-R33)."""
     now = now or datetime.now()
     settings = settings or S.load()
     ranked = rules.rank(items, now, settings)

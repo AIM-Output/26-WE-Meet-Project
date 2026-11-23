@@ -3,7 +3,7 @@
     GET    /api/exams?semester=&sync=1              시험 목록 + 확인 필요 + 오늘 분량 (F5-S01·S02)
     POST   /api/exams                               시험 직접 추가 (F5-S03)
     POST   /api/exams/sync                          e클래스 공지에서 시험 다시 찾기 (F5-R01)
-    GET    /api/exams/today                         오늘 분량 + 가장 가까운 시험 (F10 브리핑 · F9 대화)
+    GET    /api/exams/today                         오늘 분량 + 가장 가까운 시험 (C4 브리핑 · F9 대화)
     GET    /api/exams/courses                       과목별 시험 유무 + 중간·기말 상태 + 학사일정 기간
     PATCH  /api/exams/courses/{courseId}            {midterm?, final?} — 시험을 안 보는 과목은 끈다
     GET    /api/study-calendar?start=&end=          공부 캘린더 — 날짜마다 과목·시간·분량 + 그날의 시험
@@ -86,7 +86,7 @@ def calendar_events(start: Optional[str] = None, end: Optional[str] = None,
 
 
 def today_block(get_courses: Optional[CoursesGetter] = None) -> dict:
-    """'오늘 공부: 운영체제 15쪽 (38분)' — F10 아침 브리핑이 읽는다 (F5-R36)."""
+    """'오늘 공부: 운영체제 15쪽 (38분)' — C4 아침 브리핑이 읽는다 (F5-R36)."""
     with store.connect() as con:
         return service.today_block(con, None, service.course_map(get_courses))
 

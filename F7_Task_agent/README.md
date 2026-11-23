@@ -94,7 +94,7 @@ python desktop/cli.py tasks json                          /api/priority 응답 �
 | 메서드 · 경로 | 내용 |
 |---|---|
 | `GET /api/priority?course=&top=3` | 급한 순 목록(`items` — F6 과제 값 + `group·rank·reason·estimatedHours·estimateSource·remainingHours·neededHours·slackHours·short·stale`) · 그룹 헤더(`groups` — 건수·합계·접힘) · `today`(오늘 남은 시간) · `top`(상위 N건) |
-| `GET /api/priority/top?n=3` | 상위 N건 + 총 소요시간 + 한 줄 — F10 아침 브리핑 · F9 대화 (F7-R33) |
+| `GET /api/priority/top?n=3` | 상위 N건 + 총 소요시간 + 한 줄 — C4 아침 브리핑 · F9 대화 (F7-R33) |
 | `GET /api/settings/priority` | 지금 설정 + 기본값 + 고친 칸 + 유형 이름 · 범위 |
 | `PATCH /api/settings/priority` | `{safetyFactor?, defaultHours?: {assignment·quiz·video·project}, bedTime?}` — `null` 은 그 칸을 기본값으로, `{reset: true}` 는 전부 |
 | `PATCH /api/assignments/{id}` *(F6)* | `{estimatedHours}` 과제별 소요시간 (`null` = 기본값으로) |

@@ -129,7 +129,7 @@ python desktop/cli.py attendance clear                          # 출결 기록�
 | POST / GET | `/api/attendance/timetable/import` | 시간표 자동으로 가져오기 / 진행 상태 |
 | PUT | `/api/attendance/semester` | 개강·종강·휴업일 직접 입력 |
 | GET / PUT / DELETE | `/api/attendance/periods` | 교시 ↔ 시각 / 고치기 / 학교 기본값으로 |
-| GET | `/api/attendance/today` | 오늘 수업 + 위험 과목 (F10 브리핑·F9 대화용) |
+| GET | `/api/attendance/today` | 오늘 수업 + 위험 과목 (C4 브리핑·F9 대화용) |
 | GET | `/api/attendance/alerts` | 만든 경고 이력 |
 
 ## 지키는 선

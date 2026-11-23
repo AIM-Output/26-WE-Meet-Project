@@ -1,6 +1,6 @@
 """③ 내 단과대학 · ④ 내 학부 홈페이지 공지 — K2Web Wizard CMS (전남대 단과대학·학부 사이트가 모두 같은 구조).
 
-URL 패턴 /bbs/<site>/<board>/artclList.do (notice_agent/references/site-structure.md §2).
+URL 패턴 /bbs/<site>/<board>/artclList.do (F11_Scholarship_agent/references/site-structure.md §2).
   목록  table.board-table tbody tr → td.td-subject a[href=/bbs/<site>/<board>/<글번호>/artclView.do], td.td-date(YYYY.MM.DD)
         tr.notice = 상단 고정(말머리 필터를 걸어도 섞여 온다)
   상세  .view-info h2.view-title, .view-con, .view-file a[href$=download.do]

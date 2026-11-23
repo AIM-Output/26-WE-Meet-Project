@@ -61,7 +61,7 @@ def ranked() -> list[dict]:
 
 
 def brief(n: int = 3) -> dict:
-    """'먼저 할 것' 상위 n건 + 총 소요시간 — F10 아침 브리핑·F9 대화가 읽는다 (F7-R33)."""
+    """'먼저 할 것' 상위 n건 + 총 소요시간 — C4 아침 브리핑·F9 대화가 읽는다 (F7-R33)."""
     if not f7:
         return {"items": [], "totalHours": 0, "totalText": "", "text": "", "overdue": 0}
     try:

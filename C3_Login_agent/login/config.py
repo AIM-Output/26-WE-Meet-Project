@@ -3,7 +3,7 @@
 전남대 SSO(sso.jnu.ac.kr) 한 번의 로그인으로 e클래스(sel.jnu.ac.kr)·학사정보시스템(hakstd.jnu.ac.kr)이 같이 열린다.
 그 로그인을 여러 기능이 같이 쓰므로 한 폴더에 모았다.
 
-    F6 e클래스 수집 · C2 프로필 가져오기 · F2 기이수성적 · F11 장학 카탈로그(notice_agent) …
+    F6 e클래스 수집 · C2 프로필 가져오기 · F2 기이수성적 …
 
 이 폴더가 가진 것 (다른 기능은 **빌려 쓰기만** 한다)
   - Chromium               앱 데이터 폴더/pw-browsers (개발 모드는 desktop/sidecar/.venv/pw-browsers) — desktop.py 가 처음 실행 때 받는다

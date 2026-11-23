@@ -27,7 +27,7 @@ const TONE: Record<NonNullable<BriefingItem["tone"]>, string> = {
   muted: "text-faint",
 };
 
-const SHOW = 5; // 섹션당 최대 5줄 — 넘으면 '+N건 더' (F10 10절 분량)
+const SHOW = 5; // 섹션당 최대 5줄 — 넘으면 '+N건 더' (C4 10절 분량)
 
 function SectionBlock({ s }: { s: BriefingSection }) {
   const shown = s.items.slice(0, SHOW);

@@ -8,7 +8,7 @@
     cli.py briefing settings [--on|--off] [--time 07:30] [--keep 14] [--reset]
 
 today·make 는 재료를 **대시보드 백엔드의 기능 어댑터**(univ_us_local/backend/app)에서 빌린다 — 앱이 쓰는 것과 같은 함수라
-숫자가 화면과 같다(F10-R17). list·show·settings 는 이 폴더의 data/briefing.db 만 읽는다.
+숫자가 화면과 같다(C4-R17). list·show·settings 는 이 폴더의 data/briefing.db 만 읽는다.
 """
 from __future__ import annotations
 

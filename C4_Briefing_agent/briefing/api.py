@@ -1,8 +1,8 @@
 """대시보드(univ_us_local)에 붙이는 C4 브리핑 API — FastAPI APIRouter. (Frontend-Route 15-6)
 
     GET    /api/briefing/today            오늘 브리핑 — 만들 때가 됐는데 없으면 지금 만든다(catchup). state: ready·before·pending·off
-    POST   /api/briefing/regenerate       다시 만들기 — 지금 시점 기준으로 오늘 것을 덮어쓴다 (F10-R24)
-    GET    /api/briefings?limit=30        지난 브리핑 목록(최신 순, 본문 없이) (F10-R22)
+    POST   /api/briefing/regenerate       다시 만들기 — 지금 시점 기준으로 오늘 것을 덮어쓴다 (C4-R24)
+    GET    /api/briefings?limit=30        지난 브리핑 목록(최신 순, 본문 없이) (C4-R22)
     GET    /api/briefings/{date}          그날 브리핑 스냅샷 전체
     GET    /api/settings/briefing         켜기 · 시각 · 보관 기간 (+ 기본값 · 고친 칸 · LLM 설정 여부)
     PATCH  /api/settings/briefing         {enabled?, time?, keepDays?} — null 은 그 칸을 기본값으로, {reset: true} 는 전부

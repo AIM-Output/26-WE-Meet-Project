@@ -3,7 +3,7 @@
     POST   /api/placement/preview               {range?, exclude?, settings?} → 주간 격자 · 블록 · 미배치 · 하루 합계 · 조정 제안
     POST   /api/placement                       {signature, at, range?, exclude?} → 학습 블록 등록 (placedBy=auto)
     GET    /api/placement/conflicts             겹친 블록 · 끝낸 작업의 블록 (F8-R31 · S08)
-    GET    /api/placement/today                 오늘 학습 블록 — F10 브리핑 · F9 대화
+    GET    /api/placement/today                 오늘 학습 블록 — C4 브리핑 · F9 대화
     DELETE /api/placement?from=&to=             기간 안의 자동 배치 블록 지우기 (고정·완료 제외, F8-S10)
     PATCH  /api/placement/blocks/{id}           {start, end} 옮기기(→ 고정) · {done} 완료 체크 · {fixed: false} 고정 풀기
     DELETE /api/placement/blocks/{id}           블록 하나 지우기

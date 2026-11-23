@@ -6,7 +6,6 @@
     python -m student set-dept <deptCode> [majorCode]
     python -m student import [--interactive]       학사정보시스템에서 가져오기 (C3_Login_agent 의 .venv 로 띄운다)
     python -m student master-sync [--year 2026]    교육과정검색에서 학과 목록 다시 받기
-    python -m student export-notice                F11(notice_agent/data/profile.json)로 넘기기
     python -m student clear                        내 정보 전부 지우기
 """
 from __future__ import annotations
@@ -15,7 +14,7 @@ import argparse
 import json
 import sys
 
-from . import jobs, master, master_crawl, notice_bridge, schema, service, store
+from . import jobs, master, master_crawl, schema, service, store
 
 
 def _value(raw: str):
@@ -41,7 +40,6 @@ def main(argv: list[str] | None = None) -> int:
     i.add_argument("--interactive", action="store_true")
     m = sub.add_parser("master-sync")
     m.add_argument("--year", type=int)
-    sub.add_parser("export-notice")
     sub.add_parser("clear")
     a = ap.parse_args(argv)
 
@@ -98,11 +96,6 @@ def main(argv: list[str] | None = None) -> int:
             old = master.load() if master.load().get("colleges") else None
             master.save_local(master.merge_retired(new, old))
             print(master.summary())
-            return 0
-        if a.cmd == "export-notice":
-            with store.connect() as con:
-                p = service.get(con)["profile"]
-            print(f"저장: {notice_bridge.export(p)}")
             return 0
         if a.cmd == "clear":
             with store.connect() as con:

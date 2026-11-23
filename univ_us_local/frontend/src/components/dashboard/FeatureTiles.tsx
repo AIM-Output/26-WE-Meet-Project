@@ -121,7 +121,7 @@ export default function FeatureTiles() {
             : act.match
               ? { value: `내 관심사 ${act.match}건`, sub: act.soon ? `담은 것 마감 임박 ${act.soon}건` : act.next ? `가장 가까운 마감 D-${act.next.daysLeft} · ${act.next.title}` : `관련 있음 ${act.related ?? 0}건`, tone: act.soon ? "warn" : "ok" }
               : { value: "없음", sub: `지금 관심사에 맞는 기회가 없습니다${act.related ? ` · 관련 있음 ${act.related}건` : ""}` },
-      // F10-S08 — 오늘 것이 있으면 한 줄 요약(건수), 놓친 브리핑이면 주황. 꺼져 있어도 타일은 /briefing 으로
+      // C4-S08 — 오늘 것이 있으면 한 줄 요약(건수), 놓친 브리핑이면 주황. 꺼져 있어도 타일은 /briefing 으로
       briefing: !brf?.available
         ? { value: "—", sub: "브리핑 기능을 불러오지 못했습니다" }
         : !brf.enabled

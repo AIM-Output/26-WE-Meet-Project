@@ -132,7 +132,7 @@ python desktop/cli.py placement settings --day 08:00-18:00 --weekend on --lunch 
 | `POST /api/placement/preview` | `{range?, exclude?, settings?}` → `days`(격자) · `blocks`(taskType assignment·todo·study) · `kept` · `unplaced` · `deferred` · `dailyTotals` · `studyTargets` · `studyMinutes` · `adjustments` · `existing` · `state` · `signature` · `at` |
 | `POST /api/placement` | `{signature, at, range?, exclude?}` → 등록 (`409` = 다시 계산) · `created` · `studyCreated`(공부 캘린더로 간 수) |
 | `GET /api/placement/conflicts` | 겹친 블록 + 배너 문구 |
-| `GET /api/placement/today` | 오늘 블록 + 한 줄 — F10 아침 브리핑 · F9 대화 |
+| `GET /api/placement/today` | 오늘 블록 + 한 줄 — C4 아침 브리핑 · F9 대화 |
 | `DELETE /api/placement?from=&to=` | 기간 안의 자동 배치 블록만 지우기 |
 | `PATCH /api/placement/blocks/{id}` | `{start, end}` 옮기기(→ 고정) · `{done}` · `{fixed: false}` |
 | `DELETE /api/placement/blocks/{id}` | 블록 하나 지우기 (공부 캘린더의 삭제도 이것) |
@@ -156,4 +156,4 @@ python -m pytest tests -q          # 개발 venv(desktop/sidecar/.venv)
 
 - 공부 블록을 완료해도 F5 진도율(자료 체크·계획 블록)은 바뀌지 않는다 — 공강 공부를 진도에 넣을지는 F5 화면 작업 때.
 - Q4 강의실 간 거리로 이동 시간 — 2차. 할 일의 소요시간(지금 일괄 30분)을 할 일마다 정할지 — 시범 사용 후.
-- F10 브리핑은 아직 화면에서 조립한다 — 오늘 블록은 `GET /api/placement/today` 로 준비돼 있다.
+- ~~브리핑은 아직 화면에서 조립한다~~ — 2026-10-25 부터 C4 브리핑이 오늘 블록(`today()` · `GET /api/placement/today`)을 '오늘 일정'에 싣는다.

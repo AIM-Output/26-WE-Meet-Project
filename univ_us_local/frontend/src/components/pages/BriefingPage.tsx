@@ -16,7 +16,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 import { parseLocal, WEEKDAY_KO } from "@/lib/dates";
 
 // /briefing — 왼쪽 날짜 목록(보관 기간, 기본 30일) + 오른쪽 그날 스냅샷 (Frontend-Route 15-4). 폰은 목록 → 본문 2단계.
-// 지난 날짜는 새로 만들지 않는다(F10-R03). '다시 만들기'는 오늘 것만.
+// 지난 날짜는 새로 만들지 않는다(C4-R03). '다시 만들기'는 오늘 것만.
 
 const label = (date: string) => {
   const d = parseLocal(date);

@@ -1,7 +1,13 @@
 # 전남대 장학 공지 소스 — 사이트 구조 (2026-09-13 실측)
 
-수집기가 의존하는 URL 규칙·셀렉터를 적어 둔다. 사이트가 개편되면 **이 문서와 `scripts/sources/`의 해당 파일을 같이** 고친다.
-확인 방법: `run.cmd collect --dry-run --source <key>` 로 목록이 잡히는지 → 안 잡히면 여기 셀렉터부터 대조.
+수집기가 의존하는 URL 규칙·셀렉터를 적어 둔다. 사이트가 개편되면 **이 문서와 해당 수집기를 같이** 고친다.
+
+> 예전 장학 도구 `notice_agent` 의 문서를 옮겨 왔다 (2026-11-23 — notice_agent 는 저장소에서 걷어냈고 git 기록에 남아 있다).
+> 아래의 소스 key·수집기 kind·`scripts/…`·`DOC_PARSER` 는 그 도구의 이름이다. 지금 이 구조를 읽는 코드:
+> - 게시판(1·2·3·5절) — F11 `scholarship/sources/`(`aspx.py`·`k2web.py`·`coss.py` …), F1 `bachelor/sources/`(`jnu_board.py`·`k2web.py`)
+> - 학사정보시스템(4절) — C2 `student/hakstd.py`(대시보드·기이수성적), F2 `graduation/hakstd.py`(기이수성적).
+>   장학 메뉴(`Jang…`)는 로그인이 필요해 지금 읽는 코드가 없다 — F11 은 공개 '상시 장학 안내' 페이지로 대신한다(`catalog.py`)
+> - 지금 쓰는 장학 원천 목록은 [../directory/sources.json](../directory/sources.json) (2026-10-09 실측)
 
 | # | 소스 key | 사이트 | 수집기 kind | 로그인 | 비고 |
 |---|---|---|---|---|---|
@@ -99,7 +105,7 @@
 
 - 목록: `https://international.jnu.ac.kr/Board/Board.aspx?BoardID=3&Mode=List&PageNum=N` → `table.board_list#…grvwList tr` (tbody 없음), `td.title a[href*="Mode=View"&"Seq=<글번호>"]` — **글 번호는 `Seq`**, 날짜 `YYYY-MM-DD`
 - 상세: `Board.aspx?BoardID=3&Mode=View&Seq=<글번호>` → `.board_view_wrap .view_head p.title`, `span[id$=lbl_name]`, `span[id$=lbl_date]`, 첨부 `.view_info_file a[href*="ByteToFile.aspx?Seq=…&filename=…"]`, 본문 `.view_body .con`
-- **TLS**: 서버가 중간 인증서를 보내지 않아 certifi 만으로는 `CERTIFICATE_VERIFY_FAILED`. `verify=False` 대신 `truststore` 로 OS 신뢰 저장소를 쓴다 (`scripts/http.py`).
+- **TLS**: 서버가 중간 인증서를 보내지 않아 certifi 만으로는 `CERTIFICATE_VERIFY_FAILED`. `verify=False` 대신 `truststore` 로 OS 신뢰 저장소를 쓴다 (지금은 F11 `scholarship/sources/base.py`).
 
 ## 6. 포털 portal.jnu.ac.kr (참고)
 

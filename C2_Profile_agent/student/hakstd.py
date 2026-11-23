@@ -7,7 +7,7 @@
 로그인: 저장된 세션(C3_Login_agent/state/storage_state.json) → 안 되면 C3_Login_agent 의 reauthenticate(쿠키 복구 →
 저장된 자격증명으로 무인 로그인) → 그래도 안 되고 --interactive 면 창을 띄워 직접 로그인. 비밀번호는 C3_Login_agent 코드만 다룬다.
 
-읽는 곳 (notice_agent/references/site-structure.md §4, 2026-09-13 실측)
+읽는 곳 (F11_Scholarship_agent/references/site-structure.md §4, 2026-09-13 실측)
     /Home/DashBoard   div.infotext  "이름 | 학번 | N 학년 | 재학 | 성별 | 주전공 : <단과대> / <학부>"   #Score "3.xx / 4.5"
     /web/Sung/Sung010 [조회] → table#…gvData (년도·학기·성적·학점·교과목상태) → 취득학점·이수 학기·직전 학기 학점
 이름·학번 칸은 **읽지 않는다** — 정규식으로 학년·학적·주전공만 꺼낸다 (C2-D5).

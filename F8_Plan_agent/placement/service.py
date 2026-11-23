@@ -630,7 +630,7 @@ def delete_auto(con: sqlite3.Connection, start: Optional[str] = None, end: Optio
 # ---------------------------------------------------------------- 브리핑 · 상태
 
 def today(con: sqlite3.Connection, now: Optional[datetime] = None) -> dict:
-    """오늘 학습 블록 — F10 아침 브리핑 · F9 대화가 읽는다. '19:00 운영체제 중간고사 공부 · 21:00 품질 보고서'."""
+    """오늘 학습 블록 — C4 아침 브리핑 · F9 대화가 읽는다. '19:00 운영체제 중간고사 공부 · 21:00 품질 보고서'."""
     now = now or datetime.now()
     rows = store.rows(con, now.date().isoformat(), now.date().isoformat())
     items = [_row_view(r) for r in rows]

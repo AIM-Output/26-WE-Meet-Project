@@ -160,7 +160,7 @@ BUILTIN_SOURCES: list[dict] = [
 ]
 # 목록에 없는 원천(예전 기본값 aisw_haksa · 사용자가 추가했던 게시판)은 seed 때 지운다 — my_dept 가 대신한다
 
-# ── LLM (선택) — notice_agent·Univ-Us_AI 와 같은 슬롯 이름. 비어 있으면 규칙 추출만 한다 ──
+# ── LLM (선택) — Univ-Us_AI 와 같은 슬롯 이름. 비어 있으면 규칙 추출만 한다 ──
 LLM_BASE_URL = os.environ.get("LLM_MAIN_BASE_URL", "").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_MAIN_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MAIN_MODEL", "")

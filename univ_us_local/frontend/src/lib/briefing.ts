@@ -1,4 +1,4 @@
-// C4 브리핑 (요구사항 F10 아침 브리핑) — C4_Briefing_agent/briefing/api.py 와 짝.
+// C4 브리핑 (요구사항정의서 C4 절 — 아침 브리핑) — C4_Briefing_agent/briefing/api.py 와 짝.
 // 브리핑은 서버가 하루 한 번 만드는 **스냅샷**이다. 화면은 그리기만 하고 숫자를 다시 계산하지 않는다(Frontend-Route 15-6).
 
 import type { CalEvent } from "./types";
@@ -108,7 +108,7 @@ export interface BriefingStatus {
 
 const hm = (iso: string) => iso.slice(11, 16);
 
-/** 생성 표시 — '08:00 생성' · '놓친 브리핑 · 08:00 예정 → 10:24 생성' · '11:02 다시 만듦' (F10-R23) */
+/** 생성 표시 — '08:00 생성' · '놓친 브리핑 · 08:00 예정 → 10:24 생성' · '11:02 다시 만듦' (C4-R23) */
 export function generatedLabel(b: Pick<Briefing, "source" | "missed" | "scheduledFor" | "generatedAt" | "firstGeneratedAt">): string {
   if (b.source === "manual") return `${hm(b.generatedAt)} 다시 만듦`;
   if (b.missed) return `놓친 브리핑 · ${b.scheduledFor} 예정 → ${hm(b.firstGeneratedAt)} 생성`;

@@ -1,6 +1,6 @@
 """전남대 ASP.NET 게시판 — 대표 홈페이지 공지(board.aspx, 글 번호 key) · 국제협력본부·취업진로포털(Board.aspx, 글 번호 Seq).
 
-2026-10-09 실측 (notice_agent/references/site-structure.md §1·§5 와 같다)
+2026-10-09 실측 (F11_Scholarship_agent/references/site-structure.md §1·§5 와 같다)
   목록  table.board_list tr → td.title a[href] (글 번호는 URL 의 key= / Seq=), 셋째 칸 작성자(부서), YYYY-MM-DD 칸
         span.label '공지' = 상단 고정(매 페이지 반복 → 번호로 한 번만)
   상세  .board_view_wrap  .view_head h3|.title · span[id$=lbl_Writer|lbl_name] · span[id$=lbl_WriteDate|lbl_date]

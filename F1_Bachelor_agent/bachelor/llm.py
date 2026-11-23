@@ -1,4 +1,4 @@
-"""(선택) LLM 보조 추출 — OpenAI 호환 /chat/completions. 슬롯은 notice_agent 와 같은 LLM_MAIN_* (.env).
+"""(선택) LLM 보조 추출 — OpenAI 호환 /chat/completions. 슬롯은 LLM_MAIN_* (.env).
 
 설정이 없으면 아무것도 하지 않는다(규칙 추출만 → 애매한 것은 '확인 필요', F1 9절 'LLM 미설정').
 

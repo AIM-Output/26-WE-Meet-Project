@@ -42,7 +42,7 @@ def deadline(eid, title, due, course="운영체제", etype="과제", done=False)
 
 
 def ingredients():
-    """하루치 재료 — 요구사항정의서 F10 5절 템플릿 예시를 이 앱의 실제 모양으로 옮긴 것 (2026-10-26 월)."""
+    """하루치 재료 — 요구사항정의서 C4 5절 템플릿 예시를 이 앱의 실제 모양으로 옮긴 것 (2026-10-26 월)."""
     return {
         "classes": {
             "date": "2026-10-26",

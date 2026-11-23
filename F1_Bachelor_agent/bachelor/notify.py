@@ -182,7 +182,7 @@ def mark_all_read(con: sqlite3.Connection) -> int:
 
 
 def upcoming(con: sqlite3.Connection, profile: Optional[dict], days: int = 3, today: Optional[date] = None) -> list[dict]:
-    """오늘부터 days 일 안에 시작하거나 끝나는 내 학사 일정 — F10 아침 브리핑이 쓴다 (F1-R35).
+    """오늘부터 days 일 안에 시작하거나 끝나는 내 학사 일정 — C4 아침 브리핑이 쓴다 (F1-R35).
     한 달짜리 기간의 한가운데처럼 '진행 중이지만 곧 끝나지 않는' 일정은 넣지 않는다."""
     today = today or date.today()
     until = today + timedelta(days=days)

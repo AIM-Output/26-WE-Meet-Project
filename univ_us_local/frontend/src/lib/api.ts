@@ -377,7 +377,7 @@ export const api = {
   patchAvailability: (body: { [K in keyof AvailabilitySettings]?: AvailabilitySettings[K] | null } & { reset?: boolean }) =>
     req<AvailabilityView>("/settings/availability", json("PATCH", body)),
 
-  // C4 브리핑 (요구사항 F10 · Frontend-Route 15-6) — 서버가 하루 한 번 만든 스냅샷. 화면은 계산하지 않는다.
+  // C4 브리핑 (요구사항정의서 C4 절 · Frontend-Route 15-6) — 서버가 하루 한 번 만든 스냅샷. 화면은 계산하지 않는다.
   /** 오늘 브리핑 — 만들 때가 됐는데 없으면 서버가 지금 만든다(놓친 브리핑) */
   briefingToday: () => req<BriefingToday>("/briefing/today"),
   /** 다시 만들기 — 지금 기준으로 오늘 것을 덮어쓴다 */

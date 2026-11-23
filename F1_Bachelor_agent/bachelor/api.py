@@ -3,7 +3,7 @@
     GET    /api/academic/events                 학기 목록 + 학사 일정 전체 (탭은 화면에서 거른다)
     GET    /api/academic/events/{id}            하나
     PATCH  /api/academic/events/{id}            {status: approved|hidden|restore, start, end, memo, pinned, reminders}
-    GET    /api/academic/upcoming?days=3        오늘부터 N일 안의 내 학사 일정 (F10 브리핑)
+    GET    /api/academic/upcoming?days=3        오늘부터 N일 안의 내 학사 일정 (C4 브리핑)
     GET    /api/academic/status                 원천별 수집 상태 · 확인 필요 건수 (대시보드 /api/status 에도 실린다)
     GET    /api/academic/settings · PUT         알림 기준 시각
     GET    /api/sources                         수집 원천 4곳 (① 학사일정 표 ② 학사안내 ③ 내 단과대학 ④ 내 학부) + 내 소속 홈페이지·게시판
