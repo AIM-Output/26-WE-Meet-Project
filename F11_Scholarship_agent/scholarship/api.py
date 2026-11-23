@@ -1,21 +1,17 @@
 """대시보드(univ_us_local)에 붙이는 F11 API — FastAPI APIRouter. (Frontend-Route 16절 호출표)
 
     GET    /api/scholarships                          목록(판정·진행 상태) + 건수 + 수집 상태 + 프로필 요약
-    GET    /api/scholarships/items/{id}               상세 — 조건별 대조표 · 본문 · 첨부 · 초안 · 진행 상태 · 이전 초안 목록
+    GET    /api/scholarships/items/{id}               상세 — 조건별 대조표 · 본문 · 첨부 · 진행 상태
     PATCH  /api/scholarships/items/{id}               {verdict: eligible|ineligible|null, reason} 판정 뒤집기·되돌리기
-                                                      {progress: draft|approved|applied|selected|not_selected|skipped|null, note, amount}
-    POST   /api/scholarships/items/{id}/draft         초안 만들기 {borrowFrom?} (재료가 없으면 409 needsMaterials)
-    PUT    /api/scholarships/items/{id}/draft         초안 고치기 {body}
-    DELETE /api/scholarships/items/{id}/draft
+                                                      {progress: approved(신청 예정)|applied|selected|not_selected|skipped|null, note, amount}
     POST   /api/scholarships/items/{id}/calendar      신청 마감 → 내 캘린더 (C1)
     POST   /api/scholarships/items/{id}/todos         {index} 제출 서류 → 할 일 (마감 하루 전)
     GET    /api/scholarships/history                  이력 — 학기별 신청·선정·금액
     GET    /api/scholarships/sources                  원천 — 학교 전체 · 부서 · 사업단 · 내 소속 (내 학과와 관련 여부 · 켜짐)
     PATCH  /api/scholarships/sources/{key}            {enabled: true|false|null(기본값으로)}
     POST   /api/scholarships/sync                     지금 수집 {sources?}
-    GET|PUT|DELETE /api/scholarships/materials         초안 재료(기본 정보 basic{이름·학번·소속·학년·연락처·이메일} · 진로·활동·형편·강조점)
-                                                      — 프로필과 따로, 따로 지운다. 기본 정보는 LLM 에 보내지 않는다
 
+신청서 초안(/draft)·초안 재료(/materials)는 2026-11-19 폐기했다 — 요구사항정의서 F11 1절 '신청서 초안 폐기'.
 의존성: fastapi·pydantic + 표준 라이브러리. 수집(requests·bs4)은 runner 가 자식 프로세스로 띄운다.
 프로필(C2, 민감정보 포함)은 대시보드가 get_profile 로, 캘린더·할 일은 add_event 로, 알림은 push 로 넘겨준다.
 """
@@ -37,18 +33,10 @@ AddEvent = Callable[[dict], Optional[dict]]
 class ItemPatch(BaseModel):
     verdict: Optional[Literal["eligible", "ineligible"]] = None
     reason: Optional[str] = Field(default=None, max_length=300)
-    progress: Optional[Literal["draft", "approved", "applied", "selected", "not_selected", "skipped"]] = None
+    progress: Optional[Literal["approved", "applied", "selected", "not_selected", "skipped"]] = None
     note: Optional[str] = Field(default=None, max_length=2000)
     amount: Optional[str] = Field(default=None, max_length=100)
     askedApplied: Optional[bool] = None
-
-
-class DraftIn(BaseModel):
-    borrowFrom: Optional[str] = Field(default=None, max_length=200)
-
-
-class DraftBody(BaseModel):
-    body: str = Field(max_length=30000)
 
 
 class TodoIn(BaseModel):
@@ -61,24 +49,6 @@ class SourcePatch(BaseModel):
 
 class SyncIn(BaseModel):
     sources: Optional[list[str]] = None
-
-
-class BasicIn(BaseModel):
-    """초안 기본 정보 — 이 PC 의 초안 재료에만 둔다(프로필·LLM 에는 가지 않는다, basicinfo)."""
-    name: str = Field(default="", max_length=40)
-    studentId: str = Field(default="", max_length=20)
-    department: str = Field(default="", max_length=80)
-    grade: str = Field(default="", max_length=10)
-    phone: str = Field(default="", max_length=30)
-    email: str = Field(default="", max_length=80)
-
-
-class MaterialsIn(BaseModel):
-    careerGoal: str = Field(default="", max_length=2000)
-    activities: str = Field(default="", max_length=2000)
-    hardship: str = Field(default="", max_length=2000)
-    highlights: str = Field(default="", max_length=2000)
-    basic: Optional[BasicIn] = None
 
 
 _deliver_cache: dict = {"at": 0.0, "stamp": None}
@@ -112,9 +82,7 @@ def touch() -> None:
         store.touch(con)
 
 
-def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = None,
-                 shared_basic: Optional[service.BasicGetter] = None) -> APIRouter:
-    """shared_basic = 대외활동(F12) 초안 재료의 기본 정보 — 장학 쪽 기본 정보가 비어 있을 때 미리 채운다(대시보드가 넘겨준다)."""
+def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = None) -> APIRouter:
     r = APIRouter(prefix="/api/scholarships", tags=["F11 장학"])
 
     def _404(nid: str):
@@ -142,36 +110,6 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
             _404(nid)
         except service.Invalid as e:
             raise HTTPException(422, str(e))
-
-    @r.post("/items/{nid}/draft")
-    def make_draft(nid: str, body: DraftIn) -> dict:
-        profile = get_profile()
-        with store.connect() as con:
-            mats = service.materials(con, profile)
-            if not mats["exists"] and not body.borrowFrom:
-                raise HTTPException(409, "needsMaterials")
-            try:
-                return service.make_draft(con, nid, profile, body.borrowFrom, other_basic=shared_basic)
-            except service.NotFound:
-                _404(nid)
-            except service.Invalid as e:
-                raise HTTPException(422, str(e))
-
-    @r.put("/items/{nid}/draft")
-    def put_draft(nid: str, body: DraftBody) -> dict:
-        with store.connect() as con:
-            try:
-                service.save_draft_body(con, nid, body.body)
-            except service.NotFound:
-                raise HTTPException(404, "초안이 없습니다")
-            return service.detail(con, nid, get_profile())     # type: ignore[return-value]
-
-    @r.delete("/items/{nid}/draft")
-    def delete_draft(nid: str) -> dict:
-        with store.connect() as con:
-            store.delete_draft(con, nid)
-            store.touch(con)
-            return service.detail(con, nid, get_profile()) or _404(nid)
 
     @r.post("/items/{nid}/calendar")
     def to_calendar(nid: str) -> dict:
@@ -224,22 +162,6 @@ def build_router(get_profile: ProfileGetter, add_event: Optional[AddEvent] = Non
     @r.post("/sync")
     def sync(body: SyncIn = SyncIn()) -> dict:
         return runner.start_sync(body.sources, get_profile(), "button")
-
-    @r.get("/materials")
-    def get_materials() -> dict:
-        with store.connect() as con:
-            return service.materials(con, get_profile(), shared_basic)
-
-    @r.put("/materials")
-    def put_materials(body: MaterialsIn) -> dict:
-        with store.connect() as con:
-            return service.put_materials(con, body.model_dump(exclude_unset=True), get_profile(), shared_basic)
-
-    @r.delete("/materials")
-    def delete_materials() -> dict:
-        with store.connect() as con:
-            service.delete_materials(con)
-            return service.materials(con, get_profile(), shared_basic)
 
     return r
 

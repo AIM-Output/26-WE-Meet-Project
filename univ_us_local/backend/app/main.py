@@ -212,15 +212,17 @@ if (_f8_router := placement.router(_busy_events)) is not None:
     app.include_router(_f8_router)
 
 
-# F11 장학 공지 매칭·신청서 초안 — /api/scholarships* (F11_Scholarship_agent/scholarship/api.py)
+# F11 장학 공지 매칭 — /api/scholarships* (F11_Scholarship_agent/scholarship/api.py)
 # 학교 장학안내 · 부서 · 사업단 · 내 단과대학·학과 게시판과 상시 장학 안내를 모아 C2 프로필(민감정보 포함)과 조건별로 대조한다.
-# 신청 마감은 '캘린더에 넣기'로 C1 내 일정이, 제출 서류는 할 일이 된다. 제출은 하지 않는다 — 초안·체크리스트·링크까지.
+# 신청 마감은 '캘린더에 넣기'로 C1 내 일정이, 제출 서류는 할 일이 된다. 제출은 하지 않는다 — 판정 근거·체크리스트·링크·마감 알림까지
+# (신청서 초안은 2026-11-19 폐기).
 if (_f11_router := scholarship.router()) is not None:
     app.include_router(_f11_router)
 
 # F12 대외활동(맞춤 기회) — /api/opportunities* (F12_Activity_agent/activity/api.py)
-# F11 과 같은 원천(게시판 수집기·원천 목록을 빌려 쓴다)에서 장학이 아닌 공지 — 교내 프로그램·공모전·대외활동·취업·해외·창업·기자재 대여 … —
-# 를 모아 C2 프로필의 관심사로 '내 관심사 / 관련 있음 / 관심 밖'을 가른다. 담으면 신청 마감이 C1 내 일정이 되고, 신청서 초안까지 만든다(제출은 하지 않는다).
+# F11 과 같은 원천(게시판 수집기·원천 목록을 빌려 쓴다)에서 장학이 아닌 공지 — 교내 프로그램·공모전·대외활동·취업·해외·창업·
+# 기자재·공간 대여·연구·행사 … (학사 일정에 이미 있을 법한 안내는 뺀다) — 를 모아 C2 프로필의 관심사로 '내 관심사 / 관련 있음 / 관심 밖'을
+# 가른다. 담으면 신청 마감이 C1 내 일정이 된다(제출은 하지 않는다 · 신청서 초안은 2026-11-19 폐기).
 if (_f12_router := activity.router()) is not None:
     app.include_router(_f12_router)
 

@@ -2,7 +2,7 @@
 
   - 새 공지(첫 수집 = 기준선 이후) 중 **'내 관심사'만 즉시** (F12-R30) · 관련 있음·관심 밖·끝난 공지는 알리지 않는다
   - 즉시 알림은 **하루 5건까지**, 넘으면 그날 묶음 한 줄 '관심 기회 N건이 더 있습니다'를 고쳐 쓴다 (F12-R31)
-  - 마감 D-3 — 담아 둔 것만 · 초안 대기·제출 예정은 D-3·D-1 (09:00 이후 첫 배달, F12-R32)
+  - 마감 D-3 — 담아 둔 것만 (09:00 이후 첫 배달, F12-R32 — 초안 대기·제출 예정의 D-1 은 2026-11-19 초안 폐기로 없앴다)
   - 같은 공지로 두 번 알리지 않는다 — user_state.alerted_at · deadline_alerts (F12-R33)
   - **관심사가 비어 있으면 알리지 않는다** (F12-R14) — 그동안 들어온 글도 '본 것'으로 표시해 관심사를 고른 순간 알림이 쏟아지지 않게
 알림을 누르면 그 공지 상세(/opportunities?item=…)로 간다.
@@ -62,9 +62,7 @@ def deliver(con: sqlite3.Connection, profile: Optional[dict], push: Push, now: O
     h, m = (int(x) for x in C.ALERT_TIME.split(":"))
     if (now.hour, now.minute) >= (h, m):
         for i in items:
-            days = C.SAVED_DEADLINE_DAYS if i["progress"] == "saved" else (
-                C.DRAFT_DEADLINE_DAYS if i["progress"] in ("draft", "approved") else ())
-            if i["daysLeft"] not in days:
+            if i["progress"] != "saved" or i["daysLeft"] not in C.SAVED_DEADLINE_DAYS:
                 continue
             st = states.get(i["id"])
             done = json.loads(st["deadline_alerts"]) if st and st["deadline_alerts"] else []

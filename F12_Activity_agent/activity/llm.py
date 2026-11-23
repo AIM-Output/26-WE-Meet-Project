@@ -1,6 +1,6 @@
-"""LLM 호출 (선택) — OpenAI 호환 chat/completions 를 표준 라이브러리(urllib)로. 슬롯 이름은 F1·F11 과 같다(LLM_MAIN_*).
+"""LLM 호출 (선택) — OpenAI 호환 chat/completions 를 표준 라이브러리(urllib)로. 슬롯 이름은 F1·C4 와 같다(LLM_MAIN_*).
 
-설정이 없으면 available=False — 관련도는 키워드·소속으로만(F12-R24), 초안 문단은 골격+빈칸으로 간다.
+설정이 없으면 available=False — 관련도는 키워드·소속으로만(F12-R24). 쓰는 곳은 관련도 판단(judge)뿐이다(초안은 2026-11-19 폐기).
 모델 선정은 AI팀 몫이라 코드에 모델 이름을 쓰지 않는다. 이름·학번은 어떤 프롬프트에도 넣지 않는다.
 """
 from __future__ import annotations

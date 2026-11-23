@@ -29,7 +29,7 @@ TODAY = date(2026, 10, 10)
 # 인공지능학부 3학년 — 관심사: AI·SW · 공모전, 키워드 '반도체', 제외 '대학원생'
 PROFILE = {
     "grade": 3, "enrollmentStatus": "재학", "semestersCompleted": 5, "college": "AI융합대학", "department": "인공지능학부",
-    "major": None, "draftContext": None,
+    "major": None,
     "interests": {"tags": ["AI·SW", "공모전·경진대회"], "keywords": ["반도체"], "exclude": ["대학원생"]},
 }
 
@@ -54,11 +54,12 @@ def add_notice(con, nid="www:1", title="[모집공고] 테스트 프로그램 �
                posted="2026-10-05", writer="학생과", unit_key=None, category=None, first_seen=None):
     """수집기를 거치지 않고 공지 한 건을 넣는다 (정보 추출은 수집기와 같은 build_info)."""
     from activity import collect, config as C, registry, store
-    from scholarship.textutil import content_hash, norm_title
+    from activity.extract import title_key
+    from scholarship.textutil import content_hash
     row = {"id": nid, "source": source, "source_name": "테스트", "unit_key": unit_key, "title": title,
            "url": f"https://example.invalid/{nid}", "posted_at": posted, "writer": writer, "category": category, "body": body,
            "attach_text": "", "attachments": [], "image_only": False, "content_hash": content_hash(title, body),
-           "title_key": norm_title(title), "dup_of": None}
+           "title_key": title_key(title), "dup_of": None}
     row["info"] = collect.build_info(row, registry.get(unit_key) if unit_key else None)
     row["extract_ver"] = C.EXTRACT_VERSION
     res = store.upsert_notice(con, row)

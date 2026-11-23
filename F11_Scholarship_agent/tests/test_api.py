@@ -24,19 +24,23 @@ def test_flow():
     assert ov["items"][0]["id"] == "www:1" and "sync" in ov
     d = c.get("/api/scholarships/items/www:1").json()
     assert d["reasons"] and d["documents"] == ["장학금 신청서 1부"]
-    assert c.post("/api/scholarships/items/www:1/draft", json={}).status_code == 409    # 재료부터
-    assert c.put("/api/scholarships/materials", json={"careerGoal": "AI 연구"}).json()["exists"]
-    d = c.post("/api/scholarships/items/www:1/draft", json={}).json()
-    assert d["draft"]["body"].startswith("# [신청서 초안]")
-    d = c.put("/api/scholarships/items/www:1/draft", json={"body": "고친 초안"}).json()
-    assert d["draft"]["body"] == "고친 초안"
     d = c.patch("/api/scholarships/items/www:1", json={"progress": "approved"}).json()
-    assert d["progress"] == "approved"
+    assert d["progress"] == "approved" and d["progressLabel"] == "신청 예정"
     assert c.patch("/api/scholarships/items/www:1", json={"progress": "bogus"}).status_code == 422
+    assert c.patch("/api/scholarships/items/www:1", json={"progress": "draft"}).status_code == 422
     d = c.post("/api/scholarships/items/www:1/calendar").json()
     assert d["onCalendar"]
     assert c.get("/api/scholarships/items/nope").status_code == 404
-    assert c.delete("/api/scholarships/materials").json()["exists"] is False
+
+
+def test_draft_routes_are_gone():
+    """신청서 초안 폐기(2026-11-19) — 초안·초안 재료 주소가 없다."""
+    with store.connect() as con:
+        add_notice(con, "www:1", "[장학안내] [(재)좋은장학재단] 장학생 선발", FULL)
+    c = client()
+    assert c.post("/api/scholarships/items/www:1/draft", json={}).status_code == 404
+    for method in ("get", "put", "delete"):
+        assert getattr(c, method)("/api/scholarships/materials").status_code in (404, 405)
 
 
 def test_sources_endpoint():

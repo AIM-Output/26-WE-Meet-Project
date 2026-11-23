@@ -47,6 +47,17 @@ def loads(s: Optional[str]) -> Any:
         return None
 
 
+def _drop_retired(con: sqlite3.Connection) -> None:
+    """없앤 항목(schema.RETIRED — 2026-11-19 신청서 초안 폐기로 draftContext)에 저장돼 있던 값을 지운다.
+    진로·활동·가정 형편 글이라 지운 자리는 0 으로 덮는다(secure_delete)."""
+    from .schema import RETIRED
+    marks = ", ".join("?" * len(RETIRED))
+    if con.execute(f"SELECT 1 FROM fields WHERE key IN ({marks})", RETIRED).fetchone():
+        con.execute("PRAGMA secure_delete = ON")
+        con.execute(f"DELETE FROM fields WHERE key IN ({marks})", RETIRED)
+        con.execute("PRAGMA secure_delete = OFF")
+
+
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     C.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -57,6 +68,7 @@ def connect() -> Iterator[sqlite3.Connection]:
         if str(C.DB_PATH) not in _initialized or not C.DB_PATH.exists():
             con.execute("PRAGMA journal_mode = WAL")
             con.executescript(SCHEMA)
+            _drop_retired(con)
             con.commit()
             _initialized.add(str(C.DB_PATH))
         yield con

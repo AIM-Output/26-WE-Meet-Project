@@ -54,7 +54,7 @@ export interface ProfileFields {
   highSchoolRegion: string | null;
   flags: Record<string, boolean> | null;
   interests: Interests | string[] | null; // F12 관심사 {tags, keywords, exclude} — 예전 값은 글자 목록일 수 있다
-  draftContext: Record<string, string> | null;
+  // draftContext(신청서 초안 재료)는 2026-11-19 초안 폐기로 C2 에서 뺐다
 }
 
 export interface ProfileDoc {

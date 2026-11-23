@@ -33,13 +33,20 @@ def fake_board(posts, details):
 
 @pytest.fixture
 def board(monkeypatch):
+    from datetime import date, timedelta
     from scholarship import sources
+    from scholarship.textutil import semester_of
+    ago = lambda n: (date.today() - timedelta(days=n)).isoformat()   # noqa: E731 — 수집은 실제 오늘로 45일을 잰다
+    y, n = semester_of(date.today()).split("-")
     posts = [
-        Post("101", "[모집공고] 2026 AI 해커톤 참가자 모집", "https://x.invalid/101", "2026-10-08"),
-        Post("102", "[장학안내] 2026 두을장학재단 장학생 선발", "https://x.invalid/102", "2026-10-08"),
-        Post("103", "[채용공고] 국제협력과 기간제 계약직 직원 채용", "https://x.invalid/103", "2026-10-08"),
+        Post("101", "[모집공고] 2026 AI 해커톤 참가자 모집", "https://x.invalid/101", ago(3)),
+        Post("102", "[장학안내] 2026 두을장학재단 장학생 선발", "https://x.invalid/102", ago(3)),
+        Post("103", "[채용공고] 국제협력과 기간제 계약직 직원 채용", "https://x.invalid/103", ago(3)),
         Post("104", "[대학생활] 유사종교 포교 활동 주의 안내", "https://x.invalid/104", "2020-09-04", pinned=True),
-        Post("105", "[취업정보] [KIA] 신입 채용", "https://x.invalid/105", "2026-10-07"),
+        Post("105", "[취업정보] [KIA] 신입 채용", "https://x.invalid/105", ago(4)),
+        # 학기 초에 올라온 이번 학기 대여 안내는 45일이 지나도 모은다 — 같은 날짜의 다른 모집은 오래된 글 (2026-11-19)
+        Post("106", f"인공지능혁신융합대학사업단 실험실습 기자재 대여 안내({y}년 {n}학기)", "https://x.invalid/106", ago(80)),
+        Post("107", "[모집공고] 2026 여름 AI 캠프 참가자 모집", "https://x.invalid/107", ago(80)),
     ]
     monkeypatch.setitem(sources.COLLECTORS, "jnu_board", fake_board(posts, {}))
     return posts
@@ -48,13 +55,15 @@ def board(monkeypatch):
 def test_collect_keeps_non_scholarship_recent(board):
     cfg = {"key": "jnu_notice", "kind": "jnu_board", "base": "https://www.jnu.ac.kr", "name": "전남대 공지"}
     c = collect.collect_source(cfg, FakeHttp({}), {})
-    assert c["matched"] == 2 and c["new"] == 2
-    assert c["skipped"] == {"장학": 1, "말머리 채용공고": 1, "오래된 글": 1}
+    assert c["matched"] == 3 and c["new"] == 3
+    assert c["skipped"] == {"장학": 1, "말머리 채용공고": 1, "오래된 글": 2}
     with store.connect() as con:
         ids = sorted(r["id"] for r in con.execute("SELECT id FROM notices"))
         info = json.loads(store.notice(con, "www:101")["info"])
-    assert ids == ["www:101", "www:105"]
+        rental = json.loads(store.notice(con, "www:106")["info"])
+    assert ids == ["www:101", "www:105", "www:106"]
     assert info["category"] == "contest" and info["period"]["end"] == "2026-10-30"
+    assert rental["category"] == "rental"
 
 
 def test_run_writes_baseline_and_last(board, monkeypatch):
@@ -62,7 +71,7 @@ def test_run_writes_baseline_and_last(board, monkeypatch):
                         lambda rows: [r for r in rows if r["key"] == "jnu_notice"])
     assert collect.run(None, {"college": "AI융합대학", "department": "인공지능학부"}) == 0
     with store.connect() as con:
-        assert store.get_meta(con, "baseline_at") and store.source_rows(con)["jnu_notice"]["last_count"] == 2
+        assert store.get_meta(con, "baseline_at") and store.source_rows(con)["jnu_notice"]["last_count"] == 3
     last = json.loads(C.LAST_RUN_FILE.read_text(encoding="utf-8"))
     assert last["exit_code"] == 0 and not C.LOCK_FILE.exists()
 
@@ -106,7 +115,7 @@ def test_api_flow(profile):
     from conftest import FakeCalendar, add_notice
     cal = FakeCalendar()
     app = FastAPI()
-    app.include_router(api.build_router(lambda: profile, cal.add, cal.remove, lambda: {"careerGoal": "장학 재료"}))
+    app.include_router(api.build_router(lambda: profile, cal.add, cal.remove))
     c = TestClient(app)
     with store.connect() as con:
         # API 는 실제 오늘 날짜로 판단한다 — 신청기간을 오늘 기준으로 잡아야 날짜가 지나도 '모집 중'이다
@@ -116,12 +125,10 @@ def test_api_flow(profile):
     ov = c.get("/api/opportunities").json()
     assert ov["counts"]["match"] == 1 and ov["tags"][0]["key"] == "AI·SW" and ov["interests"]["set"]
     assert c.patch("/api/opportunities/items/www:1", json={"saved": True}).json()["onCalendar"]
-    assert c.post("/api/opportunities/items/www:1/draft", json={}).status_code == 409
-    m = c.get("/api/opportunities/materials").json()
-    assert m["from"] == "scholarship" and m["careerGoal"] == "장학 재료"
-    c.put("/api/opportunities/materials", json={**{k: m[k] for k in ("careerGoal", "activities", "skills", "highlights")}})
-    d = c.post("/api/opportunities/items/www:1/draft", json={}).json()
-    assert d["progress"] == "draft" and "장학 재료" in d["draft"]["body"]
+    # 신청서 초안 폐기(2026-11-19) — 초안·초안 재료 주소와 초안 진행 상태가 없다
+    assert c.post("/api/opportunities/items/www:1/draft", json={}).status_code == 404
+    assert c.get("/api/opportunities/materials").status_code in (404, 405)
+    assert c.patch("/api/opportunities/items/www:1", json={"progress": "approved"}).status_code == 422
     src = c.get("/api/opportunities/sources").json()["sources"]
     assert "jnu_scholarship" not in [s["key"] for s in src]
     assert c.patch("/api/opportunities/sources/grow", json={"enabled": False}).json()["enabled"] is False

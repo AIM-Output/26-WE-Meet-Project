@@ -132,5 +132,22 @@ def test_interests_shape(db):
 def test_notice_bridge():
     out = notice_bridge.to_notice({"grade": 3, "department": "인공지능학부", "flags": {"veteranFamily": True},
                                    "draftContext": {"careerGoal": "연구원"}, "incomeBracket": None})
-    assert out == {"grade": 3, "department": "인공지능학부", "flags": {"veteran_family": True},
-                   "draft_context": {"career_goal": "연구원"}, "field_group": "공학계열"}
+    assert out == {"grade": 3, "department": "인공지능학부", "flags": {"veteran_family": True}, "field_group": "공학계열"}
+
+
+def test_draft_context_retired(db):
+    """2026-11-19 신청서 초안 폐기 — 프로필의 '신청서 초안 재료'(draftContext) 항목을 뺐다. 저장돼 있던 값은 다음 시작 때 지운다."""
+    from student import config as C, store
+    with pytest.raises(Invalid):
+        service.patch(db, {"draftContext": {"careerGoal": "연구원"}})
+    db.execute("INSERT INTO fields(key, value, filled_by, updated_at) VALUES ('draftContext', ?, 'user', '2026-10-01T00:00:00')",
+               ('{"hardship": "가정 형편 메모 2099"}',))
+    db.commit()
+    store._initialized.clear()                                   # 앱을 새 판으로 다시 띄운 것처럼
+    with store.connect() as con:
+        doc = service.get(con)
+        assert "draftContext" not in doc["profile"] and "draftContext" not in doc["filledBy"]
+        assert con.execute("SELECT 1 FROM fields WHERE key = 'draftContext'").fetchone() is None
+    db.execute("PRAGMA wal_checkpoint(TRUNCATE)")                # 로그(-wal)를 파일에 합치고 비운다 — 앱을 닫을 때와 같다
+    raw = b"".join(p.read_bytes() for p in C.DB_PATH.parent.glob("profile.db*"))
+    assert "가정 형편 메모 2099".encode() not in raw

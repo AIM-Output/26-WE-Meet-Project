@@ -1,6 +1,6 @@
 """맨 위 한 줄 요약 — LLM (선택, F10 D1 · 5절 '한 줄 요약 규칙').
 
-OpenAI 호환 chat/completions 를 표준 라이브러리(urllib)로 부른다. 슬롯 이름은 F1·F11·F12 와 같다(LLM_MAIN_*).
+OpenAI 호환 chat/completions 를 표준 라이브러리(urllib)로 부른다. 슬롯 이름은 F1·F12 와 같다(LLM_MAIN_*).
 모델 선정은 AI팀 몫이라 코드에 모델 이름을 쓰지 않는다.
 
     입력  템플릿이 만든 **숫자와 제목만**(compose.facts) — 강의실·메모·알림 본문·이름·학번은 보내지 않는다(10절 프라이버시)

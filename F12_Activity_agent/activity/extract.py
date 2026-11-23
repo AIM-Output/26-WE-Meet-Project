@@ -4,7 +4,7 @@ F11 추출기(scholarship.extract)를 그대로 불러 신청 기간·제출 서
 대외활동에 필요한 것을 더한다:
   - 말머리(boardCategory)   대표 공지 '[모집공고]·[공모전]·[취업정보]·[학사안내]…' · K2Web '[취업]' · COSS 분류
   - 분류(category)          기자재·공간 대여 · 공모전 · 창업 · 취업·인턴 · 해외 · 봉사 · 대외활동 · 연구 · 교육·프로그램 · 행사 · 기타
-                            (학사 행정 안내 — 학사과·재무과 등 부서 글이나 정규학기 행정 제목 — 는 대외활동에서 뺀다. 학점교류는 남긴다)
+                            (학사 일정 안내 — 학사 일정에 이미 있을 법한 제목만 — 는 대외활동에서 뺀다. 학점교류는 남긴다)
   - 주관(host)              제목의 [기관] (말머리는 빼고) → 사업단 (없으면 service 가 작성 부서·원천 기관으로)
   - 대상 · 장소 · 활동/교육 기간 · 혜택(상금·활동비) · 참가비
   - 모집 글인가(participation) · 결과 발표 글인가(result)
@@ -18,12 +18,10 @@ from typing import Optional
 
 from . import interests as I
 from scholarship import extract as sx           # F11 추출기 — 기간·서류·방법·링크 규칙을 그대로 쓴다
-from scholarship.textutil import lines, nfkc, to_date
+# 게시판 말머리 목록·말머리 떼기·같은 글 묶는 제목 키도 F11 것을 같이 쓴다 (2026-11-19 — 묶는 규칙을 한 곳에)
+from scholarship.textutil import BOARD_CATEGORIES, lines, nfkc, title_key, to_date  # noqa: F401 — title_key 는 collect·테스트가 쓴다
+from scholarship.textutil import strip_board_category as clean_title
 
-# 대표 공지·학과 게시판 말머리 — 제목 앞 [ ] 가 이것이면 주관이 아니라 분류다
-BOARD_CATEGORIES = {"모집공고", "학사안내", "공모전", "대학생활", "채용공고", "취업정보", "행정공고", "입찰공고", "장학안내", "일반공지",
-                    "공지", "공지사항", "안내", "행사", "특강", "학사", "취업", "장학", "일반", "모집", "교육", "대학원", "학부", "학과",
-                    "기타", "홍보", "알림", "학생지원", "경진대회", "비교과", "프로그램", "학과공지", "학부공지", "행사안내", "채용"}
 PARTICIPATION = re.compile(r"모집|신청|참가|참여|접수|선발|지원(?!금)|공모|대여|예약|수강생|교육생|등록\s*안내|선착순")
 RESULT = re.compile(r"결과\s*(?:안내|발표|공지|공고|알림|공개)|(?:합격|선정|수상|당첨|최종\s*선발)자\s*(?:발표|공고|안내|명단)?|"
                     r"(?:합격|선정|수상|당첨|진출)\s*(?:팀|인원|과제)?\s*(?:발표|공고|명단)|(?:선발|합격|선정|수상)\s*(?:자\s*)?명단|"
@@ -66,16 +64,6 @@ def board_category(title: str, category: Optional[str] = None) -> Optional[str]:
     return m.group(1).strip() if m else None
 
 
-def clean_title(title: str) -> str:
-    """제목 앞의 말머리 [모집공고] 같은 것만 떼고, [KIA] · [제주대학교] 같은 기관 괄호는 둔다."""
-    t = nfkc(title).strip()
-    while True:
-        m = re.match(r"^\[([^\]]{1,14})\]\s*", t)
-        if not m or m.group(1).strip() not in BOARD_CATEGORIES:
-            return t
-        t = t[m.end():]
-
-
 def host_from_title(title: str) -> Optional[str]:
     for m in re.finditer(r"\[([^\]]{2,30})\]", nfkc(title)):
         s = m.group(1).strip()
@@ -99,7 +87,7 @@ def _fix_year(period: Optional[dict], posted: Optional[str]) -> None:
 
 
 def extract(title: str, text: str, *, unit: Optional[dict] = None, category: Optional[str] = None,
-            writer: Optional[str] = None, image_only: bool = False, attachments_unread: int = 0, posted_at: Optional[str] = None,
+            image_only: bool = False, attachments_unread: int = 0, posted_at: Optional[str] = None,
             ocr: bool = False) -> dict:
     """제목 + 본문(+첨부 글자) → 대외활동 정보. unit = 이 글을 올린 사업단·부서(registry.unit_for).
     ocr = 글자 일부를 이미지에서 OCR 로 읽었다 — 'OCR 로 읽음' 안내(F11 extract 의 노트)와 화면 표시."""
@@ -111,7 +99,7 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, category: Opt
     _fix_year(base.get("period"), posted_at)
     bc = board_category(title, category)
     name = clean_title(title)
-    if I.is_academic(title, writer):                  # 학사과·재무과 등의 정규학기 행정 — 대외활동에서 뺀다 (service · collect)
+    if I.is_academic(title):                          # 학사 일정에 이미 있을 법한 안내 — 대외활동에서 뺀다 (service · collect)
         key, label = "academic", I.academic_label()
     else:
         key, label = I.categorize(f"{bc or ''} {title}")

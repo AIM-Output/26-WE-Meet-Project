@@ -1,4 +1,4 @@
-"""F11 장학 — 설정 (경로 · 수집 정책 · 판정 문턱 · 알림 · LLM 슬롯).
+"""F11 장학 — 설정 (경로 · 수집 정책 · 판정 문턱 · 알림).
 
 요구사항: 요구사항정의서.md F11 절 / 화면: Frontend-Route.md 16절(/scholarships).
 원천 목록(학교 전체·부서·사업단·내 학과)은 directory/sources.json — 2026-10-09 실측, 근거는 README.
@@ -6,7 +6,8 @@
 지키는 선
   - 요청 간격 REQUEST_INTERVAL 은 줄이지 않는다 (학교 서버 부담 금지, 계획서 4.1). 동시성은 항상 1.
   - 공개 게시판·공개 안내 페이지만 읽는다 → 로그인 정보가 필요 없다. 어떤 신청 버튼도 누르지 않는다.
-  - data/ (수집 공지·초안·진행 상태) 와 state/ (잠금·로그) 는 .gitignore — 공유 금지.
+  - data/ (수집 공지·진행 상태) 와 state/ (잠금·로그) 는 .gitignore — 공유 금지.
+  - LLM 을 부르지 않는다 — 초안 문단을 쓰던 LLM 슬롯은 신청서 초안 폐기(2026-11-19)와 함께 뺐다.
 """
 from __future__ import annotations
 
@@ -99,6 +100,8 @@ GRAD_ONLY_WORDS = ("대학원생", "대학원 ", "석사", "박사", "박사후"
 
 # 추출 규칙 판(版). 규칙을 고치면 올린다 → 저장된 공지를 다음 읽기 때 새 규칙으로 다시 뽑는다.
 EXTRACT_VERSION = 4            # 4: OCR 로 읽은 공지 표시·신뢰도 상한 (2026-10-25)
+# 같은 글을 묶는 제목 키(textutil.title_key)의 판. 바뀌면 저장된 묶음(title_key·dup_of)을 처음부터 다시 짓는다 (store._migrate · F12 도).
+TITLE_KEY_VERSION = 2          # 2: 괄호·대괄호·「」 안을 남긴다 — 재단·대학·회사 이름만 다른 글이 묶이던 것 (2026-11-19)
 OCR_CONFIDENCE_CAP = 0.55       # OCR 로 읽은 글자에서 뽑은 조건 — 숫자(평점·소득분위)를 잘못 읽을 수 있어 자동 판정 문턱보다 낮게
 
 # ── 판정 (F11 5절) ─────────────────────────────────────────
@@ -110,16 +113,6 @@ NO_PERIOD_STALE_DAYS = 60       # 신청 기간을 못 읽은 공지가 이보�
 ALERT_TIME = "09:00"            # 마감 D-3 · D-1 알림을 울리는 시각
 DEADLINE_DAYS = (3, 1)
 BUNDLE_OVER = 3                 # 한 번 수집에서 새 해당·확인 필요가 이보다 많으면 한 줄로 묶는다
-
-# ── LLM (선택) — F1·notice_agent 와 같은 슬롯 이름. 비어 있으면 초안 문단은 골격+안내문만 만든다 (F11-R48) ──
-LLM_BASE_URL = os.environ.get("LLM_MAIN_BASE_URL", "").rstrip("/")
-LLM_API_KEY = os.environ.get("LLM_MAIN_API_KEY", "")
-LLM_MODEL = os.environ.get("LLM_MAIN_MODEL", "")
-LLM_TIMEOUT = 90
-
-
-def llm_configured() -> bool:
-    return bool(LLM_BASE_URL and LLM_API_KEY and LLM_MODEL)
 
 
 def ensure_dirs() -> None:

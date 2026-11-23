@@ -6,12 +6,13 @@
 순서 (원천마다)
   0. F11 장학 수집이 돌고 있으면 끝날 때까지 기다린다 — 두 기능이 같은 학교 서버를 동시에 읽지 않게 (최대 30분)
   1. 목록 2쪽(처음 보는 원천 3쪽, 학교 전체 공지는 3·5쪽) — 거르는 것:
-       장학 글(F11 과 같은 어휘 — 장학 화면 몫) · 말머리 행정공고·입찰공고·채용공고 · 부고·입찰·교원 초빙 같은 어휘 ·
-       원천의 require(총동창회는 모집·행사 글만) · 45일보다 오래된 글(상단 고정의 옛 안내)
+       장학 글(F11 과 같은 어휘 — 장학 화면 몫) · 말머리 행정공고·입찰공고·채용공고·직원표창공개 ·
+       학사 일정 안내(수강신청·등록·휴학·계절학기 운영 … — 학사 일정 F1 몫, 제목으로만) · 부고·입찰·교원 초빙 같은 어휘 ·
+       원천의 require(총동창회는 모집·행사 글만) · 45일보다 오래된 글(상단 고정의 옛 안내 — 이번 학기 대여 안내는 남긴다)
   2. 처음 보는 글만 상세를 받는다(원천마다 최대 25건). 최근 10일 글은 몇 건씩 다시 받아 수정 여부(내용 해시)를 본다
   3. 본문이 짧으면 첨부 PDF·HWP·HWPX·DOCX 의 글자를 읽는다(모집 요강이 첨부에만 있는 경우, 파일은 저장하지 않는다).
      본문이 이미지(포스터)뿐이면 본문 이미지·이미지 첨부를 OS 내장 OCR 로 (F11 attachments.gather — 한국어 OCR 이 있을 때만)
-  4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키) 먼저 들어온 것에 묶는다(dup_of)
+  4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키 — 말머리·공백·기호만 뺀 제목, extract.title_key) 먼저 들어온 것에 묶는다(dup_of)
   5. 예전 판으로 읽어 못 읽은 공지(본문 이미지·HWP 첨부, 본문이 짧은 것만)는 원천마다 REREAD_MAX 건씩 다시 받아 읽는다
   내 단과대학·학과(profile_board)는 프로필 소속 → 홈페이지(F1 목록) → **공지 게시판 찾기**(장학 메뉴는 건너뛴다, 7일마다 다시)
 종료 코드: 0 성공 · 2 일부 원천 실패 · 3 이미 수집 중 · 4 전부 실패(대개 네트워크)
@@ -31,7 +32,7 @@ from . import config as C
 from . import extract, registry, store
 from . import interests as I
 from scholarship import attachments
-from scholarship.textutil import content_hash, has_any, is_scholarship, norm_title, to_date
+from scholarship.textutil import content_hash, has_any, is_scholarship, to_date
 
 
 def _log(msg: str) -> None:
@@ -53,20 +54,26 @@ def _host_key(cfg: dict) -> str:
     return host.split(".")[0] if not host.startswith("jnu.") else host.split(".")[1]
 
 
-def skip_reason(title: str, category: Optional[str], cfg: dict, writer: Optional[str] = None) -> Optional[str]:
+def skip_reason(title: str, category: Optional[str], cfg: dict) -> Optional[str]:
     """이 글을 대외활동으로 모으지 않는 이유 — 없으면 None."""
     if is_scholarship(title, category):
         return "장학"
     bc = extract.board_category(title, category)
     if bc and bc in registry.drop_categories():
         return f"말머리 {bc}"
-    if I.is_academic(title, writer):
-        return "학사 행정 안내"
+    if I.is_academic(title):
+        return I.academic_label()
     if has_any(title, registry.drop_words()) or (cfg.get("dropWords") and has_any(title, cfg["dropWords"])):
         return "거르는 어휘"
     if cfg.get("require") and not has_any(title, cfg["require"]):
         return "원천 조건"
     return None
+
+
+def _too_old(post, oldest: date) -> bool:
+    """45일보다 오래된 글 — 단, 이번(다음) 학기 대여 안내는 학기 내내 유효하므로 오래된 글이 아니다 (interests.semester_long)."""
+    d = to_date(post.posted_at)
+    return bool(d and d < oldest and not I.semester_long(post.title, date.today()))
 
 
 def _attachment_text(post, http, ocr=None) -> tuple[str, list[dict], int]:
@@ -80,7 +87,7 @@ def build_info(row_like: dict, unit: Optional[dict], unread: int = 0) -> dict:
     text = row_like.get("body") or ""
     if row_like.get("attach_text"):
         text = f"{text}\n\n{row_like['attach_text']}"
-    return extract.extract(row_like["title"], text, unit=unit, category=row_like.get("category"), writer=row_like.get("writer"),
+    return extract.extract(row_like["title"], text, unit=unit, category=row_like.get("category"),
                            image_only=bool(row_like.get("image_only")), attachments_unread=unread,
                            posted_at=row_like.get("posted_at"), ocr=attachments.has_ocr(row_like.get("attach_text")))
 
@@ -89,7 +96,7 @@ def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict], oc
     attach_text, infos, unread = _attachment_text(post, http, ocr) if post.attachments or post.images else ("", [], 0)
     unit = unit_cfg or registry.unit_for(post.writer, post.title, post.category)
     nid = f"{hk}:{post.native_id}"
-    tk = norm_title(post.title)
+    tk = extract.title_key(post.title)
     row = {
         "id": nid, "source": cfg["key"], "source_name": cfg.get("name") or cfg["key"], "unit_key": unit["key"] if unit else None,
         "title": post.title, "url": post.url, "posted_at": post.posted_at, "writer": post.writer, "category": post.category,
@@ -162,8 +169,8 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False, ocr=No
     oldest = date.today() - timedelta(days=C.FIRST_MAX_AGE_DAYS)
     want, skipped = [], {}
     for p in posts:
-        why = skip_reason(p.title, p.category, cfg, p.writer)
-        if why is None and to_date(p.posted_at) and to_date(p.posted_at) < oldest:
+        why = skip_reason(p.title, p.category, cfg)
+        if why is None and _too_old(p, oldest):
             why = "오래된 글"
         if why:
             skipped[why] = skipped.get(why, 0) + 1
@@ -186,7 +193,7 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False, ocr=No
     counts = {"listed": len(posts), "matched": len(want), "new": 0, "changed": 0, "reread": len(reread), "skipped": skipped}
     if dry_run:
         for p in posts:
-            why = skip_reason(p.title, p.category, cfg, p.writer)
+            why = skip_reason(p.title, p.category, cfg)
             mark = "새" if p in new else ("  " if p in want else "-")
             _log(f"  [{cfg['key']}] {mark} {p.posted_at or '?':10s} {p.title[:64]}{f'  ({why})' if why else ''}")
         counts["new"] = len(new)
@@ -197,9 +204,9 @@ def collect_source(cfg: dict, http, profile: dict, dry_run: bool = False, ocr=No
         except Exception as e:                   # noqa: BLE001 — 글 하나 실패로 원천 전체를 버리지 않는다
             _log(f"  ! [{cfg['key']}] 상세 실패 {p.url}: {type(e).__name__}: {e}")
             continue
-        if is_scholarship(p.title, p.category) or I.is_academic(p.title, p.writer):   # 상세에서야 보이는 제목·작성 부서
+        if is_scholarship(p.title, p.category) or I.is_academic(p.title):   # 상세에서야 보이는 제목
             continue
-        if to_date(p.posted_at) and to_date(p.posted_at) < oldest:   # 목록에 날짜가 없는 게시판(XE·CNU Events) — 상세에서 본 날짜로
+        if _too_old(p, oldest):                  # 목록에 날짜가 없는 게시판(XE·CNU Events) — 상세에서 본 날짜로
             continue
         with store.connect() as con:
             res = _save_post(con, cfg, p, http, hk, unit_cfg, ocr)

@@ -17,7 +17,7 @@ from . import config as C
 NOTICE_PROFILE = C.PROJECT_ROOT / "notice_agent" / "data" / "profile.json"
 _FLAG = {"disability": "disability", "veteranFamily": "veteran_family", "multiChild": "multi_child",
          "singleParent": "single_parent", "basicLivelihood": "basic_livelihood"}
-_DRAFT = {"careerGoal": "career_goal", "activities": "activities", "hardship": "hardship"}
+# draft_context(초안 재료)는 넘기지 않는다 — C2 의 draftContext 항목을 2026-11-19 신청서 초안 폐기로 뺐다
 
 
 def _interests(v) -> Optional[list]:
@@ -38,7 +38,6 @@ def to_notice(p: dict) -> dict:
         "income_bracket": p.get("incomeBracket"), "residence_region": p.get("residenceRegion"),
         "high_school_region": p.get("highSchoolRegion"), "interests": _interests(p.get("interests")),
         "flags": {_FLAG[k]: v for k, v in (p.get("flags") or {}).items()} or None,
-        "draft_context": {_DRAFT[k]: v for k, v in (p.get("draftContext") or {}).items()} or None,
     }
     if p.get("department") and re.search(r"공학|인공지능|컴퓨터|소프트웨어|전자|기계", p["department"] + (p.get("major") or "")):
         out["field_group"] = "공학계열"

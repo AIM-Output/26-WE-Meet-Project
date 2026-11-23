@@ -1,26 +1,26 @@
-"""화면이 받는 모양 — 목록·상세·진행 상태·이력·원천·초안 재료·캘린더·할 일·타일. 표준 라이브러리만 (백엔드가 import 한다).
+"""화면이 받는 모양 — 목록·상세·진행 상태·이력·원천·캘린더·할 일·타일. 표준 라이브러리만 (백엔드가 import 한다).
 
 등급(내 관심사 / 관련 있음 / 관심 밖)은 부를 때마다 지금 관심사로 계산한다(공지 500건 수십 ms) — 관심사를 바꾸면 다음 호출부터
 바로 새 등급 (F12-R15). 모집 상태(모집 중 · 마감 · 결과 발표 · 지난 공지 · 대상 아님)는 등급과 따로 본다 — 끝난 공지는 등급과 상관없이 접는다.
+신청서 초안·초안 재료는 2026-11-19 폐기했다(요구사항정의서 F11 1절·F12) — 진행 상태는 담음 → 지원함 → 선정/탈락 · 관심 없음.
 """
 from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import date, timedelta
 from typing import Any, Callable, Optional
 
 from . import config as C
-from . import draft as drafting
 from . import interests as I
 from . import registry, store
-from scholarship import attachments, basicinfo
+from scholarship import attachments
 from scholarship.textutil import days_until, semester_of, to_date
 
-PROGRESS = ("saved", "draft", "approved", "applied", "selected", "not_selected", "skipped")
-PROGRESS_LABEL = {"saved": "담음", "draft": "초안 대기", "approved": "제출 예정", "applied": "지원함", "selected": "선정",
-                  "not_selected": "탈락", "skipped": "관심 없음"}
-ACTIVE = ("saved", "draft", "approved", "applied", "selected", "not_selected")     # '담은 것' — 관심 없음이 아닌 진행 상태
+PROGRESS = ("saved", "applied", "selected", "not_selected", "skipped")
+PROGRESS_LABEL = {"saved": "담음", "applied": "지원함", "selected": "선정", "not_selected": "탈락", "skipped": "관심 없음"}
+ACTIVE = ("saved", "applied", "selected", "not_selected")     # '담은 것' — 관심 없음이 아닌 진행 상태
 GRADE_LABEL = {"match": "내 관심사", "related": "관련 있음", "other": "관심 밖"}
 STATUS_LABEL = {"open": "모집 중", "expired": "마감", "result": "결과 발표", "stale": "지난 공지", "not_for_me": "대상 아님"}
 GRADE_RANK = {"match": 0, "related": 1, None: 1, "other": 2}
@@ -37,16 +37,37 @@ class Invalid(ValueError):
     pass
 
 
+_refresh_lock = threading.Lock()
+_STALE = "SELECT * FROM notices WHERE dup_of IS NULL AND (info IS NULL OR extract_ver < ?)"
+
+
+def _build(row: sqlite3.Row) -> dict:
+    """저장된 본문으로 정보를 다시 뽑는다(다시 내려받지 않는다)."""
+    from .collect import build_info          # collect 는 수집기를 함수 안에서만 import 한다 — requests 없이 된다
+    unit = registry.get(row["unit_key"]) if row["unit_key"] else None
+    body_short = len((row["body"] or "").strip()) < C.ATTACH_BODY_SHORT     # 본문이 길면 첨부를 읽지 않으므로 '못 읽음'도 아니다
+    unread = attachments.unread_count(store.loads(row["attachments"], [])) if body_short else 0
+    return build_info(dict(row), unit, unread)
+
+
+def _rebuild(con: sqlite3.Connection, row: sqlite3.Row) -> dict:
+    info = _build(row)
+    store.set_info(con, row["id"], info, C.EXTRACT_VERSION)
+    return info
+
+
+def refresh(con: sqlite3.Connection) -> int:
+    """규칙 판(EXTRACT_VERSION)이 바뀐 뒤 처음 부를 때 판이 낮은 공지를 한꺼번에 다시 뽑아 둔다 — 한 번에 한 요청만,
+    0.3초마다 저장 (F11 store.refresh_stale, 2026-11-23: 목록 요청과 상태 확인이 같이 다시 뽑다 'database is locked')."""
+    return store.refresh_stale(con, _STALE, (C.EXTRACT_VERSION,), _rebuild, _refresh_lock)
+
+
 def _info(con: sqlite3.Connection, row: sqlite3.Row) -> dict:
-    """저장된 정보 — 규칙 판이 바뀌었으면 저장된 본문으로 다시 뽑는다(다시 내려받지 않는다)."""
+    """저장된 정보 — 규칙 판이 바뀌었으면 다시 뽑는다. 목록은 evaluate 가 refresh 로 미리 다 뽑아 두므로 여기서 뽑는 것은
+    상세 한 건쯤이다. 다른 요청이 한꺼번에 뽑는 중이면 저장은 그쪽에 맡기고 이번 응답에만 쓴다(쓰기 잠금을 다투지 않게)."""
     info = store.loads(row["info"], None)
     if info is None or row["extract_ver"] < C.EXTRACT_VERSION:
-        from .collect import build_info          # collect 는 수집기를 함수 안에서만 import 한다 — requests 없이 된다
-        unit = registry.get(row["unit_key"]) if row["unit_key"] else None
-        body_short = len((row["body"] or "").strip()) < C.ATTACH_BODY_SHORT     # 본문이 길면 첨부를 읽지 않으므로 '못 읽음'도 아니다
-        unread = attachments.unread_count(store.loads(row["attachments"], [])) if body_short else 0
-        info = build_info(dict(row), unit, unread)
-        store.set_info(con, row["id"], info, C.EXTRACT_VERSION)
+        info = _build(row) if _refresh_lock.locked() else _rebuild(con, row)
     return info
 
 
@@ -77,7 +98,8 @@ def _status(info: dict, row: sqlite3.Row, today: date) -> tuple[str, Optional[st
         return "not_for_me", deadline, left
     if (deadline and left is not None and left < 0) or info.get("closedMark"):
         return "expired", deadline, left
-    if not deadline and posted and (today - posted).days > C.STALE_DAYS:
+    if not deadline and posted and (today - posted).days > C.STALE_DAYS \
+            and not I.semester_long(row["title"], today, info.get("category")):   # 이번 학기 대여 안내는 학기 내내 모집 중
         return "stale", deadline, left
     return "open", deadline, left
 
@@ -101,7 +123,7 @@ def _audience_note(info: dict, profile: Optional[dict]) -> Optional[str]:
 
 
 def _evaluate_row(row: sqlite3.Row, info: dict, interests: dict, llm: Optional[dict], profile: Optional[dict],
-                  st: Optional[sqlite3.Row], dr: Optional[sqlite3.Row], today: date, baseline: Optional[str]) -> dict:
+                  st: Optional[sqlite3.Row], today: date, baseline: Optional[str]) -> dict:
     src = registry.get(row["source"])
     unit = registry.get(row["unit_key"]) if row["unit_key"] else None
     text = I.Text(f"{info.get('boardCategory') or ''} {row['title']}", f"{(row['body'] or '')[:6000]}\n{(row['attach_text'] or '')[:3000]}")
@@ -115,7 +137,8 @@ def _evaluate_row(row: sqlite3.Row, info: dict, interests: dict, llm: Optional[d
         flipped = grade != system
     status, deadline, left = _status(info, row, today)
     progress = st["progress"] if st else None
-    ask = bool(progress == "approved" and deadline and (left or 0) < 0 and not (st and st["asked_applied"]))
+    # 담아 둔 글의 마감이 지나면 '지원하셨나요?'를 한 번 묻는다 (예전엔 '제출 예정'만 — 초안 폐기로 담음이 그 자리, 2026-11-19)
+    ask = bool(progress == "saved" and deadline and (left or 0) < 0 and not (st and st["asked_applied"]))
     groups = {(src or {}).get("group"), (unit or {}).get("group")}
     return {
         "id": row["id"], "title": info.get("title") or row["title"], "rawTitle": row["title"], "url": row["url"],
@@ -132,7 +155,6 @@ def _evaluate_row(row: sqlite3.Row, info: dict, interests: dict, llm: Optional[d
         "target": info.get("target"), "place": info.get("place"), "benefit": info.get("benefit"),
         "audienceNote": _audience_note(info, profile),
         "progress": progress, "progressLabel": PROGRESS_LABEL.get(progress or ""), "saved": progress in ACTIVE,
-        "hasDraft": dr is not None, "draftStale": bool(dr is not None and dr["source_hash"] and dr["source_hash"] != row["content_hash"]),
         "onCalendar": bool(st and st["calendar_id"]), "askApplied": ask,
         # 첫 수집(기준선)에 한꺼번에 들어온 글은 '새 글'이 아니다 — 그 뒤 이틀 안에 처음 본 글만
         "isNew": bool(baseline and row["first_seen"] and row["first_seen"] > baseline
@@ -152,14 +174,15 @@ def evaluate(con: sqlite3.Connection, profile: Optional[dict], today: Optional[d
              include_hidden: bool = False) -> list[dict]:
     """보이는 공지 전부에 등급·모집 상태를 매겨 정렬 — 목록·알림·타일·LLM 판단이 같이 쓴다."""
     today = today or date.today()
+    refresh(con)                                  # 규칙 판이 바뀐 뒤 처음이면 먼저 다시 뽑아 둔다 (보통은 할 일 없음)
     interests = I.from_profile(profile)
     llm = store.llm_grades(con, I.ihash(interests)) if I.is_set(interests) else {}
     on, mine = _visible_sources(con, profile)
     states = store.states(con)
-    drs = {r["notice_id"]: r for r in store.drafts(con)}
     baseline = store.get_meta(con, "baseline_at")
     out = []
     dropped = I.dropped_categories()
+    drop_boards = set(registry.drop_categories())
     for row in store.notice_rows(con):
         if row["dup_of"] or row["source"] not in on:
             continue
@@ -169,9 +192,9 @@ def evaluate(con: sqlite3.Connection, profile: Optional[dict], today: Optional[d
         if st and st["progress"] == "skipped" and not include_hidden:
             continue
         info = _info(con, row)
-        if info.get("category") in dropped:           # 학사·행정 안내 — 대외활동이 아니다 (예전에 모은 것도 숨긴다)
-            continue
-        out.append(_evaluate_row(row, info, interests, llm.get(row["id"]), profile, st, drs.get(row["id"]), today, baseline))
+        if info.get("category") in dropped or info.get("boardCategory") in drop_boards:
+            continue                                  # 학사 일정 안내(F1 몫) · 거르는 말머리 — 규칙이 바뀌기 전에 모은 것도 숨긴다
+        out.append(_evaluate_row(row, info, interests, llm.get(row["id"]), profile, st, today, baseline))
     return sorted(out, key=_sort_key)
 
 
@@ -199,8 +222,7 @@ def overview(con: sqlite3.Connection, profile: Optional[dict], today: Optional[d
         "counts": {"match": by("match"), "related": by("related"), "other": by("other"), "open": len(open_),
                    "closed": len(items) - len(open_), "total": len(items), "program": sum(1 for i in open_ if i["isProgram"]),
                    "programMatch": sum(1 for i in open_ if i["isProgram"] and i["grade"] == "match"),
-                   "saved": sum(1 for i in items if i["saved"]),
-                   "inProgress": sum(1 for i in items if i["progress"] in ("draft", "approved")), "categories": cats},
+                   "saved": sum(1 for i in items if i["saved"]), "categories": cats},
         "interests": {**interests, "set": I.is_set(interests)},
         "tags": [{"key": t["key"], "words": t["words"][:6]} for t in I.catalog()["tags"]],
         "categories": I.category_labels(),
@@ -241,14 +263,11 @@ def detail(con: sqlite3.Connection, nid: str, profile: Optional[dict], today: Op
     if row is None:
         return None
     st = store.state(con, nid)
-    dr = store.draft(con, nid)
     info = _info(con, row)
     interests = I.from_profile(profile)
     llm = store.llm_grades(con, I.ihash(interests)).get(nid) if I.is_set(interests) else None
-    it = _evaluate_row(row, info, interests, llm, profile, st, dr, today, store.get_meta(con, "baseline_at"))
+    it = _evaluate_row(row, info, interests, llm, profile, st, today, store.get_meta(con, "baseline_at"))
     dups = [dict(r) for r in con.execute("SELECT id, source_name, url FROM notices WHERE dup_of = ?", (nid,))]
-    others = [{"id": d["notice_id"], "title": _title(con, d["notice_id"]), "updatedAt": d["updated_at"]}
-              for d in store.drafts(con) if d["notice_id"] != nid]
     body = (row["body"] or "").strip()
     return {
         **it, "reasons": _reasons(it, interests), "info": info, "grades": info.get("grades"),
@@ -263,9 +282,6 @@ def detail(con: sqlite3.Connection, nid: str, profile: Optional[dict], today: Op
                   "savedAt": st["saved_at"] if st else None, "appliedAt": st["applied_at"] if st else None,
                   "resultAt": st["result_at"] if st else None, "note": st["note"] if st else None,
                   "calendarId": st["calendar_id"] if st else None, "todos": store.loads(st["todos"], {}) if st else {}},
-        "draft": ({"body": dr["body"], "generatedBy": dr["generated_by"], "borrowed": store.loads(dr["borrowed"], []),
-                   "updatedAt": dr["updated_at"], "createdAt": dr["created_at"], "stale": it["draftStale"]} if dr else None),
-        "otherDrafts": others,
     }
 
 
@@ -298,7 +314,7 @@ def _calendar(con: sqlite3.Connection, nid: str, d: dict, add_event: Optional[Ad
 def patch(con: sqlite3.Connection, nid: str, body: dict, profile: Optional[dict] = None, *,
           add_event: Optional[AddEvent] = None, remove_event: Optional[RemoveEvent] = None) -> None:
     """{grade: match|other|null(되돌리기)} 등급 뒤집기 · {saved: true|false} 담기 · {progress: …|null} · {note} · {askedApplied}.
-    담으면(또는 초안·제출 예정으로 처음 들어오면) 신청 마감을 캘린더에 넣는다 (F12-R41). 담기를 풀면 그때 넣은 일정을 지운다."""
+    담으면 신청 마감을 캘린더에 넣는다 (F12-R41). 담기를 풀면 그때 넣은 일정을 지운다."""
     if store.notice(con, nid) is None:
         raise NotFound(nid)
     now = store.now_iso()
@@ -335,7 +351,7 @@ def patch(con: sqlite3.Connection, nid: str, body: dict, profile: Optional[dict]
         fields["asked_applied"] = 1
     store.put_state(con, nid, **fields)
     if new_progress != before:
-        if before in (None, "skipped") and new_progress in ("saved", "draft", "approved"):
+        if before in (None, "skipped") and new_progress == "saved":
             d = detail(con, nid, profile)
             if d:
                 _calendar(con, nid, d, add_event)
@@ -404,91 +420,6 @@ def set_source(con: sqlite3.Connection, key: str, enabled: Optional[bool]) -> No
     store.touch(con)
 
 
-# ── 초안 재료 (프로필과 따로 — 별도 삭제 가능. 비어 있으면 장학 초안 재료·프로필 초안 재료를 불러온다) ──
-
-MATERIAL_KEYS = ("careerGoal", "activities", "skills", "highlights")
-Fallback = Callable[[], Optional[dict]]
-
-
-def saved_basic(con: sqlite3.Connection) -> dict:
-    """저장한 기본 정보(이름·학번·소속·학년·연락처·이메일) — 장학(F11)이 비어 있을 때 빌려 간다."""
-    return basicinfo.clean((store.loads(store.get_meta(con, "materials"), None) or {}).get("basic"))
-
-
-def materials(con: sqlite3.Connection, profile: Optional[dict] = None, fallback: Optional[Fallback] = None,
-              other_basic: Optional[Fallback] = None) -> dict:
-    """초안 재료 — 기본 정보(basic) + 진로·활동·보유 역량·강조점. 비어 있으면 장학 초안 재료(fallback)·프로필 초안 재료를 불러온다.
-    기본 정보의 빈 칸은 장학 재료의 기본 정보(other_basic) → 프로필 소속·학년으로 (F11 basicinfo.resolve)."""
-    m = store.loads(store.get_meta(con, "materials"), None)
-    own = basicinfo.clean((m or {}).get("basic"))
-    other = None
-    if other_basic and not all(own.values()):
-        try:
-            other = other_basic()
-        except Exception:                        # noqa: BLE001 — 장학 쪽을 못 읽어도 재료 카드는 뜬다
-            other = None
-    basic, basic_from = basicinfo.resolve(own, profile, other, "scholarship")
-    extra = {"basic": basic, "basicFrom": basic_from}
-    if m is not None:
-        return {"exists": True, **{k: m.get(k, "") for k in MATERIAL_KEYS}, **extra, "updatedAt": m.get("updatedAt"), "from": None}
-    shared = None
-    try:
-        shared = fallback() if fallback else None
-    except Exception:                            # noqa: BLE001 — 장학 쪽을 못 읽어도 재료 카드는 뜬다
-        shared = None
-    if shared and any((shared.get(k) or "").strip() for k in ("careerGoal", "activities", "highlights")):
-        return {"exists": False, **{k: shared.get(k, "") or "" for k in MATERIAL_KEYS}, **extra, "updatedAt": None,
-                "from": "scholarship"}
-    dc = (profile or {}).get("draftContext") or {}
-    return {"exists": False, **{k: dc.get(k, "") or "" for k in MATERIAL_KEYS}, **extra, "updatedAt": None,
-            "from": "profile" if dc else None}
-
-
-def put_materials(con: sqlite3.Connection, body: dict, profile: Optional[dict] = None,
-                  other_basic: Optional[Fallback] = None) -> dict:
-    """basic 을 보내지 않으면(예전 화면) 저장해 둔 기본 정보를 그대로 둔다."""
-    data: dict = {k: str(body.get(k) or "").strip()[:2000] for k in MATERIAL_KEYS}
-    data["basic"] = basicinfo.clean(body["basic"]) if body.get("basic") is not None else saved_basic(con)
-    data["updatedAt"] = store.now_iso()
-    store.set_meta(con, "materials", json.dumps(data, ensure_ascii=False))
-    return materials(con, profile, other_basic=other_basic)
-
-
-def delete_materials(con: sqlite3.Connection) -> None:
-    store.set_meta(con, "materials", None)
-
-
-# ── 초안 ────────────────────────────────────────────────────
-
-def make_draft(con: sqlite3.Connection, nid: str, profile: Optional[dict], borrow_from: Optional[str] = None,
-               llm: Optional[Callable] = None, add_event: Optional[AddEvent] = None,
-               other_basic: Optional[Fallback] = None) -> dict:
-    """초안 만들기 — 재료가 아직 없으면 화면이 먼저 재료 카드를 띄운다(api 가 409). 담지 않은 공지면 초안 대기로 담는다."""
-    d = detail(con, nid, profile)
-    if d is None:
-        raise NotFound(nid)
-    mats = materials(con, profile, other_basic=other_basic)
-    borrowed = None
-    if borrow_from:
-        src = store.draft(con, borrow_from)
-        if src is None:
-            raise Invalid("가져올 초안이 없습니다")
-        borrowed = {"from": borrow_from, "title": _title(con, borrow_from), "body": src["body"]}
-    body, by = drafting.build(d, profile or {}, mats, borrowed=borrowed, llm=llm)
-    store.save_draft(con, nid, body, generated_by=by, source_hash=store.notice(con, nid)["content_hash"],
-                     borrowed=[{"from": borrowed["from"], "title": borrowed["title"]}] if borrowed else [])
-    if d["progress"] in (None, "saved", "skipped"):
-        patch(con, nid, {"progress": "draft"}, profile, add_event=add_event)
-    store.touch(con)
-    return detail(con, nid, profile)        # type: ignore[return-value]
-
-
-def save_draft_body(con: sqlite3.Connection, nid: str, body: str) -> None:
-    if store.draft(con, nid) is None:
-        raise NotFound(nid)
-    store.save_draft(con, nid, body[:30000])
-
-
 # ── 캘린더·할 일 (C1 — 백엔드가 add_event 로 넘겨준다) ─────────────
 
 def add_calendar(con: sqlite3.Connection, nid: str, profile: Optional[dict], add_event: AddEvent) -> dict:
@@ -531,7 +462,7 @@ def add_todo(con: sqlite3.Connection, nid: str, index: int, profile: Optional[di
 def status_summary(con: sqlite3.Connection, profile: Optional[dict], today: Optional[date] = None) -> dict:
     items = evaluate(con, profile, today)
     open_ = [i for i in items if i["status"] == "open"]
-    mine = [i for i in items if i["progress"] in ("saved", "draft", "approved")]
+    mine = [i for i in items if i["progress"] == "saved"]
     soon = [i for i in mine if i["daysLeft"] is not None and 0 <= i["daysLeft"] <= 3]
     interests = I.from_profile(profile)
     nxt = sorted((i for i in open_ if i["grade"] == "match" and i["daysLeft"] is not None and i["daysLeft"] >= 0),
@@ -550,4 +481,4 @@ def brief(con: sqlite3.Connection, profile: Optional[dict], days: int = 3, today
     """F10 브리핑 — 담아 둔 것의 마감만 (F12-R34)."""
     return [{"id": i["id"], "title": i["title"], "daysLeft": i["daysLeft"], "progress": i["progressLabel"]}
             for i in evaluate(con, profile, today)
-            if i["progress"] in ("saved", "draft", "approved") and i["daysLeft"] is not None and 0 <= i["daysLeft"] <= days]
+            if i["progress"] == "saved" and i["daysLeft"] is not None and 0 <= i["daysLeft"] <= days]

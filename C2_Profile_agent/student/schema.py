@@ -20,8 +20,7 @@ FLAGS = {                                   # 장학 매칭용 해당 사항 (C2
     "singleParent": "한부모 가정",
     "basicLivelihood": "기초생활수급·차상위",
 }
-DRAFT_KEYS = ("careerGoal", "activities", "hardship")
-FORBIDDEN = {"name", "studentId", "studentNo", "이름", "학번", "phone", "email", "birth"}
+FORBIDDEN ={"name", "studentId", "studentNo", "이름", "학번", "phone", "email", "birth"}
 
 
 class Invalid(ValueError):
@@ -108,12 +107,6 @@ def _interests(v: Any) -> dict:
     return out
 
 
-def _draft(v: Any) -> dict:
-    if not isinstance(v, dict) or any(k not in DRAFT_KEYS for k in v):
-        raise Invalid(f"초안 재료는 {', '.join(DRAFT_KEYS)} 만 받습니다")
-    return {k: str(x).strip()[:2000] for k, x in v.items() if str(x or "").strip()}
-
-
 def _year(v: Any) -> int:
     return _int(1990, date.today().year + 1)(v)
 
@@ -135,8 +128,9 @@ FIELDS: dict[str, tuple[str, Callable[[Any], Any], tuple[str, ...], str, str]] =
     "highSchoolRegion": ("sensitive", _choice(REGIONS), ("F11",), "출신 고교 지역", "지역인재 장학 판정에만 씁니다"),
     "flags": ("sensitive", _flags, ("F11",), "해당 사항", "장애·보훈 등 대상 장학 판정에만 씁니다"),
     "interests": ("extra", _interests, ("F12",), "관심사", ""),
-    "draftContext": ("extra", _draft, ("F11",), "신청서 초안 재료", ""),
+    # draftContext(신청서 초안 재료 — 진로·활동·형편)는 2026-11-19 초안 폐기로 뺐다. 저장돼 있던 값은 store 가 지운다
 }
+RETIRED = ("draftContext",)
 # 소속 — 코드 셋을 한 덩어리로 다룬다 (학과 마스터에서 고른 한 줄)
 AFFILIATION = ("collegeCode", "deptCode", "majorCode")
 USED_BY_AFFILIATION = ("F1", "F2", "F11")

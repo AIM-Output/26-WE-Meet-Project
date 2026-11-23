@@ -7,7 +7,7 @@
   2. 처음 보는 글만 상세를 받는다(원천마다 최대 25건). 최근 14일 글은 몇 건씩 다시 받아 수정 여부(내용 해시)를 본다
   3. 첨부 PDF·HWP·HWPX·DOCX 의 글자를 읽어 본문과 함께 추출한다(파일은 저장하지 않는다). 글자 없는 스캔 PDF·그림만 든 HWP,
      그리고 본문이 짧으면 본문 이미지·이미지 첨부는 OS 내장 OCR 로 (attachments.gather — 이 컴퓨터에 한국어 OCR 이 있을 때만)
-  4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키) 먼저 들어온 것에 묶는다(dup_of)
+  4. 같은 글이 다른 게시판에 또 올라왔으면(제목 키 — 말머리·공백·기호만 뺀 제목, textutil.title_key) 먼저 들어온 것에 묶는다(dup_of)
   5. 예전 판으로 읽어 못 읽은 공지(본문 이미지·HWP 첨부)는 원천마다 REREAD_MAX 건씩 상세를 다시 받아 읽는다 (notices.reader_ver)
   내 단과대학·학과(profile_board)는 프로필 소속 → 홈페이지(F1 목록) → 장학 게시판 찾기(k2web.discover, 7일마다 다시)
   상시 장학 안내(catalog)는 7일에 한 번.
@@ -25,7 +25,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from . import attachments, config as C, extract, registry, store
-from .textutil import content_hash, has_any, is_result, is_scholarship, norm_title, to_date
+from .textutil import content_hash, has_any, is_result, is_scholarship, title_key, to_date
 
 
 def _log(msg: str) -> None:
@@ -79,7 +79,7 @@ def _save_post(con, cfg: dict, post, http, hk: str, unit_cfg: Optional[dict], oc
                                   if post.attachments or post.images else ("", [], 0))
     unit = unit_cfg or registry.unit_for(post.writer, post.title, post.category)
     nid = f"{hk}:{post.native_id}"
-    tk = norm_title(post.title)
+    tk = title_key(post.title)
     row = {
         "id": nid, "source": cfg["key"], "source_name": cfg.get("name") or cfg["key"], "unit_key": unit["key"] if unit else None,
         "kind": "notice", "title": post.title, "url": post.url, "posted_at": post.posted_at, "writer": post.writer,
@@ -179,7 +179,7 @@ def collect_catalog(cfg: dict, http, force: bool = False) -> dict:
             row = {"id": f"cat:{it['native_id']}", "source": cfg["key"], "source_name": cfg["name"], "unit_key": None,
                    "kind": "catalog", "title": it["title"], "url": it["url"], "posted_at": None, "writer": "학생과",
                    "category": it.get("section"), "body": body, "attach_text": "", "attachments": [], "image_only": False,
-                   "content_hash": content_hash(it["title"], body), "is_result": False, "title_key": norm_title(it["title"]),
+                   "content_hash": content_hash(it["title"], body), "is_result": False, "title_key": title_key(it["title"]),
                    "dup_of": None}
             row["req"] = build_req(row, None)
             row["req"]["amount"] = amount or row["req"].get("amount")

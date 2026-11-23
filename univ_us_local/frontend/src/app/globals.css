@@ -61,7 +61,6 @@
   --study: #5c6b22;
   --study-soft: #eff1e0;
   --on-study: #fbfaf2;
-  --blank: #f6df9a; /* 장학 초안의 {{빈칸}} */
 
   --toast-bg: #1f2b25;
   --toast-fg: #f6f1ea;
@@ -144,7 +143,6 @@
   --color-study: var(--study);
   --color-study-soft: var(--study-soft);
   --color-on-study: var(--on-study);
-  --color-blank: var(--blank);
   --color-danger-line: var(--danger-line);
   --color-warn-line: var(--warn-line);
   --color-ok-line: var(--ok-line);

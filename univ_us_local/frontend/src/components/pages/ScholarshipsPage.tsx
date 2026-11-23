@@ -5,15 +5,12 @@ import {
   CalendarCheck,
   CalendarPlus,
   ChevronDown,
-  Copy,
   ExternalLink,
   FileText,
   HandCoins,
   ListTodo,
-  NotebookPen,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
   Undo2,
   X,
 } from "lucide-react";
@@ -23,7 +20,6 @@ import { Banner, EmptyState, ErrorPanel, SkeletonList, SyncBanner } from "@/comp
 import { Chip, DdayChip, StatusBadge, type Tone } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { OcrText } from "@/components/ui/OcrText";
-import { DraftBasicFields } from "@/components/ui/DraftBasicFields";
 import { useToast } from "@/components/ui/Toast";
 import { useAppData } from "@/components/app/AppData";
 import { closeQuery, navigateQuery, useQueryParam, useQueryValue } from "@/lib/useQueryState";
@@ -42,7 +38,6 @@ import {
   type SchDetail,
   type SchHistory,
   type SchItem,
-  type SchMaterials,
   type SchSource,
   type SchSources,
   type SensitiveKey,
@@ -53,7 +48,7 @@ import {
 
 const TABS = ["list", "history", "sources"] as const;
 const KINDS = ["notice", "catalog"] as const;
-const VIEWS = ["match", "draft", "apply"] as const;
+const VIEWS = ["match", "apply"] as const; // 신청서 초안 탭은 2026-11-19 폐기 — 예전 ?view=draft 주소는 첫 탭으로 연다
 
 const deadlineDate = (s: string) => parseLocal(s.length > 10 ? s : `${s}T23:59`);
 const fmtDl = (s: string | null) => (s ? s.replace("T", " ").slice(5, 16).replace("-", "/") : "기간 미정");
@@ -65,12 +60,6 @@ export default function ScholarshipsPage() {
   const itemId = useQueryValue("item");
   const isXl = useIsXl();
   const s = useScholarships(itemId);
-  const [materialsOpen, setMaterialsOpen] = useState(false);
-  const [materialsFor, setMaterialsFor] = useState<string | null>(null); // 초안을 만들려다 재료부터 묻는 중이면 그 장학 id
-  const openMaterials = (forId: string | null = null) => {
-    setMaterialsFor(forId);
-    setMaterialsOpen(true);
-  };
   const data = s.data;
 
   const inKind = useMemo(() => (data?.items ?? []).filter((i) => i.kind === kind), [data, kind]);
@@ -100,10 +89,6 @@ export default function ScholarshipsPage() {
         meta={meta}
         actions={
           <>
-            <button type="button" className="btn btn-sm" onClick={() => openMaterials()}>
-              <NotebookPen aria-hidden />
-              초안 재료
-            </button>
             <button type="button" className="btn btn-primary btn-sm" disabled={!!sync?.running} onClick={() => void s.sync()}>
               <RefreshCw className={sync?.running ? "animate-spin" : ""} aria-hidden />
               {sync?.running ? "모으는 중" : "지금 수집"}
@@ -215,7 +200,7 @@ export default function ScholarshipsPage() {
                 aria-label="상세 — 목록과 따로 스크롤됩니다"
               >
                 {s.detail ? (
-                  <Detail d={s.detail} s={s} onMaterials={openMaterials} />
+                  <Detail d={s.detail} s={s} />
                 ) : (
                   <SkeletonList rows={4} />
                 )}
@@ -226,16 +211,8 @@ export default function ScholarshipsPage() {
       )}
 
       <Modal open={!!itemId && !isXl && tab === "list"} onClose={() => closeQuery(["item", "view"])} title={s.detail?.title} size="lg">
-        {s.detail && <Detail d={s.detail} s={s} onMaterials={openMaterials} bare />}
+        {s.detail && <Detail d={s.detail} s={s} bare />}
       </Modal>
-      <MaterialsModal
-        open={materialsOpen}
-        onClose={() => setMaterialsOpen(false)}
-        onSaved={() => {
-          if (materialsFor) void s.run(() => api.makeScholarshipDraft(materialsFor), "초안을 만들었습니다");
-          setMaterialsFor(null);
-        }}
-      />
     </Page>
   );
 }
@@ -274,7 +251,7 @@ function ItemRow({ o, active }: { o: SchItem; active: boolean }) {
 
 type Sch = ReturnType<typeof useScholarships>;
 
-function Detail({ d, s, onMaterials, bare }: { d: SchDetail; s: Sch; onMaterials: (forId?: string) => void; bare?: boolean }) {
+function Detail({ d, s, bare }: { d: SchDetail; s: Sch; bare?: boolean }) {
   const [view, setView] = useQueryParam("view", "match", VIEWS);
   const body = (
     <div className="space-y-4">
@@ -300,12 +277,10 @@ function Detail({ d, s, onMaterials, bare }: { d: SchDetail; s: Sch; onMaterials
         onChange={(v) => setView(v === "match" ? null : v)}
         items={[
           { key: "match", label: "판정" },
-          { key: "draft", label: d.hasDraft ? "초안" : "초안 만들기" },
           { key: "apply", label: "제출 준비" },
         ]}
       />
-      {view === "match" && <MatchView d={d} s={s} onDraft={() => setView("draft")} />}
-      {view === "draft" && <DraftView d={d} s={s} onMaterials={onMaterials} />}
+      {view === "match" && <MatchView d={d} s={s} onApply={() => setView("apply")} />}
       {view === "apply" && <ApplyView d={d} s={s} />}
     </div>
   );
@@ -330,7 +305,7 @@ const STATUS_TEXT: Record<Reason["status"], { label: string; tone: Tone }> = {
   unknown: { label: "모름", tone: "warn" },
 };
 
-function MatchView({ d, s, onDraft }: { d: SchDetail; s: Sch; onDraft: () => void }) {
+function MatchView({ d, s, onApply }: { d: SchDetail; s: Sch; onApply: () => void }) {
   const toast = useToast();
   const rows = d.reasons.filter((r) => !["other", "exclusion"].includes(r.field));
   const others = d.reasons.filter((r) => r.field === "other" || r.field === "exclusion");
@@ -343,7 +318,6 @@ function MatchView({ d, s, onDraft }: { d: SchDetail; s: Sch; onDraft: () => voi
           {n}
         </Banner>
       ))}
-      {d.draftStale && <Banner tone="warn">초안을 만든 뒤 원문이 바뀌었습니다 — 초안 탭에서 다시 만들어 주세요</Banner>}
       {d.askApplied && (
         <Banner
           tone="info"
@@ -428,9 +402,9 @@ function MatchView({ d, s, onDraft }: { d: SchDetail; s: Sch; onDraft: () => voi
             해당으로 표시
           </button>
         )}
-        <button type="button" className="btn btn-primary btn-sm" onClick={onDraft}>
-          <Sparkles aria-hidden />
-          {d.hasDraft ? "초안 보기" : "초안 만들기"}
+        <button type="button" className="btn btn-primary btn-sm" onClick={onApply}>
+          <FileText aria-hidden />
+          제출 준비
         </button>
       </div>
     </>
@@ -538,138 +512,14 @@ function SensitiveInput({ k, message, onSkip }: { k: SensitiveKey; message: stri
   );
 }
 
-function DraftView({ d, s, onMaterials }: { d: SchDetail; s: Sch; onMaterials: (forId?: string) => void }) {
-  const toast = useToast();
-  const [text, setText] = useState(d.draft?.body ?? "");
-  const [borrow, setBorrow] = useState("");
-  const [making, setMaking] = useState(false);
-  useEffect(() => {
-    void Promise.resolve().then(() => setText(d.draft?.body ?? ""));
-  }, [d.draft?.body]);
-
-  const make = async (borrowFrom?: string) => {
-    setMaking(true);
-    try {
-      const nd = await api.makeScholarshipDraft(d.id, borrowFrom);
-      s.setDetail(nd);
-      await s.reload();
-      toast(borrowFrom ? "이전 초안의 문단을 가져왔습니다 — 이 장학에 맞게 고치세요" : "초안을 만들었습니다", { tone: "success" });
-    } catch (e) {
-      if (e instanceof Error && e.message === "needsMaterials") onMaterials(d.id);
-      else toast(`초안을 만들지 못했습니다: ${e instanceof Error ? e.message : e}`, { tone: "error" });
-    } finally {
-      setMaking(false);
-    }
-  };
-
-  if (!d.draft)
-    return (
-      <div className="space-y-3">
-        <EmptyState
-          compact
-          icon={<FileText />}
-          title="아직 초안이 없습니다"
-          action={
-            <>
-              <button type="button" className="btn btn-primary btn-sm" disabled={making} onClick={() => void make()}>
-                <Sparkles aria-hidden />
-                초안 만들기
-              </button>
-              {d.otherDrafts.length > 0 && (
-                <select className="field field-sm w-auto" aria-label="이전 초안 가져오기" value={borrow} onChange={(e) => e.target.value && void make(e.target.value)}>
-                  <option value="">이전 초안 가져오기…</option>
-                  {d.otherDrafts.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.title.slice(0, 40)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </>
-          }
-        >
-          사실 정리 · 지원 동기 · 학업 계획 · 제출 서류 · 신청 방법을 한 문서로 만듭니다. 처음 한 번은 진로·활동 같은 재료를 묻고, 이후 초안에 다시 씁니다.
-        </EmptyState>
-        <p className="text-[12px] text-faint">이름·학번은 채우지 않습니다 — {"{{이름}}"} 자리로 남습니다. 재료에 없는 경험은 지어내지 않고 빈칸으로 둡니다.</p>
-      </div>
-    );
-
-  const blanks = (text.match(/\{\{[^}]*\}\}/g) ?? []).length;
-  const parts = text.split(/(\{\{[^}]*\}\})/g);
-  const by = d.draft.generatedBy;
-  return (
-    <div className="space-y-3">
-      {d.draft.stale && (
-        <Banner tone="warn" action={<button type="button" className="btn btn-sm" onClick={() => void make()}>다시 만들기</button>}>
-          원문이 바뀌었습니다 — 초안을 다시 만들어 확인하세요
-        </Banner>
-      )}
-      {d.warning && <Banner tone="warn">{d.warning} — 그래도 지원하려면 원문 조건을 다시 확인하세요</Banner>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Chip tone={blanks ? "warn" : "ok"}>채워야 할 곳 {blanks}</Chip>
-        <Chip square>{by === "llm" ? "LLM 작성" : by === "borrowed" ? "가져옴" : "템플릿"}</Chip>
-        {d.draft.borrowed.map((b) => (
-          <Chip key={b.from} tone="info">
-            {b.title.slice(0, 24)}에서 가져옴
-          </Chip>
-        ))}
-        <span className="ml-auto flex flex-wrap gap-2">
-          {d.otherDrafts.length > 0 && (
-            <select className="field field-sm w-auto" aria-label="이전 초안 가져오기" value={borrow} onChange={(e) => { setBorrow(e.target.value); if (e.target.value) void make(e.target.value); }}>
-              <option value="">이전 초안 가져오기…</option>
-              {d.otherDrafts.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.title.slice(0, 40)}
-                </option>
-              ))}
-            </select>
-          )}
-          <button type="button" className="btn btn-ghost btn-sm" disabled={making} onClick={() => void make()}>
-            다시 만들기
-          </button>
-        </span>
-      </div>
-      <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border bg-surface-2 p-3 text-[14px] leading-relaxed whitespace-pre-wrap" aria-label="빈칸 미리보기">
-        {parts.map((p, i) =>
-          p.startsWith("{{") ? (
-            <mark key={i} className="rounded bg-blank px-1 text-text">
-              {p}
-            </mark>
-          ) : (
-            <span key={i}>{p}</span>
-          ),
-        )}
-      </div>
-      <label htmlFor="sch-draft" className="label">
-        편집
-      </label>
-      <textarea id="sch-draft" className="field min-h-[240px] font-mono text-[13px]" value={text} onChange={(e) => setText(e.target.value)} />
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <span className="mr-auto text-[12px] text-faint">{d.draft.updatedAt ? `저장 ${fmtRelative(d.draft.updatedAt)}` : ""}</span>
-        <button type="button" className="btn btn-primary btn-sm" disabled={s.busy || text === d.draft.body} onClick={() => void s.run(() => api.saveScholarshipDraft(d.id, text), "초안을 저장했습니다")}>
-          저장
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ApplyView({ d, s }: { d: SchDetail; s: Sch }) {
-  const toast = useToast();
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(d.draft?.body ?? "");
-      toast("초안을 복사했습니다", { tone: "success" });
-    } catch {
-      toast("복사하지 못했습니다 — 초안 탭에서 직접 선택해 주세요", { tone: "error" });
-    }
-  };
   const progress = (p: SchDetail["progress"], ok: string) => void s.run(() => api.patchScholarship(d.id, { progress: p }), ok);
   return (
     <div className="space-y-3 text-[14px]">
       <Banner tone="danger" icon={<ShieldAlert aria-hidden />}>
         제출은 시스템이 하지 않습니다. 확인 후 본인이 직접 제출하세요.
       </Banner>
+      {d.warning && <Banner tone="warn">{d.warning} — 그래도 지원하려면 원문 조건을 다시 확인하세요</Banner>}
       <dl className="grid grid-cols-[72px_1fr] items-center gap-3">
         <dt className="text-muted">신청 방법</dt>
         <dd className="flex flex-wrap items-center gap-2">
@@ -728,17 +578,13 @@ function ApplyView({ d, s }: { d: SchDetail; s: Sch }) {
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
         <span className="mr-auto">{d.progress && <Chip tone={PROGRESS_TONE[d.progress]}>{d.progressLabel}</Chip>}</span>
-        <button type="button" className="btn btn-sm" disabled={!d.draft} onClick={() => void copy()} title={d.draft ? undefined : "초안이 아직 없습니다"}>
-          <Copy aria-hidden />
-          초안 전체 복사
-        </button>
-        {(!d.progress || d.progress === "draft") && (
+        {!d.progress && (
           <>
-            <button type="button" className="btn btn-sm" onClick={() => progress("skipped", "반려했습니다 — 이력 탭에서 되돌릴 수 있습니다")}>
-              반려
+            <button type="button" className="btn btn-sm" onClick={() => progress("skipped", "숨겼습니다 — 이력 탭에서 되돌릴 수 있습니다")}>
+              관심 없음
             </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => progress("approved", "승인했습니다 — 마감 D-3·D-1 에 알려 드립니다")}>
-              승인 (제출 예정)
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => progress("approved", "신청 예정으로 표시했습니다 — 마감 D-3·D-1 에 알려 드립니다")}>
+              신청 예정
             </button>
           </>
         )}
@@ -762,82 +608,6 @@ function ApplyView({ d, s }: { d: SchDetail; s: Sch }) {
   );
 }
 
-function MaterialsModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
-  const toast = useToast();
-  const [m, setM] = useState<SchMaterials | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    void api.scholarshipMaterials().then(setM, () => setM(null));
-  }, [open]);
-  const set = (k: keyof SchMaterials, v: string) => m && setM({ ...m, [k]: v });
-  const fields: { k: "careerGoal" | "activities" | "hardship" | "highlights"; label: string; ph: string; opt?: boolean }[] = [
-    { k: "careerGoal", label: "진로 목표", ph: "예: 임베디드 AI 분야 대학원 진학" },
-    { k: "activities", label: "활동 경험", ph: "예: 교내 AI 경진대회 참가, 학과 튜터링 2학기" },
-    { k: "hardship", label: "가정 형편 (선택)", ph: "생활·복지 장학 초안에만 쓰입니다", opt: true },
-    { k: "highlights", label: "강조하고 싶은 점 (선택)", ph: "예: 꾸준함, 팀 프로젝트 리더 경험", opt: true },
-  ];
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="초안 재료"
-      footer={
-        <>
-          {m?.exists && (
-            <button
-              type="button"
-              className="btn btn-ghost mr-auto"
-              onClick={async () => {
-                setM(await api.deleteScholarshipMaterials());
-                toast("초안 재료를 지웠습니다");
-              }}
-            >
-              재료 지우기
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!m}
-            onClick={async () => {
-              if (!m) return;
-              await api.putScholarshipMaterials({ careerGoal: m.careerGoal, activities: m.activities, hardship: m.hardship, highlights: m.highlights, basic: m.basic });
-              toast("저장했습니다 — 다음 초안부터 쓰입니다", { tone: "success" });
-              onClose();
-              onSaved();
-            }}
-          >
-            저장
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-4 pt-1">
-        <p className="hint">
-          한 번 적어 두면 이후 초안에 다시 쓰입니다(이미 만든 초안은 그대로). 적은 것만 근거로 쓰고, 없는 경험은 지어내지 않고 빈칸으로 남깁니다. 프로필과 따로 저장되고 따로 지울 수 있습니다.
-        </p>
-        {m && (
-          <DraftBasicFields
-            idPrefix="mat-basic"
-            value={m.basic}
-            onChange={(basic) => setM({ ...m, basic })}
-            fromNote={m.basicFrom === "activity" ? "대외활동 초안 재료에 적어 둔 기본 정보를 불러왔습니다." : m.basicFrom === "profile" ? "학과·학년은 프로필에서 불러왔습니다." : null}
-          />
-        )}
-        {m?.fromProfile && <p className="text-[12px] text-faint">프로필에 적어 둔 초안 재료를 불러왔습니다.</p>}
-        {fields.map((f) => (
-          <div key={f.k}>
-            <label htmlFor={`mat-${f.k}`} className="label">
-              {f.label}
-            </label>
-            <textarea id={`mat-${f.k}`} className="field min-h-[72px] text-[14px]" placeholder={f.ph} value={m?.[f.k] ?? ""} onChange={(e) => set(f.k, e.target.value)} />
-          </div>
-        ))}
-      </div>
-    </Modal>
-  );
-}
-
 function HistoryTab({ onChanged }: { onChanged: () => void }) {
   const [h, setH] = useState<SchHistory | null>(null);
   const toast = useToast();
@@ -847,7 +617,7 @@ function HistoryTab({ onChanged }: { onChanged: () => void }) {
   if (h.semesters.length === 0)
     return (
       <EmptyState icon={<HandCoins />} title="아직 기록이 없습니다">
-        초안을 만들거나 승인·신청·선정을 표시하면 학기별로 여기 남습니다. 관심 없음으로 숨긴 장학도 여기서 되돌립니다.
+        신청 예정·신청·선정을 표시하면 학기별로 여기 남습니다. 관심 없음으로 숨긴 장학도 여기서 되돌립니다.
       </EmptyState>
     );
   return (

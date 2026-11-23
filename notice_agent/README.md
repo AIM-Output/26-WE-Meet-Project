@@ -1,5 +1,7 @@
 # notice_agent — 장학 공지 매칭·신청서 초안 (Univ-Us F11)
 
+> **참고 코드** — 2026-10-09 앱 기능 `F11_Scholarship_agent` 로 옮겼다. 이 도구의 **신청서 초안**(LLM 문단·`draft_context`)은 2026-11-19 앱에서 폐기했다 — 학교 제출 파일이 거의 HWP 이고, 민감 정보(가정 형편·진로·활동)는 외부 AI API 로 보내지 않는다(요구사항정의서 전역 G6 · F11 1절). 아래 `.env` 예시의 외부 LLM API(Solar·OpenAI) 설정도 앱에는 가져가지 않는다.
+
 전남대 장학 공지를 모아서 **내 프로필에 맞는 것만** 골라 알려주고, 신청서 초안을 만들어 두는 도구.
 에이전트용 지침과 상세 설계는 [SKILL.md](SKILL.md), 사이트 구조는 [references/site-structure.md](references/site-structure.md).
 

@@ -1,4 +1,5 @@
-"""서비스 — 목록 묶음·정렬, 관심사 없을 때, 담기 → 캘린더, 등급 뒤집기·진행 상태(두 축 분리), 초안, 이력, 타일·브리핑."""
+"""서비스 — 목록 묶음·정렬, 관심사 없을 때, 담기 → 캘린더, 등급 뒤집기·진행 상태(두 축 분리), 예전 초안 데이터 지우기, 이력, 타일·브리핑."""
+import pytest
 from conftest import TODAY, add_notice
 
 from activity import service, store
@@ -42,11 +43,12 @@ def test_dedupe_by_title_key(profile):
     with store.connect() as con:
         add_notice(con, "www:10", "[모집공고] 2026 SW 해커톤 참가자 모집", OPEN)
         from activity.collect import build_info
-        from scholarship.textutil import content_hash, norm_title
+        from activity.extract import title_key
+        from scholarship.textutil import content_hash
         row = {"id": "aisw:99", "source": "sojoong", "source_name": "SW중심대학", "unit_key": None,
                "title": "2026 SW 해커톤 참가자 모집", "url": "https://x.invalid", "posted_at": "2026-10-06", "writer": None,
                "category": None, "body": OPEN, "attach_text": "", "attachments": [], "image_only": False,
-               "content_hash": content_hash("a"), "title_key": norm_title("2026 SW 해커톤 참가자 모집")}
+               "content_hash": content_hash("a"), "title_key": title_key("2026 SW 해커톤 참가자 모집")}
         row["dup_of"] = store.find_dup(con, row["title_key"], row["id"])
         row["info"] = build_info(row, None)
         row["extract_ver"] = 1
@@ -54,6 +56,37 @@ def test_dedupe_by_title_key(profile):
         ids = [i["id"] for i in service.evaluate(con, profile, TODAY)]
         assert ids.count("www:10") == 1 and "aisw:99" not in ids
         assert service.detail(con, "www:10", profile, TODAY)["alsoPostedAt"][0]["id"] == "aisw:99"
+
+
+def test_regroup_splits_titles_that_differ_in_brackets(profile):
+    """2026-11-19 — 예전 제목 키(괄호 안을 다 지움)로 묶인 다른 글을 한 번 다시 묶는다. 같은 글은 계속 묶이고,
+    담아 둔 글은 숨지 않으며, 묶음에서 풀린 글은 '새 관심 기회' 알림으로 쏟아지지 않게 알린 것으로 친다."""
+    from activity import config as C
+    titles = {"www:21": "[학사안내]2026학년도 동계 계절학기 타 대학교(충북대) 교류수학 추천 안내",
+              "www:22": "[학사안내]2026학년도 동계 계절학기 타 대학교(서울대) 교류수학 추천 안내",
+              "www:23": "[취업정보][현대그린푸드]2026 신입사원채용(~10.25.(일)까지)",
+              "www:24": "[취업정보][iM증권]2026 신입사원 채용(~11.8.(일)까지)",
+              "www:25": "[공모전]2026 AI 활용 영상 콘텐츠 경진대회 참가자 모집(~11/13까지)",
+              "ile:25": "2026 AI 활용 영상 콘텐츠 경진대회 참가자 모집(~11/13까지)"}
+    with store.connect() as con:
+        for i, (nid, t) in enumerate(titles.items()):
+            add_notice(con, nid, t, OPEN, source="ile" if nid.startswith("ile") else "jnu_notice")
+            con.execute("UPDATE notices SET first_seen = ?, title_key = 'old' WHERE id = ?", (f"2026-10-0{i + 1}T09:00:00", nid))
+        # 예전 판의 묶음 — 서로 다른 대학·회사가 하나로 접혀 있었다. www:24 는 사용자가 담아 둔 글
+        con.execute("UPDATE notices SET dup_of = 'www:21' WHERE id = 'www:22'")
+        con.execute("UPDATE notices SET dup_of = 'www:23' WHERE id = 'www:24'")
+        con.execute("UPDATE notices SET dup_of = 'www:25' WHERE id = 'ile:25'")
+        store.put_state(con, "www:24", progress="saved")
+        store.set_meta(con, "title_key_ver", "1")
+    store._initialized.clear()                                   # 앱을 새 판으로 다시 띄운 것처럼
+    with store.connect() as con:
+        dups = {r["id"]: r["dup_of"] for r in con.execute("SELECT id, dup_of FROM notices")}
+        alerted = {r["notice_id"] for r in con.execute("SELECT notice_id FROM user_state WHERE alerted_at IS NOT NULL")}
+        assert store.get_meta(con, "title_key_ver") == str(C.TITLE_KEY_VERSION)
+        ids = [i["id"] for i in service.evaluate(con, profile, TODAY)]
+    assert dups == {"www:21": None, "www:22": None, "www:23": None, "www:24": None, "www:25": None, "ile:25": "www:25"}
+    assert {"www:22", "www:24"} <= set(ids) and "ile:25" not in ids
+    assert alerted == {"www:22", "www:24"}
 
 
 def test_save_adds_deadline_to_calendar_and_unsave_removes(profile, cal):
@@ -90,80 +123,48 @@ def test_flip_grade_and_skip_are_separate(profile):
         assert h["applied"] == 1 and {i["progress"] for i in h["items"]} == {"applied", "skipped"}
 
 
-def test_draft_template_no_invention(profile, cal):
+def test_old_draft_data_removed_on_upgrade(profile, cal):
+    """2026-11-19 신청서 초안 폐기 — 예전 DB 의 초안 표·초안 재료를 지우고, '초안 대기'·'제출 예정'은 '담음'으로 옮긴다.
+    담아 둔 글의 마감이 지나면 '지원하셨나요?'를 묻는다(예전엔 제출 예정만)."""
+    from activity import config as C
     with store.connect() as con:
         seed(con)
-        service.put_materials(con, {"careerGoal": "AI 엔지니어", "activities": "", "skills": "파이썬", "highlights": ""})
-        d = service.make_draft(con, "www:1", profile, add_event=cal.add)
-    body = d["draft"]["body"]
-    assert "{{이름}}" in body and "{{학번}}" in body and "{{연락처}}" in body
-    assert "## 3. 참가 동기" in body and "## 4. 아이디어·준비 계획" in body                 # 공모전 문단 제목
-    assert "AI 엔지니어" in body and "파이썬을(를) 살려" in body
-    assert "{{이 활동과 이어지는 내 경험을 적어 주세요}}" in body                            # 활동 재료가 없으면 빈칸
-    assert "평소 AI·SW·공모전·경진대회에 관심을" in body                                    # 내가 고른 관심사만
-    assert "- [ ] 재학증명서 1부" in body and "제출은 시스템이 하지 않습니다" in body
-    assert d["progress"] == "draft" and d["draft"]["generatedBy"] == "template" and d["onCalendar"]
+        con.execute("CREATE TABLE drafts (notice_id TEXT PRIMARY KEY, body TEXT NOT NULL)")
+        con.execute("INSERT INTO drafts VALUES ('www:1', '# [신청서 초안] 학번 2099000003')")
+        store.set_meta(con, "materials", '{"basic": {"name": "테스트학생", "phone": "010-0000-0004"}}')
+        store.put_state(con, "www:1", progress="draft", progress_at="2026-10-05T10:00:00")
+        store.put_state(con, "www:4", progress="approved", progress_at="2026-10-01T10:00:00")
+    store._initialized.clear()                                   # 앱을 새 판으로 다시 띄운 것처럼
+    with store.connect() as con:
+        assert con.execute("SELECT 1 FROM sqlite_master WHERE name = 'drafts'").fetchone() is None
+        assert store.get_meta(con, "materials") is None
+        d1, d4 = service.detail(con, "www:1", profile, TODAY), service.detail(con, "www:4", profile, TODAY)
+    assert (d1["progress"], d1["saved"], d1["state"]["savedAt"]) == ("saved", True, "2026-10-05T10:00:00")
+    assert not {"draft", "hasDraft", "draftStale", "otherDrafts"} & set(d1)
+    assert d4["progress"] == "saved" and d4["askApplied"]               # www:4 는 10-02 마감 — 지원했는지 묻는다
+    assert not d1["askApplied"]                                          # 아직 마감 전
+    raw = C.DB_PATH.read_bytes()
+    assert b"2099000003" not in raw and b"010-0000-0004" not in raw
 
 
-def test_basic_info_from_scholarship_and_in_draft(profile):
-    """2026-10-25 — 초안 재료의 기본 정보(이름·학번·소속·학년·연락처 + 작성일). 비면 장학 재료의 기본 정보 → 프로필 소속·학년.
-    LLM 프롬프트에는 이름·학번·연락처를 넣지 않는다."""
-    from datetime import date
-    from activity import draft as drafting
-    sch = {"name": "테스트학생", "studentId": "2099000001", "department": "", "grade": "", "phone": "010-0000-0000", "email": ""}
-    prompts = []
-
-    def fake_llm(system, user):
-        prompts.append(system + user)
-        return "### 참가 동기\n저는 {{이름}}입니다.\n\n### 아이디어·준비 계획\n준비하겠습니다."
+def test_progress_draft_and_approved_are_gone(profile):
     with store.connect() as con:
         seed(con)
-        m = service.materials(con, profile, lambda: None, lambda: sch)
-        assert m["basic"]["name"] == "테스트학생" and m["basicFrom"] == "scholarship"
-        assert m["basic"]["department"].endswith("인공지능학부") and m["basic"]["grade"] == "3"
-        service.put_materials(con, {"careerGoal": "AI 엔지니어", "basic": {**sch, "email": "me@example.com"}})
-        mats = service.materials(con, profile)
-        d = service.detail(con, "www:1", profile, TODAY)
-    body, by = drafting.build(d, profile, mats, llm=fake_llm, today=date(2026, 10, 25))
-    assert by == "llm"
-    for line in ("- 이름: 테스트학생", "- 학번: 2099000001", "- 연락처: 010-0000-0000", "- 이메일: me@example.com",
-                 "- 작성일: 2026. 10. 25.", "3학년 · 재학"):
-        assert line in body, line
-    assert "저는 테스트학생입니다." in body and "{{이름}}" not in body
-    assert prompts and all("테스트학생" not in p and "2099000001" not in p and "010-0000" not in p for p in prompts)
+        for p in ("draft", "approved"):
+            with pytest.raises(service.Invalid):
+                service.patch(con, "www:1", {"progress": p})
 
 
-def test_rental_draft_headings(profile):
+def test_semester_rental_stays_open(profile):
+    """이번 학기 대여 안내는 신청 기간을 못 읽어도 학기 내내 모집 중 — 다른 글은 45일이 지나면 지난 공지 (2026-11-19)."""
     with store.connect() as con:
-        add_notice(con, "aicoss:1", "인공지능혁신융합대학사업단 실험실습 기자재 대여 안내(2026년 2학기)",
-                   "대여 품목 : 노트북, 태블릿\n신청기간 : 2026. 10. 1. ~ 2026. 10. 30.", source="aicoss", unit_key="aicoss")
-        service.put_materials(con, {"careerGoal": "", "activities": "", "skills": "", "highlights": ""})
-        body = service.make_draft(con, "aicoss:1", profile)["draft"]["body"]
-    assert "## 3. 사용 목적" in body and "## 4. 사용 계획 (품목·기간·장소)" in body
-    assert "- 사용 기간: {{시작일 ~ 반납일}}" in body
-
-
-def test_borrow_previous_draft(profile):
-    with store.connect() as con:
-        seed(con)
-        service.put_materials(con, {"careerGoal": "AI 엔지니어"})
-        service.make_draft(con, "www:1", profile)
-        d = service.make_draft(con, "www:2", profile, borrow_from="www:1")
-    assert d["draft"]["generatedBy"] == "borrowed" and d["draft"]["borrowed"][0]["from"] == "www:1"
-    assert "초안에서 가져옴" in d["draft"]["body"]
-
-
-def test_materials_fallback_order(profile):
-    with store.connect() as con:
-        m = service.materials(con, profile, lambda: {"careerGoal": "장학 재료의 진로", "activities": "튜터링"})
-        assert not m["exists"] and m["from"] == "scholarship" and m["careerGoal"] == "장학 재료의 진로"
-        profile["draftContext"] = {"careerGoal": "프로필의 진로"}
-        m = service.materials(con, profile, lambda: None)
-        assert m["from"] == "profile" and m["careerGoal"] == "프로필의 진로"
-        service.put_materials(con, {"careerGoal": "내 재료"})
-        assert service.materials(con, profile)["exists"]
-        service.delete_materials(con)
-        assert not service.materials(con, None)["exists"]
+        add_notice(con, "aicoss:2", "인공지능혁신융합대학사업단 실험실습 기자재 대여 안내(2026년 2학기)", "대여 품목 : 노트북",
+                   source="aicoss", posted="2026-08-19")
+        add_notice(con, "nccoss:1", "차세대통신 혁신융합대학사업단 2026학년도 1학기 교육·실습기자재 대여안내", "",
+                   source="nccoss", posted="2026-03-05")
+        add_notice(con, "www:60", "[모집공고] 2026 여름 AI 캠프 참가자 모집", "", posted="2026-08-19")
+        st = {i["id"]: i["status"] for i in service.evaluate(con, profile, TODAY)}
+    assert st == {"aicoss:2": "open", "nccoss:1": "stale", "www:60": "stale"}
 
 
 def test_status_and_brief(profile, cal):
@@ -181,5 +182,9 @@ def test_academic_rows_hidden_even_if_stored(profile):
     with store.connect() as con:
         add_notice(con, "www:50", "2026학년도 2학기 학부 재학생 미등록자 고지서 출력", "등록금 납부 안내")
         add_notice(con, "www:51", "[모집공고] 2026 AI 해커톤 참가자 모집", OPEN)
+        # 2026-11-19 — 작성 부서로는 빼지 않는다: 학사과 글이어도 대여는 보이고, 교무과 포상 공개검증은 말머리로 숨는다
+        add_notice(con, "www:52", "[학사안내] 2026학년도 2학기 강의실 대관 신청 안내", OPEN, writer="학사과")
+        add_notice(con, "www:53", "[직원표창공개]2027년도 2월말 퇴직교원 정부포상 및 장관표창 대상자 공개검증", "", writer="교무과")
         ids = [i["id"] for i in service.evaluate(con, profile, TODAY)]
     assert "www:50" not in ids and "www:51" in ids
+    assert "www:52" in ids and "www:53" not in ids
