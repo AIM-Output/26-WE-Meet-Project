@@ -9,7 +9,6 @@
 | **F6** e클래스 과제·마감 (`F6_Eclass_agent`) | 세션 · 재인증 · Chromium |
 | **C2** 프로필 가져오기 (`C2_Profile_agent`) | 세션 · 재인증 — 학사정보시스템 |
 | **F2** 기이수성적 (`F2_Graduation_agent`) | 세션 (로그인 절차는 C2 것을 거친다) |
-| **F11** 장학 카탈로그 (`notice_agent`) | 세션 · 재인증 · Chromium |
 
 - **비밀번호는 이 폴더 코드만 다룬다.** 빌려 쓰는 쪽은 세션 파일 경로와 `login.reauthenticate(p)` 만 안다.
 - 신뢰 기기 쿠키(`RathonSSO_TrustDevice_*`, 약 1년) 덕에 한 번 휴대폰 2차 인증을 통과하면 그 뒤로는 창 없이 다시 로그인된다.

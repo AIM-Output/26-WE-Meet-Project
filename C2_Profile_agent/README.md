@@ -24,7 +24,6 @@ C2_Profile_agent/
 │   ├── master_crawl.py     교육과정검색 수집 (표준 라이브러리)
 │   ├── hakstd.py           학사정보시스템 가져오기 (자식 프로세스 — osenv.module_cmd)
 │   ├── jobs.py             대시보드 버튼 뒤의 백그라운드 작업 (목록 갱신 · 가져오기)
-│   ├── notice_bridge.py    F11(notice_agent/data/profile.json)로 넘기기
 │   ├── api.py              FastAPI 라우터
 │   └── __main__.py         명령줄
 ├── master/departments.json 학과 목록 스냅숏 (저장소에 포함 — 처음 실행에도 네트워크 없이 뜬다)
@@ -44,7 +43,6 @@ python desktop/cli.py student set-dept 30001265 30001267     # 소속 (학과 �
 python desktop/cli.py student set admissionYear=2024 track=single grade=3
 python desktop/cli.py student import                         # 학사정보시스템에서 가져오기
 python desktop/cli.py student master-sync                    # 교육과정검색에서 학과 목록 다시 받기 (1분 남짓)
-python desktop/cli.py student export-notice                  # F11 notice_agent 로 넘기기
 python desktop/cli.py student clear                          # 전부 지우기
 ```
 

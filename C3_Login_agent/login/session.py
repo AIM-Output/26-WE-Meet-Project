@@ -6,7 +6,7 @@
   python -m login --auto    무인: 앱의 '자동 로그인 정보'(또는 login creds)로 저장한 자격증명으로 headless 자동 로그인.
                        신뢰 기기 쿠키가 있어야 2차 인증 없이 끝까지 진행된다.
 
-빌려 쓰는 기능(F6 수집 · C2·F2 학사정보시스템 · notice_agent)은 reauthenticate(p) 를 부른다:
+빌려 쓰는 기능(F6 수집 · C2·F2 학사정보시스템)은 reauthenticate(p) 를 부른다:
 조용한 쿠키 복구 → (자격증명 있으면) 무인 로그인 순. 성공하면 state/storage_state.json 이 갱신된다.
 
 비밀번호는 DPAPI(auth.py)에서만 읽어 폼에 채운다. 코드·로그에 남기지 않는다.

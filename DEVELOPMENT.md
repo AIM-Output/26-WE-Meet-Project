@@ -28,7 +28,6 @@ Tauri 껍데기(`desktop/`)가 로컬 서버 사이드카(`univ_us_local/backend
 ├── F8_Plan_agent/            F8 공강 학습 플랜
 ├── F11_Scholarship_agent/    F11 장학 공지 매칭 — 학교·부서·사업단·내 학과 장학 게시판 + 상시 장학 안내 (신청서 초안은 2026-11-19 폐기 — 코드에서도 걷어냄)
 ├── F12_Activity_agent/       F12 대외활동 — F11 과 같은 원천에서 장학 외 공지(프로그램·공모전·취업·기자재 대여 …)를 관심사로 가른다 (신청서 초안은 2026-11-19 폐기)
-├── notice_agent/             (참고 코드) 장학 공지 매칭 — 2026-10-09 앱 기능(F11_Scholarship_agent)으로 옮겼다
 ├── 요구사항정의서.md          기능별 요구사항 — 기능 개발 전 먼저 볼 문서
 ├── Frontend-Route.md         화면·라우트·흐름 정의
 ├── WE-Meet_데스크톱앱_맥지원_계획.md   데스크톱 앱 · macOS · 얇은 서버로 가는 단계별 계획과 진행 기록
@@ -201,4 +200,3 @@ npx tauri build                        # Windows: src-tauri/target/release/bundl
 | [WE-Meet_F9_LLM_학습_가이드.md](WE-Meet_F9_LLM_학습_가이드.md) | F9 대화 모델 — **로컬 LLM(앱 내장)** 으로 이어서 학습하는 방법·사람별 할 일 (2026-11-18 결정 — 사용자 정보는 외부 AI 로 보내지 않는다, 요구사항정의서 G6) |
 | [WE-Meet_데스크톱앱_맥지원_계획.md](WE-Meet_데스크톱앱_맥지원_계획.md) | macOS 지원 → 데스크톱 앱 → 얇은 서버로 가는 단계별 계획과 진행 기록 |
 | [WE-Meet_서버_플랫폼_검토.md](WE-Meet_서버_플랫폼_검토.md) | 왜 "내 PC 안에서만" 구조인지 (설계 배경) |
-| [notice_agent/README.md](notice_agent/README.md) | (참고 코드) 장학 공지 매칭·신청서 초안 도구 — F11 의 출발점. 초안 부분은 앱에 가져가지 않는다(2026-11-19 폐기) |

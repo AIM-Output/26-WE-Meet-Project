@@ -1,7 +1,7 @@
 """프로필 저장 — 검사 · 소속(마스터 코드) · 자동/내가 입력 · 가져오기 · 민감정보 · 다른 기능용 모양 · 옛 데이터 옮기기."""
 import pytest
 
-from student import notice_bridge, service
+from student import service
 from student.hakstd import parse_dashboard, parse_grades
 from student.schema import Invalid
 
@@ -126,13 +126,6 @@ def test_interests_shape(db):
     for bad in ({"keywords": ["a"]}, {"likes": ["AI"]}, {"tags": "AI"}):      # 1글자 거부 (F12 8절)
         with pytest.raises(Invalid):
             service.patch(db, {"interests": bad})
-    assert notice_bridge.to_notice({"interests": {"tags": ["AI·SW"], "keywords": ["반도체"], "exclude": ["x"]}}) ==         {"interests": ["AI·SW", "반도체"]}
-
-
-def test_notice_bridge():
-    out = notice_bridge.to_notice({"grade": 3, "department": "인공지능학부", "flags": {"veteranFamily": True},
-                                   "draftContext": {"careerGoal": "연구원"}, "incomeBracket": None})
-    assert out == {"grade": 3, "department": "인공지능학부", "flags": {"veteran_family": True}, "field_group": "공학계열"}
 
 
 def test_draft_context_retired(db):

@@ -12,11 +12,13 @@
 > **코드 상태 (2026-11-19 걷어냄)**: `draft.py`·`llm.py`·`basicinfo.py`, 초안·재료 API(`…/draft`·`…/materials`), 화면의 초안 탭·재료 카드, LLM 슬롯을 지웠다. 예전 DB 의 `drafts` 표·`meta.materials`(이름·학번·연락처·진로·형편)는 앱이 새 판을 처음 열 때 `store._migrate` → `drop_drafts` 가 지우고 빈 자리를 0 으로 덮는다(`secure_delete`), 진행 상태 `초안 대기`는 `신청 예정`으로 옮긴다. 이제 F11 은 LLM 을 부르지 않는다(판정·추출은 규칙만).
 
 요구사항: [요구사항정의서.md](../요구사항정의서.md) F11 절(12절 구현 메모) · 화면: [Frontend-Route.md](../Frontend-Route.md) 16절 — `/scholarships`
-참고 코드였던 [notice_agent](../notice_agent/README.md) 의 규칙 추출·판정·초안 골격을 옮겨 와 앱 기능으로 다시 짰다.
+예전 장학 도구 `notice_agent` 의 규칙 추출·판정 골격을 옮겨 와 앱 기능으로 다시 짰다. notice_agent 는 2026-11-23 저장소에서 걷어냈다(git 기록에 남아 있다) —
+학교 사이트 구조 실측 문서만 [references/site-structure.md](references/site-structure.md) 로 옮겼다.
 
 ```
 F11_Scholarship_agent/
 ├── directory/sources.json   전남대 장학 원천 목록(2026-10-09 실측) — 게시판 주소·말머리·대상(관련 단과대학·학과·계열)·근거
+├── references/site-structure.md   학교 사이트 구조(게시판 셀렉터·학사정보시스템 화면, 2026-09-13 실측) — F1·F2·C2 수집기 주석도 이 문서를 가리킨다
 ├── scholarship/
 │   ├── config.py            경로(F11_DATA_DIR·F11_STATE_DIR) · 요청 간격 1.5초 · 판정 문턱 0.6 · 수집 시각 06·18시 (LLM 슬롯 없음 — 2026-11-19)
 │   ├── registry.py          원천 목록 + 프로필 → 내 장학 원천(관련 여부·켜짐) · 작성 부서 → 사업단 · 학과 홈페이지(F1 목록)

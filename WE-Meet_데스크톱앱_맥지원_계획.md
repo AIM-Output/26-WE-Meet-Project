@@ -166,7 +166,7 @@ server/                    얇은 서버 — Cloudflare Workers + D1 (2026-11-16
 - [x] C3 `auth.py` 가 맥에서 import 되게(`wintypes` 제거, DWORD=c_ulong 그대로 — ENTROPY·설명 문자열 불변, 기존 cred.bin 복호화 확인), `setup-creds` 는 맥에서 안내 후 종료
 - [x] README 0-1절(맥), `.gitattributes` `*.command`·`*.sh` eol=lf, 실행 권한(100755), `server.log` gitignore
 - [ ] 맥 실기기에서 처음부터 끝까지(설치 → 로그인 → 수집 → 대시보드) — 팀 맥 사용자
-- [ ] notice_agent 맥 런처 (선택 기능이라 미룸)
+- [x] ~~notice_agent 맥 런처 (선택 기능이라 미룸)~~ → 2026-11-23 notice_agent 를 저장소에서 걷어내 필요 없다 (F11 이 앱 기능으로 대신한다)
 
 ### 3단계 — 자격증명·예약
 - [x] `osenv.creds` — DPAPI 호출을 auth.py 에서 그대로 옮김(ENTROPY·설명 문자열은 auth.py 에 그대로, 기존 cred.bin 복호화 확인) + 맥 로그인 키체인(keyring, 맥에서만 설치)

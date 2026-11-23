@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 
 from .. import config as C
 
-# 일부 학교 서버는 중간 인증서를 보내지 않는다. 검증을 끄지 않고 OS 신뢰 저장소를 쓴다 (notice_agent 와 같은 처리).
+# 일부 학교 서버는 중간 인증서를 보내지 않는다. 검증을 끄지 않고 OS 신뢰 저장소를 쓴다.
 try:
     import truststore
     truststore.inject_into_ssl()

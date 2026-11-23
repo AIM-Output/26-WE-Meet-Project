@@ -1,6 +1,6 @@
 """② 학사 공지 — www.jnu.ac.kr 공지사항 › 학사안내 (board.aspx?boardID=5&cate=5).
 
-구조는 notice_agent/references/site-structure.md §1 과 같다 (같은 ASP.NET 게시판, 분류만 다름).
+구조는 F11_Scholarship_agent/references/site-structure.md §1 과 같다 (같은 ASP.NET 게시판, 분류만 다름).
   목록  table.board_list tr → td.title a[href] (글 번호 = key), td 작성자·작성일, span.label '공지'(상단 고정)
   상세  .board_view_wrap .view_head h3 / span[id$=lbl_WriteDate] / .view_body .con / .view_info_file a
 

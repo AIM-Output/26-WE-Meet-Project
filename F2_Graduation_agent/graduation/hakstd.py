@@ -7,7 +7,7 @@
 로그인은 C2 의 student.hakstd.hakstd_page 를 그대로 쓴다 — 같은 학사정보시스템이고, 로그인 전이면 자체 로그인 화면
 (/Main/Login.aspx)에 머무는 함정(2026-09-28 실측)도 거기서 처리한다. 비밀번호는 C3_Login_agent 코드만 다룬다.
 
-읽는 곳 (notice_agent/references/site-structure.md §4)
+읽는 곳 (F11_Scholarship_agent/references/site-structure.md §4)
     /web/Sung/Sung010  [조회](input[id$=ibtnSearch]) → table#…gvData
         년도 · 학기 · 교과구분 · 교과목번호 · 교과목명 · 성적 · 학점 · 교과목상태 · 재이수 · 교양영역
         학기 칸: 정규 '1'·'2', 계절 '하계 계절'·'동계 계절'. 년도 칸이 '학기 평점'인 합계 행이 섞여 있다 → 4자리 연도 행만.
