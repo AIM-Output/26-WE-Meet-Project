@@ -35,7 +35,7 @@ F11_Scholarship_agent/
 │   │                        coursemos · kboard(sojoong.kr) · xe(startup.jnu.ac.kr) · events(CNU Events) · catalog
 │   ├── api.py               FastAPI 라우터 /api/scholarships*
 │   └── __main__.py          명령줄
-└── tests/                   93개 — 학교 사이트에 접속하지 않는다 (HTML 조각·손으로 넣은 공지·손으로 만든 HWP 레코드·가짜 OCR)
+└── tests/                   108개 — 학교 사이트에 접속하지 않는다 (HTML 조각·손으로 넣은 공지·손으로 만든 HWP 레코드·가짜 OCR)
 ```
 
 ## 첨부·이미지 읽기 (`attachments.py`, 2026-10-25)
@@ -51,6 +51,7 @@ F11_Scholarship_agent/
 **OCR 은 OS 내장 엔진**(C0 `osenv/ocr.py`) — Windows 는 `Windows.Media.Ocr`(PowerShell 5.1 이 `osenv/ocr_win.ps1` 을 돌린다, 설치 없음), macOS 는 Vision(pyobjc, 사이드카 requirements 에 맥만). 모델을 앱에 묶지 않는다. 이 컴퓨터에 한국어 OCR 이 없으면 OCR 없이 예전처럼(`OCR 필요`). 수집 로그 첫머리에 `OCR: windows (ko)` 또는 `OCR 없음 — 이유` 가 찍힌다. `UNIVUS_OCR=off` 로 끈다(테스트는 끈다).
 
 - OCR 로 읽은 글자는 `attach_text` 에 `[본문 이미지 OCR]` · `[첨부 OCR: 이름]` 머리를 달아 둔다 → 추출이 `ocr: true` 로 표시, **신뢰도 상한 0.55**, 미달이 있어도 '비해당' 대신 **확인 필요**(OCR 은 '3.5' 를 '3.0' 으로 읽기도 한다). 상세 화면에 '이미지에서 읽은 글자'.
+- **상한은 OCR 에서 뽑은 값이 있을 때만(2026-11-23)**: `collect.build_req` 가 글자로 읽힌 원문(본문·HWP·PDF)과 OCR 덩어리를 갈라(`attachments.split_ocr`) 넘기고, 추출은 원문을 먼저 본다. 값의 근거 줄이 원문에 없으면 OCR 에서 온 값(`req.ocrFields`) — 그런 값이 있거나 원문이 300자 미만(`OCR_MAIN_ENOUGH`)일 때만 `ocrCapped`. 본문에 조건이 다 있고 스캔한 신청 매뉴얼 PDF 만 OCR 로 읽은 공지(국가근로장학금 신청 안내)는 묶지 않는다. 판정의 'OCR 로 읽은 조건 미달 → 확인 필요'도 미달 칸이 `ocrFields` 에 있을 때만.
 - OCR 글자 다듬기: 표 이미지는 이름표와 값이 다른 줄로 나온다 → `제출기한` + `2026. 11. 11.(수)` 를 한 줄로. 장식을 잘못 읽은 한 글자 줄은 버린다. '신정기간' → '신청기간'(자주 틀리는 것만).
 - 읽는 법의 판 `notices.reader_ver`(1 예전 · 2 +HWP · 3 +OCR). 판이 낮고 다시 읽으면 나아질 공지(본문 이미지 · 못 읽은 HWP·PDF·이미지 첨부)는 원천마다 `REREAD_MAX`(6)건씩 상세를 다시 받는다 — 업데이트 뒤 며칠에 걸쳐 예전 공지가 채워진다.
 - 실측(2026-10-25): HWP 첨부 6개 중 5개 읽음(1개는 그림만 → OCR). 공문·표 포스터는 평점·기간까지 맞게, 장식 글꼴 포스터는 군데군데 깨진다. 공지당 1~7초.

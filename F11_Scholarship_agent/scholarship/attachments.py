@@ -320,10 +320,15 @@ def has_ocr(attach_text: Optional[str]) -> bool:
     return bool(attach_text and _OCR_HEAD.search(attach_text))
 
 
+def split_ocr(attach_text: Optional[str]) -> tuple[str, str]:
+    """attach_text → (글자로 읽힌 첨부, OCR 로 읽은 덩어리). 추출이 글자로 읽힌 쪽을 먼저 보고 OCR 에서만 찾은 값을 가려낸다."""
+    blocks = [b for b in re.split(r"\n\n(?=\[(?:첨부|본문 이미지))", attach_text or "") if b]
+    return ("\n\n".join(b for b in blocks if not _OCR_HEAD.match(b)), "\n\n".join(b for b in blocks if _OCR_HEAD.match(b)))
+
+
 def ocr_part(attach_text: Optional[str]) -> str:
     """attach_text 중 OCR 로 읽은 덩어리만 — 화면의 '이미지에서 읽은 글자'."""
-    blocks = re.split(r"\n\n(?=\[(?:첨부|본문 이미지))", attach_text or "")
-    return "\n\n".join(b for b in blocks if _OCR_HEAD.match(b))
+    return split_ocr(attach_text)[1]
 
 
 def gather(post, http, *, max_read: int, read: bool = True, ocr=None) -> tuple[str, list[dict], int]:

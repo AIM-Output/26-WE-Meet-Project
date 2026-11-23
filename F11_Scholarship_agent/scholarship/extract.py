@@ -54,7 +54,23 @@ FIELDS: list[tuple[str, tuple[str, ...]]] = [
     (r"의생명|의학\s*계열|보건\s*계열|간호\s*학과|간호학\s*전공|공공\s*간호사", ("의약",)),
     (r"사범\s*계열|교원\s*양성|교육\s*계열", ("교육",)),
 ]
-INFO_ONLY = re.compile(r"홍보|캠페인|박람회|설명회|활동\s*시간\s*연장|부정\s*수급|자진\s*신고")
+INFO_ONLY = re.compile(r"홍보|캠페인|박람회|설명회|활동\s*시간\s*연장|부정\s*수급|자진\s*신고|플랫폼|등록금\s*반환")
+# 이미 신청한 사람에게 알리는 선발 절차 글 — '2단계 면접평가 안내' · '신규장학생 추천 기준 안내' · '최종 선발 공고' (2026-11-23 실측).
+# 새로 신청하는 공지가 아니다
+PROCESS_ONLY = re.compile(r"면접\s*(?:평가|심사|전형)?\s*(?:대상자?|일정|안내)|[12]\s*단계\s*면접|추천\s*기준\s*안내|심사\s*기준\s*안내|"
+                          r"최종\s*선발")
+# 게시판 편집기가 줄 앞에 넣는 보이지 않는 글자(U+200B …) — 남겨 두면 '5. 선발제외대상' 같은 번호 줄을 머리 줄로 알아보지 못한다
+_ZERO_WIDTH = re.compile("[​‌‍⁠﻿]")
+# 조건이 아닌 줄 — 우대·가산점(있으면 좋은 것) · 동의서 표 · 지급 시기·인원·문의 같은 안내
+_PREFERENCE = re.compile(r"우대|가산점")
+_NOT_CONDITION = re.compile(r"개인\s*\(?\s*신용\s*\)?\s*정보|개인\s*정보|수집\s*[·‧ㆍ.]?\s*이용|제공\s*[·‧ㆍ.]?\s*조회|동의서|"
+                            r"^\s*(?:\d+\s*[.)]|[가-힣]\s*[.)]|[○●□■▶▷◦•\-*※])?\s*\(?\s*(?:지급\s*(?:시기|일|방법)|시상|수여식|문의|예시|유의|"
+                            r"안내\s*사항|(?:추천|선발|모집)\s*인원)")
+_DOC_LINE = re.compile(r"제출(?:하|바랍|해\s*주|\s*$|\s*\()|확인서|상장\s*사본|증빙")
+_LIST_BULLET = re.compile(r"^\s*[-·•‧∙*○◦]")
+_OTHER_COND = re.compile(r"(?:학부|학과|전공|계열)\s*(?:재학생|학생|소속|재학)|추천을\s*받은|추천\s*받은|봉사\s*(?:활동|시간|실적|점수|경력)|수상|(?<!다)자녀|"
+                         r"납부자|여자\s*대학생|여학생|남학생|여성\s*(?:만|대상)|참여\s*학생(?![이은의가을])|이수\s*(?:학생|자)|"
+                         r"융합전공\s*(?:학생|참여|이수)")
 # 상시 장학 안내의 수혜자격 첫 줄 중 '누구나'에 가까운 말 — 이것만 있으면 기타 조건으로 남기지 않는다
 GENERIC_QUAL = re.compile(r"^(?:▷\s*)?(?:성적이\s*우수하고\s*품행이\s*단정한\s*자|품행이\s*단정하고.*모범학생.*|"
                           r"성실하고\s*도전적이며.*|선발자격\s*:\s*성적이\s*우수하고.*)$")
@@ -68,6 +84,12 @@ def _ev(evs: dict, field: str, quote: Optional[str]) -> None:
 # ── 개별 규칙 ──────────────────────────────────────────────
 
 def grades(text: str) -> tuple[Optional[list[int]], Optional[str]]:
+    # '신청대상: 신입생, 재학생, 복학생 … 등 모든 대학생' 이면 학년 조건이 없다. 지원 학년을 해마다 넓히는 일정 줄
+    # ('27년 1학년 → '28년 1~2학년 → …)은 신청 대상 학년이 아니다 — 국가장학금 1차 신청 공지가 '1,2학년'으로 읽혀 3학년에게
+    # 비해당으로 숨던 것 (2026-11-23 실측).
+    if re.search(r"(?:대상|자격)[^\n]{0,40}(?:모든\s*(?:대학생|학생|학년)|전\s*학년|학년\s*(?:무관|제한\s*없음))", text):
+        return None, None
+    text = "\n".join(ln for ln in text.splitlines() if not re.search(r"→|단계적|확대\s*예정", ln))
     m = re.search(rf"{NUM}\s*학년\s*이상(?:\s*{NUM}\s*학년\s*이하)?", text)
     if m:
         lo = int(m.group(1)); hi = int(m.group(2)) if m.group(2) else 4
@@ -128,7 +150,8 @@ def gpa(text: str) -> tuple[Optional[dict], Optional[str]]:
     m = re.search(r"100\s*점\s*만점(?:의|에)?\s*(\d{2,3})\s*점\s*이상", text)
     if m:
         return {"value": float(m.group(1)), "scale": 100.0, "basis": basis}, find_sentence(text, re.escape(m.group(0)))
-    m = re.search(r"(?:백분위|환산점수|성적)\s*(?:이)?\s*(\d{2,3})\s*점\s*이상", text)
+    # '성적 70점 이상' · '백분위 점수가 70점 이상' (국가근로장학금 신청 자격, 2026-11-23)
+    m = re.search(r"(?:백분위|백분율|환산점수|성적)\s*(?:점수|성적)?\s*(?:이|가|는|은)?\s*(\d{2,3})\s*점\s*이상", text)
     if m and 50 <= float(m.group(1)) <= 100:
         return {"value": float(m.group(1)), "scale": 100.0, "basis": basis}, find_sentence(text, re.escape(m.group(0)))
     return None, None
@@ -170,36 +193,51 @@ def enrollment(text: str) -> tuple[Optional[list[str]], Optional[str]]:
 
 
 def period(text: str, title: str = "", default_year: Optional[int] = None) -> tuple[Optional[dict], Optional[str]]:
-    """신청/접수 기간 줄을 찾아 파싱. 없으면 제목의 '(~9/18까지)' 같은 표기라도 쓴다."""
+    """신청/접수 기간 줄을 찾아 파싱. 없으면 제목의 '(~9/18까지)' 같은 표기라도 쓴다.
+    period["strong"] = '신청기간' 같은 이름표가 붙은 줄에서 읽었고, 그런 줄이 여럿이어도 마감이 한 가지다 — 조건을 얼마나 뽑았는지와
+    상관없이 마감일은 믿을 수 있다 (match 가 지난 마감을 '마감'으로 접는 데 쓴다)."""
     noise = re.compile(r"유효\s*기간|근로\s*기간|파견\s*기간|지급\s*기간|사업\s*기간|수혜\s*기간|장학\s*기간|활동\s*기간|"
                        r"학기\s*기간|교육\s*기간|운영\s*기간|연수\s*기간|인정\s*기간|실적|발표|결과|면접|"
                        r"평점|평균|만점|학점|백분위|성적")          # '평점 3.5/4.5 이상' 의 3.5 를 3월 5일로 읽지 않게
-    # 날짜처럼 생긴 것 — 연도 · 'N월 N일' · '9. 14.(월)' · '~9/16'
+    # 날짜처럼 생긴 것 — 연도 · 'N월 N일' · '9. 14.(월)' · '~9/16' · 두 자리 연도 '’26. 10.'
     datey = re.compile(r"20\d{2}\s*[.\-/년]|\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*[./]\s*\d{1,2}\s*\.?\s*\([월화수목금토일]|"
-                       r"[~∼～]\s*\d{1,2}\s*[./]\s*\d{1,2}")
-    strong, weak = [], []
-    for ln in lines(text):
-        if not re.search(r"\d", ln) or noise.search(ln) or not datey.search(ln):
+                       r"[~∼～]\s*\d{1,2}\s*[./]\s*\d{1,2}|['’‘`]\s*\d{2}\s*[.년]\s*\d{1,2}")
+    label = re.compile(r"(?:신청|접수|모집|지원|제출|추천)\s*(?:기간|기한|마감|일정|일시)")
+    strong: list[tuple[str, str]] = []        # (파싱할 글자, 근거로 보일 원문 한 줄)
+    weak: list[tuple[str, str]] = []
+    ls = lines(text)
+    for i, ln in enumerate(ls):
+        if noise.search(ln):
             continue
-        if re.search(r"(?:신청|접수|모집|지원|제출|추천)\s*(?:기간|기한|마감|일정|일시)", ln):
-            strong.append(ln)
+        if label.search(ln) and not datey.search(ln) and len(ln) < 40:
+            # 이름표만 있는 줄 — 날짜는 다음 줄에 ('□ 신청 및 서류 제출 기간' / 'ㅇ ’26. 10. 22.(수) 9시 ∼ ’26. 11. 12.(목) 18시')
+            nxt = next((x for x in ls[i + 1:i + 3] if datey.search(x) and not noise.search(x) and not label.search(x)), None)
+            if nxt:
+                strong.append((f"{ln} {nxt}", nxt))
+            continue
+        if not re.search(r"\d", ln) or not datey.search(ln):
+            continue
+        if label.search(ln):
+            strong.append((ln, ln))
         elif re.search(r"기간\s*[:：]|마감\s*[:：]|까지", ln):
-            weak.append(ln)
-    for ln in strong + weak:
-        s, e = parse_period(ln, default_year)
+            weak.append((ln, ln))
+    parsed = [(parse_period(src, default_year), src, quote) for src, quote in strong]
+    ends = {e[:10] for (s, e), _, _ in parsed if e}
+    for k, ((s, e), src, quote) in enumerate(parsed + [(parse_period(src, default_year), src, quote) for src, quote in weak]):
         if s or e:
-            return {"start": s, "end": e, "raw": ln[:200]}, ln
+            return {"start": s, "end": e, "raw": src[:200], "strong": k < len(parsed) and len(ends) == 1}, quote
     if title:
         m = re.search(r"[~∼～]\s*[\d./월 ]+일?\s*(?:\([^)]*\))?\s*(?:까지)?", title)
         if m:
             s, e = parse_period(m.group(0), default_year)
             if e:
-                return {"start": None, "end": e, "raw": m.group(0)}, title
+                return {"start": None, "end": e, "raw": m.group(0), "strong": False}, title
     return None, None
 
 
-def section_lines(text: str, header_pat: str, max_lines: int = 8) -> list[str]:
-    """'제출서류' 같은 헤더 줄 다음의 항목들 (다음 번호 헤더 전까지)."""
+def section_lines(text: str, header_pat: str, max_lines: int = 8, list_only: bool = False) -> list[str]:
+    """'제출서류' 같은 헤더 줄 다음의 항목들 (다음 번호 헤더 전까지).
+    list_only = 항목이 글머리표('- 휴학생 …')로 시작했으면 글머리표가 끊기는 줄에서 멈춘다 — 목록 아래의 설명 문단까지 항목으로 읽지 않게."""
     out: list[str] = []
     ls = lines(text)
     for i, ln in enumerate(ls):
@@ -207,14 +245,44 @@ def section_lines(text: str, header_pat: str, max_lines: int = 8) -> list[str]:
             same = re.split(header_pat, ln, maxsplit=1)[-1].strip(" :：-")
             if len(same) > 3:
                 out.append(same)
+            bulleted = False
             for nxt in ls[i + 1:i + 1 + max_lines]:
                 if re.match(r"^\s*\d+\s*[.)]\s*\S", nxt) and not re.match(r"^\s*\d+\s*[.)]\s*[가-힣]{0,6}\s*(서|증|본|부)\b", nxt):
                     break
                 if re.search(header_pat, nxt):
                     break
+                if list_only:
+                    if _LIST_BULLET.match(nxt):
+                        bulleted = True
+                    elif bulleted:
+                        break
                 out.append(LINE_HEADERS.sub("", nxt))
             break
     return [o for o in out if o]
+
+
+_RES_GPA = re.compile(r"(?:직전\s*학기|전체\s*학기|전\s*학년)?\s*(?:까지\s*)?(?:의\s*)?(?:누계\s*)?(?:평균\s*평점|평점\s*평균|평점|성적)\s*"
+                      r"(?:이|은)?\s*\d(?:\.\d{1,2})?\s*(?:\([^)]*\))?\s*(?:점)?\s*이상")
+_RES_CREDIT = re.compile(r"\d{1,3}\s*학점\s*(?:이상\s*)?(?:을\s*)?(?:이수|취득)(?:한|하고)?")
+_RES_DOCS = re.compile(r"(?:[가-힣A-Za-z·‧]+\s*){1,4}(?:계획서|보고서)(?:\s*(?:및|와|과)\s*(?:[가-힣A-Za-z·‧]+\s*){0,3}(?:계획서|보고서))?"
+                       r"\s*(?:를|을)?\s*제출(?:한\s*자|자)")
+
+
+def qualification_residue(line: str) -> str:
+    """상시 안내의 수혜자격 한 줄에서 이미 구조화한 것(평점·이수학점)과 선발 문구를 걷어낸 나머지 — 비면 따로 확인할 조건이 없다.
+        '재학생: 위 해당자 중 직전 학기 평균평점이 1.75(실점 72.5점) 이상이고, 12학점 이상 이수한 자 중에서 선발'  → ''
+        '… 12학점 이상 이수한 자로서 취업계획서 제출자 중에서 선발'  → ''   (서류를 내는 것은 자격이 아니라 절차)
+        '… 12학점 이상 이수한 자로 학군단장이 추천한 자 중에서 선발'  → '자로 학군단장이 추천한 자'"""
+    r = re.sub(r"^(?:재학생|신입생|편입생)\s*[:：]\s*", "", line.strip())
+    r = re.sub(r"위\s*(?:해당자|대상자)\s*(?:중|로서|로)?", " ", r)
+    r = _RES_CREDIT.sub(" ", _RES_GPA.sub(" ", r))
+    r = re.sub(r"\s*(?:중에서|가운데)\s*선발(?:함|한다)?\.?\s*$", "", r.strip())
+    keep = []
+    for part in re.split(r"자로서|으로서|로서|이고|이며|,", r):
+        p = re.sub(r"^(?:인|한)?\s*자$", "", part.strip(" ·‧")).strip()
+        if p and not _RES_DOCS.fullmatch(p):
+            keep.append(p)
+    return " ".join(keep)
 
 
 def bracket_provider(title: str) -> Optional[str]:
@@ -302,11 +370,20 @@ def foreign_only(title: str) -> bool:
 # ── 진입점 ────────────────────────────────────────────────
 
 def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: bool = False,
-            attachments_unread: int = 0, default_year: Optional[int] = None, catalog: bool = False, ocr: bool = False) -> dict:
+            attachments_unread: int = 0, default_year: Optional[int] = None, catalog: bool = False, ocr: bool = False,
+            ocr_text: Optional[str] = None) -> dict:
     """제목 + 본문(+첨부 글자) → Requirements. unit = 이 글을 올린 사업단·부서(registry.unit_for).
-    ocr = 글자 일부를 이미지에서 OCR 로 읽었다(attachments.has_ocr) — 신뢰도를 OCR_CONFIDENCE_CAP 까지로, 판정은 확인 필요로 (match)."""
-    title = nfkc(title)
-    text = nfkc(text)
+    ocr = 글자 일부를 이미지에서 OCR 로 읽었다(attachments.has_ocr) — 신뢰도를 OCR_CONFIDENCE_CAP 까지로, 판정은 확인 필요로 (match).
+    ocr_text = OCR 로 읽은 덩어리를 따로 넘기면(collect.build_req) text 는 글자로 읽힌 원문(본문·HWP·PDF)만이다. 규칙은 원문을 먼저 보고,
+    OCR 에서만 찾은 값(req["ocrFields"])이 있거나 원문이 OCR_MAIN_ENOUGH 보다 짧을 때만 신뢰도를 묶는다 — 본문에 조건이 다 있고
+    스캔한 신청 매뉴얼만 OCR 로 읽은 공지까지 묶던 것(2026-11-23)."""
+    title = _ZERO_WIDTH.sub("", nfkc(title))
+    text = _ZERO_WIDTH.sub("", nfkc(text))
+    main_text: Optional[str] = None           # None = 원문·OCR 을 가르지 않고 받았다 (F12 · 예전 방식) — OCR 이 있으면 전부 묶는다
+    if ocr_text:
+        main_text = text
+        text = f"{text}\n\n{_ZERO_WIDTH.sub('', nfkc(ocr_text))}".strip()
+        ocr = True
     full = f"{title}\n{text}"
     evs: dict[str, str] = {}
     req: dict = {"extractor": "rules"}
@@ -341,7 +418,9 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: b
         _ev(evs, "campus", title)
     req["gradOnly"] = grad_only(title)
     req["foreignOnly"] = foreign_only(title)
-    req["infoOnly"] = bool(INFO_ONLY.search(title)) and not re.search(r"신청\s*안내|선발\s*안내|모집\s*안내", title)
+    process = bool(PROCESS_ONLY.search(title)) and not catalog
+    req["infoOnly"] = process or (bool(INFO_ONLY.search(title)) and not re.search(r"신청\s*안내|선발\s*안내|모집\s*안내", title))
+    req["infoKind"] = "process" if process else ("info" if req["infoOnly"] else None)
 
     docs = section_lines(text, r"제출\s*서류|구비\s*서류|신청\s*서류|첨부\s*서류")
     doc_like = re.compile(r"증명|사본|확인서|계획서|추천서|소개서|지원서|신청서|동의서|통지서|등본|초본|카드|양식|서류|서\s*\d*\s*부|부$|파일|성적표|증$")
@@ -377,15 +456,29 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: b
 
     excl: list[str] = []
     others: list[str] = []
-    header_only = re.compile(r"^\s*(?:\d+\s*[.)]|[가-힣]\s*[.)])?\s*(?:신청\s*)?제외\s*(?:사유|대상|자)?\s*[:：]?\s*$")
-    excl += section_lines(text, r"제외\s*(?:사유|대상|자)\s*[:：]?\s*$|신청\s*제외자?\s*[:：]", max_lines=6)
+    header_only = re.compile(r"^\s*(?:\d+\s*[.)]|[가-힣]\s*[.)])?\s*(?:신청\s*|선발\s*)?제외\s*(?:사유|대상|자)?\s*[:：]?\s*$")
+    if not catalog:        # 상시 안내의 '… 지원 제외자' 는 그 장학의 대상을 말하는 줄이다 — 아래 줄(지급액 …)을 제외 사유로 읽지 않는다
+        excl += section_lines(text, r"제외\s*(?:사유|대상|자)\s*[:：]?\s*$|신청\s*제외자?\s*[:：]", max_lines=6, list_only=True)
+    pref_block = False     # '우대사항 … 가산점 부여' 아래에 글머리표로 이어지는 줄들 ('- 대한민국인재상 수상')
     for ln in lines(text):
         if header_only.match(ln) or len(ln) >= 200:
             continue
+        if _NOT_CONDITION.search(ln):                       # 동의서 표 · 지급 시기 · 추천 인원 · 예시 — 조건도 제외 사유도 아니다
+            pref_block = False
+            continue
         if re.search(r"제외\s*(?:대상|자|사유)|신청\s*(?:불가|제외)|지원\s*불가|중복\s*수혜", ln):
             excl.append(LINE_HEADERS.sub("", ln))
-        elif not catalog and re.search(r"(?:학부|학과|전공|계열)\s*(?:재학생|학생|소속|재학)|추천을\s*받은|추천\s*받은|봉사|수상|자녀|납부자|여자\s*대학생|"
-                       r"여학생|남학생|여성\s*(?:만|대상)|참여\s*학생|이수\s*(?:학생|자)|융합전공\s*(?:학생|참여|이수)", ln) and len(ln) < 160:
+            pref_block = False
+            continue
+        if _PREFERENCE.search(ln):                          # 우대·가산점은 있으면 좋은 것 — 신청 자격이 아니다
+            pref_block = True
+            continue
+        if pref_block and _LIST_BULLET.match(ln):
+            continue
+        pref_block = False
+        # '학부 재학생 2명' 의 '학부'는 학과 조건이 아니다(학부생이라는 말) — 앞에 학과 이름이 붙은 '인공지능학부 재학생'만 조건
+        probe = re.sub(r"(?<![가-힣])학부\s*(?:재학생|학생|재학)", "", ln)
+        if not catalog and _OTHER_COND.search(probe) and len(ln) < 160 and not _DOC_LINE.search(ln):
             others.append(re.sub(r"^[√·•○●\-*]\s*", "", LINE_HEADERS.sub("", ln)))
     if catalog:
         # 상시 안내의 수혜자격 줄 — 평점·학점만 말하는 줄과 '누구나' 문구를 빼고 남는 것이 진짜 조건이다
@@ -402,17 +495,37 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: b
                 continue
             if (re.search(r"평점|학점|성적|백분위", s) and not special.search(s)) or                     (req.get("fields") and "계열" in s and not special.search(s)) or (req.get("incomeMax") and "소득" in s):
                 continue
+            if re.search(r"평점|학점|성적", s) and not qualification_residue(s):
+                continue                                # 평점·학점(이미 구조화)과 '… 중에서 선발'·계획서 제출뿐인 줄 — 따로 확인할 조건이 없다
             others.append(s[:150])
             kept += 1
             if kept >= 2:
                 break
-    req["exclusions"] = list(dict.fromkeys(e for e in excl if e and not header_only.match(e)))[:8]
-    req["otherConditions"] = list(dict.fromkeys(others))[:8]
+    # 같은 제외 사유가 머리 줄 아래 항목과 '… 제외자: …' 한 줄로 두 번 잡힌다 — 글자가 포함 관계면 하나만
+    uniq_excl: list[str] = []
+    for e in excl:
+        key = re.sub(r"[\s\W_]+", "", e)
+        if not e or header_only.match(e) or not key:
+            continue
+        if any(key in k or k in key for k in (re.sub(r"[\s\W_]+", "", u) for u in uniq_excl)):
+            continue
+        uniq_excl.append(e)
+    req["exclusions"] = uniq_excl[:8]
+    excl_keys = {re.sub(r"[\s\W_]+", "", e) for e in uniq_excl}
+    req["otherConditions"] = [o for o in dict.fromkeys(others) if re.sub(r"[\s\W_]+", "", o) not in excl_keys][:8]
 
     req["evidence"] = evs
-    structured = sum(req[k] is not None for k in ("grades", "minSemesters", "minGpa", "minCredits", "minCreditsLast",
-                                                 "incomeMax", "enrollment", "residency", "fields", "groups", "colleges"))
+    structured_keys = ("grades", "minSemesters", "minGpa", "minCredits", "minCreditsLast",
+                       "incomeMax", "enrollment", "residency", "fields", "groups", "colleges")
+    structured = sum(req[k] is not None for k in structured_keys)
     req["structured"] = structured
+    # OCR 에서만 찾은 값 — 근거 줄이 제목·원문(글자로 읽힌 본문·첨부)에 없으면 OCR 덩어리에서 온 것이다
+    ocr_fields: Optional[list[str]] = None
+    capped = bool(ocr)
+    if ocr and main_text is not None:
+        hay = f"{title}\n{main_text}"
+        ocr_fields = [k for k in (*structured_keys, "period") if req.get(k) is not None and evs.get(k) and evs[k] not in hay]
+        capped = bool(ocr_fields) or len(main_text.strip()) < C.OCR_MAIN_ENOUGH
     unread_heavy = attachments_unread > 0 and len(text) < 300           # 본문은 짧고 조건은 HWP 첨부에 있는 흔한 경우
     req["needsOcr"] = bool(image_only) and len(text.strip()) < 60
     req["attachmentsUnread"] = attachments_unread
@@ -422,15 +535,19 @@ def extract(title: str, text: str, *, unit: Optional[dict] = None, image_only: b
     if unread_heavy:
         conf = min(conf, 0.4)
     req["ocr"] = bool(ocr)
-    if ocr:
+    req["ocrFields"] = ocr_fields                   # None = 가르지 않고 받음(전부 OCR 일 수 있다) · [] = OCR 에서 뽑은 값 없음
+    req["ocrCapped"] = capped
+    if capped:
         conf = min(conf, C.OCR_CONFIDENCE_CAP)
     if req["needsOcr"]:
         conf = 0.0
     req["confidence"] = round(min(conf, 0.8), 2)
     req["unknownFields"] = [] if structured or req["otherConditions"] else ["grades", "minGpa", "incomeMax"]
     notes = []
-    if ocr:
+    if capped:
         notes.append("이미지 속 글자를 OCR 로 읽었습니다 — 숫자·날짜가 틀릴 수 있으니 원문에서 확인하세요")
+    elif ocr:
+        notes.append("첨부 일부(스캔 문서·이미지)를 OCR 로 읽었습니다 — 조건과 날짜는 글자로 읽힌 본문에서 뽑았습니다")
     if req["needsOcr"]:
         notes.append("본문이 이미지라 자동으로 읽지 못했습니다")
     if attachments_unread:
