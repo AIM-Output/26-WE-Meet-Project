@@ -50,7 +50,7 @@ export interface SchItem {
   systemVerdict: SchVerdict;
   label: string;
   flipped: boolean; // 내가 바꿈
-  hint: string | null; // 확인 필요의 이유 — 정보 입력 필요 · 조건 충족 추정 · 원문 확인
+  hint: string | null; // 확인 필요의 이유 — 정보 입력 필요 · 조건 충족 추정 · 원문 확인 / 해당인데 제외 사유가 남았으면 '제외 사유 확인'
   sensitive: SensitiveKey[];
   failCount: number;
   deadline: string | null;

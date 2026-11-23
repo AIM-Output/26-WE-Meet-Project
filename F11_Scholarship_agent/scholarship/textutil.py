@@ -3,6 +3,7 @@
 날짜 규칙은 notice_agent/scripts/textutil.py 에서 옮겨 왔다 (실측 표기 그대로):
     2026. 9. 9.(수) 18:00 · 2026.09.11 13:21 · 2026-09-11 · 2026년 9월 30일(수)
     9. 14.(월) ~ 9. 30.(수) · ~9/16까지 · 2026.9.1.~9.18. · 9월 18일까지 · 1월 19일(월) ~ 20일(화)
+    '26. 11. 16.(월) ~ 26.(목) 18:00 · ’26. 10. 22.(수) 9시 ∼ ’26. 11. 12.(목) 18시   (두 자리 연도 · 날만 있는 끝, 2026-11-23)
 """
 from __future__ import annotations
 
@@ -83,10 +84,21 @@ _SHORT = re.compile(
     r"(?<![\d./])(?P<m>\d{1,2})\s*[./월]\s*(?P<d>\d{1,2})(?![\d/])\s*일?\.?(?:\s*\([^)]{1,4}\))?"
     r"(?:\s*,?\s*(?P<h>\d{1,2})\s*[:시]\s*(?P<mi>\d{2})?)?"
 )
+# 끝 날짜에 날만 있는 표기 — '~ 20일(화)' · '~ 26.(목) 18:00' ('일' 없이 요일 괄호만 붙은 것은 2026-11-23 실측)
 _DAY_ONLY = re.compile(
-    r"(?:~|∼|～|-|–|—)\s*(?P<d>\d{1,2})\s*일(?:\s*\([^)]{1,4}\))?"
+    r"(?:~|∼|～|-|–|—)\s*(?P<d>\d{1,2})\s*(?:일(?:\s*\([^)]{1,4}\))?|\.?\s*\([월화수목금토일]\))"
     r"(?:\s*,?\s*(?P<h>\d{1,2})\s*[:시]\s*(?P<mi>\d{2})?)?"
 )
+# 두 자리 연도 — 한국장학재단·재단 공고문에 많다: '26. 11. 16.(월) · ’26.10.26.(월) · `26. 10. 30.(금)
+_Y2 = re.compile(r"['’‘`′´]\s*(\d{2})(?=\s*[.년/\-]\s*\d{1,2}\s*[.월/\-])")
+# 따옴표 없는 '26.10.26.(월)' 은 세 덩어리 뒤에 요일 괄호가 있을 때만 — 평점·전화번호·'9. 14.(월)' 과 헷갈리지 않게
+_Y2_BARE = re.compile(r"(?<![\d.'’‘`′´])(2[4-9])(?=\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}\s*\.?\s*\([월화수목금토일]\))")
+
+
+def _years(text: str) -> str:
+    """두 자리 연도를 네 자리로 ('26. → 2026.) — 날짜 규칙이 연도를 '26월'로 읽어 날짜를 통째로 놓치지 않게."""
+    text = _Y2.sub(lambda m: "20" + m.group(1), text)
+    return _Y2_BARE.sub(lambda m: "20" + m.group(1), text)
 
 
 def _mk(y: int, m: int, d: int, h: Optional[str], mi: Optional[str]) -> Optional[str]:
@@ -105,7 +117,7 @@ def parse_date(text: str, default_year: Optional[int] = None) -> Optional[str]:
     """문자열 안의 첫 날짜 → ISO. 연도가 없으면 default_year(없으면 올해)."""
     if not text:
         return None
-    text = nfkc(text)
+    text = _years(nfkc(text))
     m = _FULL.search(text)
     if m:
         return _mk(int(m["y"]), int(m["m"]), int(m["d"]), m["h"], m["mi"])
@@ -120,7 +132,7 @@ def parse_period(text: str, default_year: Optional[int] = None) -> tuple[Optiona
     뒤쪽 날짜에 연도가 없으면 앞쪽 연도를 물려받는다. 하나만 있으면 end 로 본다('~까지' 가 대부분 종료일)."""
     if not text:
         return None, None
-    text = nfkc(text)
+    text = _years(nfkc(text))
     found: list = []
     for m in _FULL.finditer(text):
         found.append((m.start(), _mk(int(m["y"]), int(m["m"]), int(m["d"]), m["h"], m["mi"]), int(m["y"])))

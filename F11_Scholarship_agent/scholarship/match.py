@@ -4,8 +4,11 @@
   - LLM 을 부르지 않는다. 같은 입력 → 항상 같은 출력. 판정마다 근거: "평점 3.0 이상 — 내 3.42 충족".
   - 프로필에 없는 값은 '모름'이지 '미달'이 아니다 → 확인 필요. 민감정보가 모자라면 그 칸에 sensitive 를 붙여
     화면이 그 자리에서 입력을 받게 한다 (F11-R30).
-  - 평점 척도가 다르면(4.5 vs 4.3) 임의로 환산하지 않고 모름 (F11-R23).
+  - 평점 척도가 다르면(4.5 vs 4.3) 임의로 환산하지 않고 모름 (F11-R23). 100점(백분위) 조건만 전남대 환산식(평점×10+55)으로,
+    기준을 넉넉히(PERCENTILE_MARGIN) 넘을 때 '충족' — 가깝거나 낮으면 모름, 미달로 단정하지 않는다 (2026-11-23).
   - 추출 신뢰도가 문턱 미만이면 결과가 어떻든 확인 필요 (F11-R13) — 놓치는 것이 잘못 알리는 것보다 나쁘다.
+  - 읽은 조건을 모두 충족하고 남은 것이 제외 사유(휴학생·중복 수혜 …)뿐이면 '해당' + hint '제외 사유 확인' (2026-11-23).
+    추천·수상 같은 기타 조건이 남으면 확인 필요 그대로.
   - 사용자가 뒤집은 판정이 이긴다. 근거 목록은 그대로 둔다 (F11-R25·R26).
 """
 from __future__ import annotations
@@ -33,15 +36,29 @@ def _gpa_text(g: Optional[dict]) -> Optional[str]:
     return f"{g['value']:g}/{g['scale']:g}" if g else None
 
 
+def percentile_of(g: Optional[dict]) -> Optional[float]:
+    """4.5 만점 평점 → 전남대 환산 실점(백분위). 다른 척도면 None — 4.3 만점은 환산식이 다르다."""
+    if not g or abs(float(g["scale"]) - 4.5) > 1e-6:
+        return None
+    return round(C.PERCENTILE_BASE + C.PERCENTILE_PER_POINT * float(g["value"]), 1)
+
+
 def _gpa_on_scale(p: dict, target: dict) -> tuple[Optional[float], str, Optional[str]]:
-    """(내 값, 이유, 표시) — 척도가 다르면 None. 백분위(100점) 요건은 프로필에 백분위가 없어 모름."""
+    """(내 값, 이유, 표시) — 척도가 다르면 None. 백분위(100점) 요건은 전남대 환산 점수가 기준을 넉넉히 넘을 때만 값을 돌려준다."""
     last = (target.get("basis") or "").startswith("직전")
     g = (p.get("lastSemesterGpa") if last else None) or p.get("gpa")
     label = "직전 학기" if last and p.get("lastSemesterGpa") else "전체"
     if g is None:
         return None, f"{'직전 학기 ' if last else ''}평점이 프로필에 없습니다", None
     if float(target["scale"]) == 100:
-        return None, f"백분위(100점) 기준 — 내 평점 {_gpa_text(g)} 은 학교 환산표로 확인하세요", _gpa_text(g)
+        conv = percentile_of(g)
+        if conv is None:
+            return None, f"백분위(100점) 기준 — 내 평점 {_gpa_text(g)} 은 학교 환산표로 확인하세요", _gpa_text(g)
+        shown = f"{_gpa_text(g)} (환산 약 {conv:g}점)"
+        if conv >= float(target["value"]) + C.PERCENTILE_MARGIN:
+            return conv, f"{label} 평점 {_gpa_text(g)} → 전남대 환산(평점×10+55) 약", shown
+        return None, (f"백분위(100점) 기준 — 내 평점 {_gpa_text(g)} 은 전남대 환산(평점×10+55) 약 {conv:g}점, "
+                      "기준을 넉넉히 넘지 않아 학교 환산표로 확인하세요"), shown
     if abs(float(g["scale"]) - float(target["scale"])) > 1e-6:
         return None, f"척도가 다릅니다 (요건 {target['scale']:g} 만점 · 내 평점 {g['scale']:g} 만점) — 임의로 환산하지 않습니다", _gpa_text(g)
     return float(g["value"]), label, _gpa_text(g)
@@ -78,7 +95,8 @@ def reasons_for(req: dict, p: dict, notice: Optional[dict] = None) -> list[dict]
             out.append(_r("minGpa", "평점", "unknown", f"{need} — {why}", need=need, mine=shown, evidence=ev.get("minGpa")))
         else:
             ok = val + 1e-9 >= t["value"]
-            out.append(_r("minGpa", "평점", "pass" if ok else "fail", f"{need} — 내 {why} {val:g} {'충족' if ok else '미달'}",
+            unit = "점" if float(t["scale"]) == 100 else ""           # 백분위는 환산 점수 — '… 환산(평점×10+55) 약 91점 충족'
+            out.append(_r("minGpa", "평점", "pass" if ok else "fail", f"{need} — 내 {why} {val:g}{unit} {'충족' if ok else '미달'}",
                           need=need, mine=shown, evidence=ev.get("minGpa")))
     for key, label, pkey in (("minCredits", "누적 이수학점", "earnedCredits"), ("minCreditsLast", "직전 학기 이수학점", "lastSemesterCredits")):
         if req.get(key) is None:
@@ -162,7 +180,11 @@ def reasons_for(req: dict, p: dict, notice: Optional[dict] = None) -> list[dict]
     for c in (req.get("otherConditions") or [])[:6]:
         out.append(_r("other", "기타 조건", "unknown", f"자동 판정하지 않는 조건: {c[:100]}", need=c[:100], evidence=c))
     for x in (req.get("exclusions") or [])[:4]:
-        out.append(_r("exclusion", "제외 사유", "unknown", f"제외 대상이 아닌지 확인: {x[:100]}", need=x[:100], evidence=x))
+        # 제외 사유는 '해당'을 막지 않는다(decide) — 그래서 프로필로 알 수 있는 것은 여기서 가른다: 휴학 중인데 '휴학생' 제외
+        if p.get("enrollmentStatus") == "휴학" and re.search(r"휴학생(?!\s*(?:도\s*)?(?:포함|가능))", x):
+            out.append(_r("exclusion", "제외 사유", "fail", f"제외 대상: {x[:100]} — 내 학적 휴학", need=x[:100], mine="휴학", evidence=x))
+        else:
+            out.append(_r("exclusion", "제외 사유", "unknown", f"제외 대상이 아닌지 확인: {x[:100]}", need=x[:100], evidence=x))
     return out
 
 
@@ -236,17 +258,28 @@ def decide(req: dict, profile: Optional[dict], notice: Optional[dict] = None, to
     posted = to_date(n.get("postedAt"))
     stale = (not deadline and posted is not None and not n.get("catalog")
              and (today - posted).days > C.NO_PERIOD_STALE_DAYS)
+    # OCR — 판정을 보류하는 것은 'OCR 로 읽은 글자에서 뽑은 값'이 있을 때다 (ocrCapped). ocrFields 가 None 이면 어디서 뽑았는지 모른다 → 전부 OCR 로 본다
+    ocr_fields = req.get("ocrFields")
+    ocr_hold = bool(req.get("ocrCapped", req.get("ocr")))
+    fails_from_ocr = ocr_hold and (ocr_fields is None or any(r["field"] in ocr_fields for r in fails))
+    period_from_ocr = bool(req.get("ocr")) and (ocr_fields is None or "period" in ocr_fields)
+    # 이름표('신청기간')가 붙은 줄에서 글자로 읽은 마감 — 조건을 덜 뽑아 신뢰도가 낮아도 마감일 자체는 믿는다
+    sure_deadline = bool(period.get("strong")) and not period_from_ocr
 
     head: Optional[dict] = None
     if n.get("isResult"):
         verdict, head = "not_applicable", _r("notice", "공지 종류", "unknown", "선발 결과·명단 공지 — 신청하는 공지가 아닙니다")
     elif req.get("infoOnly"):
-        verdict, head = "not_applicable", _r("notice", "공지 종류", "unknown", "홍보·안내 공지 — 신청하는 장학이 아닙니다")
+        verdict, head = "not_applicable", _r("notice", "공지 종류", "unknown",
+                                             "선발 절차·결과 안내(면접·추천 기준·최종 선발) — 새로 신청하는 공지가 아닙니다"
+                                             if req.get("infoKind") == "process"
+                                             else "홍보·안내 공지 — 신청하는 장학이 아닙니다")
     elif req.get("gradOnly"):
         verdict, head = "not_applicable", _r("audience", "대상", "fail", "대학원생 대상 — 학부생 대상이 아닙니다", need="대학원생")
     elif req.get("foreignOnly"):
         verdict, head = "not_applicable", _r("audience", "대상", "unknown", "외국인 유학생 대상 공지입니다", need="외국인 유학생")
-    elif deadline and left is not None and left < 0 and (conf >= C.CONFIDENCE_THRESHOLD or left < -C.RECENT_EXPIRY_DAYS):
+    elif deadline and left is not None and left < 0 and (conf >= C.CONFIDENCE_THRESHOLD or left < -C.RECENT_EXPIRY_DAYS
+                                                         or sure_deadline):
         verdict, head = "expired", _r("deadline", "신청 기간", "fail", f"신청 마감 지남 ({deadline[:16].replace('T', ' ')})",
                                       need=period.get("raw"), evidence=period.get("raw"))
     elif deadline and left is not None and left < 0:
@@ -259,24 +292,28 @@ def decide(req: dict, profile: Optional[dict], notice: Optional[dict] = None, to
         verdict = "ineligible"           # 본문을 못 읽었어도 제목의 지역 재단·단과대학·캠퍼스가 내 것이 아니면 확실하다
     elif req.get("needsOcr"):
         verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown", "본문이 이미지라 자동으로 판정하지 못했습니다 — 원문 확인")
-    elif fails and req.get("ocr"):       # OCR 은 '3.5' 를 '3.0' 으로 읽기도 한다 — 미달을 단정하지 않는다
+    elif fails and fails_from_ocr:       # OCR 은 '3.5' 를 '3.0' 으로 읽기도 한다 — 미달을 단정하지 않는다
         verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown",
                                            "이미지 속 글자(OCR)로 읽은 조건에 미달 항목이 있습니다 — 잘못 읽었을 수 있어 원문 확인")
     elif fails:
         verdict = "ineligible"
     elif conf < C.CONFIDENCE_THRESHOLD:
         verdict, head = "needs_review", _r("extraction", "공지 읽기", "unknown",
-                                           "이미지 속 글자를 OCR 로 읽은 공지라 자동 판정을 보류했습니다 — 원문 확인" if req.get("ocr") else
+                                           "이미지 속 글자를 OCR 로 읽은 공지라 자동 판정을 보류했습니다 — 원문 확인" if ocr_hold else
                                            "조건을 다 읽었는지 확신이 없어 자동 판정을 보류했습니다"
                                            + (" (첨부를 읽지 못함)" if req.get("attachmentsUnread") else ""))
-    elif unknown:
+    elif any(r["field"] != "exclusion" for r in unknown):
         verdict = "needs_review"
     else:
+        # 읽은 조건을 모두 충족하고 남은 것이 제외 사유(휴학생·중복 수혜·부정수급 …)뿐이면 '해당' — 제외 사유는 근거에 남겨 본인이
+        # 확인하게 한다 (2026-11-23 사용자 결정. 그 전에는 제외 사유 한 줄만 있어도 확인 필요라 공지의 '해당'이 거의 0건이었다)
         verdict = "eligible"
     if head:
         reasons.insert(0, head)
 
     hint = None
+    if verdict == "eligible" and unknown:
+        hint = "제외 사유 확인"
     if verdict == "needs_review":
         if any(r.get("sensitive") and r["status"] == "unknown" for r in reasons):
             hint = "정보 입력 필요"

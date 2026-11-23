@@ -64,12 +64,12 @@ def build_req(row_like: dict, unit: Optional[dict], unread: int = 0) -> dict:
     """저장된 공지 한 줄 → 요건. 서비스(규칙 판이 바뀐 공지 다시 뽑기)도 같은 함수를 쓴다."""
     posted = row_like.get("posted_at")
     year = to_date(posted).year if to_date(posted) else None
-    text = row_like.get("body") or ""
-    if row_like.get("attach_text"):
-        text = f"{text}\n\n{row_like['attach_text']}"
+    # 글자로 읽힌 원문(본문·HWP·PDF)과 OCR 덩어리를 갈라 넘긴다 — 추출이 원문을 먼저 보고, OCR 에서만 찾은 값이 있을 때만 신뢰도를 묶는다
+    plain, ocr_text = attachments.split_ocr(row_like.get("attach_text"))
+    text = "\n\n".join(x for x in (row_like.get("body") or "", plain) if x)
     req = extract.extract(row_like["title"], text, unit=unit, image_only=bool(row_like.get("image_only")),
                           attachments_unread=unread, default_year=year, catalog=row_like.get("kind") == "catalog",
-                          ocr=attachments.has_ocr(row_like.get("attach_text")))
+                          ocr=bool(ocr_text), ocr_text=ocr_text or None)
     _fix_year(req, posted)
     return req
 
